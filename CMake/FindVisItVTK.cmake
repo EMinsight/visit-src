@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,6 +59,12 @@
 #   Don't add VTK's MangledMesa directory to VTK_INCLUDE_DIRS unless VTK
 #   was built with MangledMesa.
 #
+#   Brad Whitlock, Mon Nov 21 10:22:56 PST 2011
+#   Print out some variables that were supposed to have been set by the
+#   FindVTK.cmake routine so we know better what's going on. Also deal with
+#   the case where VTK has been installed normally (with vtk-5.8 subdirs)
+#   and change how Python filters are located on Windows.
+#
 #****************************************************************************/
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
@@ -69,10 +75,23 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
 # We rely on FindVTK to set it to the right value.
 SET(VTK_USE_MANGLED_MESA OFF CACHE INTERNAL "Set a cache variable that FindVTK can override")
 
-SET(VTK_DIR ${VISIT_VTK_DIR}/lib)
+IF(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
+    SET(VTK_DIR ${VISIT_VTK_DIR}/lib/vtk-5.8)
+ELSE(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
+    SET(VTK_DIR ${VISIT_VTK_DIR}/lib)
+ENDIF(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
 
 MESSAGE(STATUS "Checking for VTK in ${VTK_DIR}")
 INCLUDE(${CMAKE_ROOT}/Modules/FindVTK.cmake)
+
+MESSAGE(STATUS "  VTK_FOUND=${VTK_FOUND}")
+MESSAGE(STATUS "  VTK_USE_FILE=${VTK_USE_FILE}")
+MESSAGE(STATUS "  VTK_MAJOR_VERSION=${VTK_MAJOR_VERSION}")
+MESSAGE(STATUS "  VTK_MINOR_VERSION=${VTK_MINOR_VERSION}")
+MESSAGE(STATUS "  VTK_BUILD_VERSION=${VTK_BUILD_VERSION}")
+MESSAGE(STATUS "  VTK_INCLUDE_DIRS=${VTK_INCLUDE_DIRS}")
+MESSAGE(STATUS "  VTK_LIBRARY_DIRS=${VTK_LIBRARY_DIRS}")
+MESSAGE(STATUS "  VTK_KITS=${VTK_KITS}")
 
 # Set the VisIt mangled mesa off of the VTK mangled mesa variable.
 IF("${VTK_USE_MANGLED_MESA}" STREQUAL "ON")
@@ -95,118 +114,133 @@ ELSE(APPLE)
     ENDIF(WIN32)
 ENDIF(APPLE)
 
-FOREACH(VTKLIB MapReduceMPI
-    mpistubs
-    vtkCommon
-    vtkCommonPythonD
-    vtkDICOMParser
-    vtkFiltering
-    vtkFilteringPythonD
-    vtkGenericFiltering
-    vtkGenericFilteringPythonD
-    vtkGraphics
-    vtkGraphicsPythonD
-    vtkHybrid
-    vtkHybridPythonD
-    vtkIO
-    vtkIOPythonD
-    vtkImaging
-    vtkImagingPythonD
-    vtkPythonCore
-    vtkRendering
-    vtkRenderingPythonD
-    vtkVolumeRendering
-    vtkVolumeRenderingPythonD
-    vtkWidgets
-    vtkWidgetsPythonD
-    vtkalglib
-    vtkexpat
-    vtkfreetype
-    vtkftgl
-    vtkjpeg
-    vtklibxml2
-    vtkpng
-    vtkproj4
-    vtksqlite
-    vtksys
-    vtktiff
-    vtkverdict
-    vtkzlib
-)
-    IF(WIN32)
-        SET(LIBNAME ${VTK_RUNTIME_DIRS}/${VTKLIB}.${SO_EXT})
-        IF(EXISTS ${LIBNAME})
-            THIRD_PARTY_INSTALL_LIBRARY(${LIBNAME})
-        ENDIF(EXISTS ${LIBNAME})
-        SET(LIBNAME ${VTK_LIBRARY_DIRS}/${VTKLIB}.lib)
-        IF(EXISTS ${LIBNAME})
-            THIRD_PARTY_INSTALL_LIBRARY(${LIBNAME})
-        ENDIF(EXISTS ${LIBNAME})
-    ELSE(WIN32)
-        SET(LIBNAME ${VTK_LIBRARY_DIRS}/lib${VTKLIB}.${SO_EXT})
-        IF(EXISTS ${LIBNAME})
-            THIRD_PARTY_INSTALL_LIBRARY(${LIBNAME})
-        ENDIF(EXISTS ${LIBNAME})
-    ENDIF(WIN32)
-ENDFOREACH(VTKLIB)  
+IF(VISIT_VTK_SKIP_INSTALL)
+    MESSAGE(STATUS "Skipping installation of VTK libraries")
+ELSE(VISIT_VTK_SKIP_INSTALL)
+    FOREACH(VTKLIB MapReduceMPI
+        mpistubs
+        vtkCommon
+        vtkCommonPythonD
+        vtkDICOMParser
+        vtkFiltering
+        vtkFilteringPythonD
+        vtkGenericFiltering
+        vtkGenericFilteringPythonD
+        vtkGraphics
+        vtkGraphicsPythonD
+        vtkHybrid
+        vtkHybridPythonD
+        vtkIO
+        vtkIOPythonD
+        vtkImaging
+        vtkImagingPythonD
+        vtkPythonCore
+        vtkRendering
+        vtkRenderingPythonD
+        vtkVolumeRendering
+        vtkVolumeRenderingPythonD
+        vtkWidgets
+        vtkWidgetsPythonD
+        vtkalglib
+        vtkexpat
+        vtkfreetype
+        vtkftgl
+        vtkjpeg
+        vtklibxml2
+        vtkpng
+        vtkproj4
+        vtksqlite
+        vtksys
+        vtktiff
+        vtkverdict
+        vtkzlib
+    )
+        IF(WIN32)
+            SET(LIBNAME ${VTK_RUNTIME_DIRS}/${VTKLIB}.${SO_EXT})
+            IF(EXISTS ${LIBNAME})
+                THIRD_PARTY_INSTALL_LIBRARY(${LIBNAME})
+            ENDIF(EXISTS ${LIBNAME})
+            SET(LIBNAME ${VTK_LIBRARY_DIRS}/${VTKLIB}.lib)
+            IF(EXISTS ${LIBNAME})
+                THIRD_PARTY_INSTALL_LIBRARY(${LIBNAME})
+            ENDIF(EXISTS ${LIBNAME})
+        ELSE(WIN32)
+            SET(LIBNAME ${VTK_LIBRARY_DIRS}/lib${VTKLIB}.${SO_EXT})
+            IF(EXISTS ${LIBNAME})
+                THIRD_PARTY_INSTALL_LIBRARY(${LIBNAME})
+            ENDIF(EXISTS ${LIBNAME})
+        ENDIF(WIN32)
+    ENDFOREACH(VTKLIB)  
 
-# Add install targets for VTK headers too -- but just the vtk-5.0 dir.
-# The VTK_INCLUDE_DIRS may contain stuff like /usr/include or the
-# Python directory and we just want VTK here.
-FOREACH(X ${VTK_INCLUDE_DIRS})
-    IF(EXISTS ${X}/vtkActor.h)
-        #MESSAGE("Install ${X} to ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk")
-        INSTALL(DIRECTORY ${X}
-            DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk
-            FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
-            DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-            PATTERN ".svn" EXCLUDE
-        )
-    ENDIF(EXISTS ${X}/vtkActor.h)
-ENDFOREACH(X)
+    # Add install targets for VTK headers too -- but just the vtk-5.0 dir.
+    # The VTK_INCLUDE_DIRS may contain stuff like /usr/include or the
+    # Python directory and we just want VTK here.
+    IF(VISIT_HEADERS_SKIP_INSTALL)
+        MESSAGE(STATUS "Skipping vtk headers installation")
+    ELSE(VISIT_HEADERS_SKIP_INSTALL)
+        FOREACH(X ${VTK_INCLUDE_DIRS})
+            IF(EXISTS ${X}/vtkActor.h)
+                #MESSAGE("Install ${X} to ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk")
+                INSTALL(DIRECTORY ${X}
+                    DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk
+                    FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
+                    DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+                    PATTERN ".svn" EXCLUDE
+                )
+            ENDIF(EXISTS ${X}/vtkActor.h)
+        ENDFOREACH(X)
+    ENDIF(VISIT_HEADERS_SKIP_INSTALL)
+ENDIF(VISIT_VTK_SKIP_INSTALL)
 
 # check for python wrappers
 IF (NOT WIN32)
     FILE(GLOB VTK_PY_WRAPPERS_DIR ${VTK_LIBRARY_DIRS}/python*/)
 ELSE (NOT WIN32)
-    FILE(GLOB VTK_PY_WRAPPERS_DIR ${VTK_LIBRARY_DIRS})
+    FILE(GLOB VTK_PY_WRAPPERS_DIR ${VISIT_VTK_DIR}/lib)
 ENDIF (NOT WIN32)
+MESSAGE(STATUS "  VTK_PY_WRAPPERS_DIR=${VTK_PY_WRAPPERS_DIR}")
 
 IF(EXISTS ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
     MESSAGE(STATUS "Found VTK Python Wrappers - ${VTK_PY_WRAPPERS_DIR}")
     FILE(GLOB VTK_PY_EGG ${VTK_PY_WRAPPERS_DIR}/site-packages/*.egg*)
     FILE(GLOB VTK_PY_MODULE ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
-    INSTALL(FILES ${VTK_PY_EGG}
-            DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/
-            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
-           )
 
-    INSTALL(DIRECTORY ${VTK_PY_MODULE}
-            DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/
-            FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
-            DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-            PATTERN ".svn" EXCLUDE
-           )
-#
-# On OSX we need to patch the lib names in the vtk python wrappers.
-#
-# Obtain a list of all '.so' libs from the module source directory and
-# use these names to create an install rule that executes 'osxfixup'.
-# Yes - VTK generates '.so's here instead of 'dylib's ...
-#
-    IF(APPLE)
-        FILE(GLOB vtkpylibs ${VTK_PY_MODULE}/*so)
-        FOREACH(vtkpylib ${vtkpylibs})
-            GET_FILENAME_COMPONENT(libname ${vtkpylib} NAME)
-            INSTALL(CODE
-                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                     COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib 
-                     \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/site-packages/vtk/${libname}\"
-                     OUTPUT_VARIABLE OSXOUT)
-                     MESSAGE(STATUS \"\${OSXOUT}\")
-                     ")
-        ENDFOREACH(vtkpylib ${vtkpylibs})
-    ENDIF(APPLE)
+    IF(VISIT_VTK_SKIP_INSTALL)
+        MESSAGE(STATUS "Skipping installation of VTK Python bindings")
+    ELSE(VISIT_VTK_SKIP_INSTALL)
+        INSTALL(FILES ${VTK_PY_EGG}
+                DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/
+                PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
+            )
+
+        INSTALL(DIRECTORY ${VTK_PY_MODULE}
+                DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/
+                FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
+                DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+                PATTERN ".svn" EXCLUDE
+            )
+
+        #
+        # On OSX we need to patch the lib names in the vtk python wrappers.
+        #
+        # Obtain a list of all '.so' libs from the module source directory and
+        # use these names to create an install rule that executes 'osxfixup'.
+        # Yes - VTK generates '.so's here instead of 'dylib's ...
+        #
+        IF(APPLE)
+            FILE(GLOB vtkpylibs ${VTK_PY_MODULE}/*so)
+            FOREACH(vtkpylib ${vtkpylibs})
+                GET_FILENAME_COMPONENT(libname ${vtkpylib} NAME)
+                INSTALL(CODE
+                        "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH}
+                        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/site-packages/vtk/${libname}\"
+                        OUTPUT_VARIABLE OSXOUT)
+                        MESSAGE(STATUS \"\${OSXOUT}\")
+                        ")
+            ENDFOREACH(vtkpylib ${vtkpylibs})
+        ENDIF(APPLE)
+    ENDIF(VISIT_VTK_SKIP_INSTALL)
 
     SET(VTK_PYTHON_WRAPPERS_FOUND TRUE)
 ELSE(EXISTS ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
@@ -219,6 +253,12 @@ MARK_AS_ADVANCED(VTK_PYTHON_WRAPPERS_FOUND)
 #            DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk/include
 #            #FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
 #            DIRE
+
+# If vtk was build with R, we need to add the R link dirs to VTK_LIBRARY_DIRS
+# This is necessary b/c VTK doesn't do a good job exposing R support in VTKConfig.cmake.
+IF(R_FOUND)
+    SET(VTK_LIBRARY_DIRS ${VTK_LIBRARY_DIRS} ${R_LIBRARY_DIR})
+ENDIF(R_FOUND)
 
 IF(NOT ${VTK_FOUND})
     MESSAGE(FATAL_ERROR "VTK is required to build VisIt.")

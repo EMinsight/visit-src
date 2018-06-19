@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                          avtRadianToDegreeExpression.C                        //
+//                          avtRadianToDegreeExpression.C                    //
 // ************************************************************************* //
 
 #include <avtRadianToDegreeExpression.h>
@@ -115,7 +115,7 @@ avtRadianToDegreeExpression::DoOperation(vtkDataArray *in, vtkDataArray *out,
     {
         for (int j = 0 ; j < ncomponents ; j++)
         {
-            float val = in->GetComponent(i, j);
+            double val = in->GetComponent(i, j);
             out->SetComponent(i, j, val*(360./(2.*M_PI)));
         }
     }

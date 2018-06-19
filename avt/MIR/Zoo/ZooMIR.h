@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -212,9 +212,10 @@ class MIR_API ZooMIR : public MIR
 
   protected:
     int                                     origNPoints;
-    std::vector<float>                      origXCoords;
-    std::vector<float>                      origYCoords;
-    std::vector<float>                      origZCoords;
+    int                                     origCoordType;
+    std::vector<double>                     origXCoords;
+    std::vector<double>                     origYCoords;
+    std::vector<double>                     origZCoords;
     VisItArray<ReconstructedCoord>          coordsList;
     VisItArray<ReconstructedZone>           zonesList;
     VisItArray<vtkIdType>                   indexList;

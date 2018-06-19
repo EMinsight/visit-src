@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,6 +47,7 @@ class QTabWidget;
 class QGroupBox;
 class QLabel;
 class QCheckBox;
+class QComboBox;
 class QLineEdit;
 class QSpinBox;
 class QVBox;
@@ -94,6 +95,7 @@ class QvisLineSamplerWindow : public QvisOperatorWindow
     void meshGeometryChanged(int val);
     void arrayConfigurationChanged(int val);
     void boundaryChanged(int val);
+    void instanceIdChanged(int val);
     void nArraysProcessText();
     void nChannelsProcessText();
     void toroidalArrayAngleProcessText();
@@ -112,6 +114,7 @@ class QvisLineSamplerWindow : public QvisOperatorWindow
     void viewGeometryChanged(int val);
     void displayTimeChanged(int val);
     void viewDimensionChanged(int val);
+    void donotApplyToAllChanged(bool val);
     void heightPlotScaleProcessText();
     void channelPlotOffsetProcessText();
     void arrayPlotOffsetProcessText();
@@ -177,6 +180,7 @@ class QvisLineSamplerWindow : public QvisOperatorWindow
     QButtonGroup *arrayConfigurationButtonGroup;
     QWidget      *boundary;
     QButtonGroup *boundaryButtonGroup;
+    QComboBox *instanceId;
     QLineEdit *nArrays;
     QLineEdit *nDChannels;
     QLineEdit *nPChannels;
@@ -209,6 +213,7 @@ class QvisLineSamplerWindow : public QvisOperatorWindow
     QCheckBox *flipToroidalAngle;
     QWidget      *viewDimension;
     QButtonGroup *viewDimensionButtonGroup;
+    QCheckBox    *donotApplyToAll;
     QWidget      *viewGeometry;
     QButtonGroup *viewGeometryButtonGroup;
     QWidget      *displayTime;

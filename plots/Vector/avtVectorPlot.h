@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -104,6 +104,9 @@ class     avtLookupTable;
 //    Hank Childs, Tue Aug 24 22:31:43 PDT 2010
 //    Add resample operator for uniform glyph placement.
 //
+//    Kathleen Biagas, Wed Feb 29 13:10:11 MST 2012
+//    Add GetExtraInfoForPick.
+//
 // ****************************************************************************
 
 class avtVectorPlot : public avtPointDataPlot
@@ -123,6 +126,8 @@ class avtVectorPlot : public avtPointDataPlot
     void                        SetLimitsMode(int);
     virtual bool                NeedZBufferToCompositeEvenIn2D(void)
                                                           { return true; };
+
+    virtual const MapNode     &GetExtraInfoForPick(void);
 
   protected:
     VectorAttributes            atts;

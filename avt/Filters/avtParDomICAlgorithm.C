@@ -319,7 +319,7 @@ avtParDomICAlgorithm::RunAlgorithm()
             activeICs.pop_front();
             
             AdvectParticle(s);
-            if (s->status == avtIntegralCurve::STATUS_FINISHED)
+            if (s->status != avtIntegralCurve::STATUS_OK)
             {
                 if (DebugStream::Level5())
                     debug5<<"TerminatedIC: "<<s->id<<endl;
@@ -354,8 +354,8 @@ avtParDomICAlgorithm::RunAlgorithm()
 void
 avtParDomICAlgorithm::HandleCommunication()
 {
-    //Send terminations, if any.
-    if (numICChange != 0)
+    // Send terminations, if any.
+    if (activeICs.size() == 0 && numICChange != 0)
     {
         vector<int> msg(2);
         msg[0] = PARTICLE_TERMINATE_COUNT;
@@ -626,7 +626,7 @@ avtParDomICAlgorithm::HandleOOBIC(avtIntegralCurve *s)
 // ****************************************************************************
 
 void
-avtParDomICAlgorithm::ResetIntegralCurvesForContinueExecute()
+avtParDomICAlgorithm::ResetIntegralCurvesForContinueExecute(int curTimeSlice)
 {
     std::list<avtIntegralCurve *> saveICs;
 
@@ -673,6 +673,17 @@ avtParDomICAlgorithm::ResetIntegralCurvesForContinueExecute()
 // Programmer:  Dave Pugmire
 // Creation:    December  2, 2010
 //
+// Modifications:
+//
+//   Hank Childs, Fri Mar  9 16:49:06 PST 2012
+//   Add support for reverse pathlines.
+//
+//   Hank Childs, Sun Apr  1 10:32:00 PDT 2012
+//   Fix recently introduced error with bad logic about what has been terminated.
+//
+//   Cyrus Harrison, Mon Apr  2 15:49:11 PDT 2012
+//   Fixed a typo (removed extra paren from next line)
+//
 // ****************************************************************************
 
 bool
@@ -682,7 +693,12 @@ avtParDomICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
     list<avtIntegralCurve *>::const_iterator it;
     for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
     {
-        if ((*it)->domain.domain != -1 && (*it)->domain.timeStep > curTimeSlice)
+        bool itsDone = false;
+        if ((*it)->domain.domain == -1 || (*it)->domain.timeStep == curTimeSlice)
+            itsDone = true;
+        if ((*it)->status == avtIntegralCurve::STATUS_TERMINATED)
+            itsDone = true;
+        if (! itsDone)
         {
             val = 1;
             break;
@@ -695,4 +711,3 @@ avtParDomICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
 }
 
 #endif
-

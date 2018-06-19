@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -358,6 +358,7 @@ const char *expr_misc[] = {
     "ij_gradient",
     "ijk_gradient",
     "Laplacian",
+    "map",
     "mean_curvature",
     "nodal_constant",
     "point_constant",
@@ -607,10 +608,10 @@ QvisExpressionsWindow::CreateWindowContents()
 
     // tab 1 -> standard editor
     CreateStandardEditor();
-    editorTabs->addTab(stdEditorWidget, "Standard Editor");
+    editorTabs->addTab(stdEditorWidget, tr("Standard Editor"));
     // tab 2 -> python filter editor
     CreatePythonFilterEditor();
-    editorTabs->addTab(pyEditorWidget, "Python Expression Editor");
+    editorTabs->addTab(pyEditorWidget, tr("Python Expression Editor"));
 
 
     definitionLayout->addWidget(editorTabs,row,0,1,2);
@@ -1073,7 +1074,7 @@ QvisExpressionsWindow::addExpression()
     QString newName;
     while (!okay)
     {
-        newName.sprintf("unnamed%d", newid);
+        newName = tr("unnamed%1").arg(newid);
         if ((*exprList)[newName.toStdString().c_str()])
             newid++;
         else
@@ -1267,7 +1268,7 @@ QvisExpressionsWindow::nameTextChanged(const QString &text)
         bool okay = false;
         while (!okay)
         {
-            newname.sprintf("unnamed%d", newid);
+            newname = tr("unnamed%1").arg(newid);
             if ((*exprList)[newname.toStdString().c_str()])
                 newid++;
             else
@@ -1717,7 +1718,7 @@ QvisExpressionsWindow::ExpandFunction(const QString &func_name)
     else if(func_name == "average_over_time" || func_name == "min_over_time"
             || func_name == "max_over_time" || func_name == "sum_over_time")
     {
-        res += QString("(<var>, [, \"pos_cmfe\", <fillvar-for-uncovered-regions>] [, start-time-index, stop-time-index, stride])");
+        res += QString("(<var> [, \"pos_cmfe\", <fillvar-for-uncovered-regions>] [, start-time-index, stop-time-index, stride])");
         doParens = false;
     }
     else if(func_name == "last_cycle_when_condition_is_true" ||
@@ -1758,6 +1759,11 @@ QvisExpressionsWindow::ExpandFunction(const QString &func_name)
     else if (func_name == "value_at_maximum")
     {
         res += QString("(<var-to-find-maximum-of>, <var-for-output> [, \"pos_cmfe\", <fillvar-for-uncovered-regions>] [, start-time-index, stop-time-index, stride])");
+        doParens = false;
+    }
+    else if (func_name == "map")
+    {
+        res += QString("(var, [input1, input2, ...], [output1, output2, ...])");
         doParens = false;
     }
 

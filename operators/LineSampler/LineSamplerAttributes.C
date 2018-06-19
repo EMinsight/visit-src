@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -621,6 +621,7 @@ void LineSamplerAttributes::Init()
     meshGeometry = Toroidal;
     arrayConfiguration = Geometry;
     boundary = Data;
+    instanceId = 0;
     nArrays = 1;
     toroidalArrayAngle = 5;
     nChannels = 5;
@@ -643,6 +644,7 @@ void LineSamplerAttributes::Init()
     flipToroidalAngle = false;
     viewGeometry = Surfaces;
     viewDimension = Three;
+    donotApplyToAll = true;
     heightPlotScale = 1;
     channelPlotOffset = 0;
     arrayPlotOffset = 0;
@@ -698,6 +700,7 @@ void LineSamplerAttributes::Copy(const LineSamplerAttributes &obj)
     meshGeometry = obj.meshGeometry;
     arrayConfiguration = obj.arrayConfiguration;
     boundary = obj.boundary;
+    instanceId = obj.instanceId;
     nArrays = obj.nArrays;
     toroidalArrayAngle = obj.toroidalArrayAngle;
     nChannels = obj.nChannels;
@@ -721,6 +724,7 @@ void LineSamplerAttributes::Copy(const LineSamplerAttributes &obj)
     flipToroidalAngle = obj.flipToroidalAngle;
     viewGeometry = obj.viewGeometry;
     viewDimension = obj.viewDimension;
+    donotApplyToAll = obj.donotApplyToAll;
     heightPlotScale = obj.heightPlotScale;
     channelPlotOffset = obj.channelPlotOffset;
     arrayPlotOffset = obj.arrayPlotOffset;
@@ -913,6 +917,7 @@ LineSamplerAttributes::operator == (const LineSamplerAttributes &obj) const
     return ((meshGeometry == obj.meshGeometry) &&
             (arrayConfiguration == obj.arrayConfiguration) &&
             (boundary == obj.boundary) &&
+            (instanceId == obj.instanceId) &&
             (nArrays == obj.nArrays) &&
             (toroidalArrayAngle == obj.toroidalArrayAngle) &&
             (nChannels == obj.nChannels) &&
@@ -933,6 +938,7 @@ LineSamplerAttributes::operator == (const LineSamplerAttributes &obj) const
             (flipToroidalAngle == obj.flipToroidalAngle) &&
             (viewGeometry == obj.viewGeometry) &&
             (viewDimension == obj.viewDimension) &&
+            (donotApplyToAll == obj.donotApplyToAll) &&
             (heightPlotScale == obj.heightPlotScale) &&
             (channelPlotOffset == obj.channelPlotOffset) &&
             (arrayPlotOffset == obj.arrayPlotOffset) &&
@@ -1106,6 +1112,7 @@ LineSamplerAttributes::SelectAll()
     Select(ID_meshGeometry,                  (void *)&meshGeometry);
     Select(ID_arrayConfiguration,            (void *)&arrayConfiguration);
     Select(ID_boundary,                      (void *)&boundary);
+    Select(ID_instanceId,                    (void *)&instanceId);
     Select(ID_nArrays,                       (void *)&nArrays);
     Select(ID_toroidalArrayAngle,            (void *)&toroidalArrayAngle);
     Select(ID_nChannels,                     (void *)&nChannels);
@@ -1126,6 +1133,7 @@ LineSamplerAttributes::SelectAll()
     Select(ID_flipToroidalAngle,             (void *)&flipToroidalAngle);
     Select(ID_viewGeometry,                  (void *)&viewGeometry);
     Select(ID_viewDimension,                 (void *)&viewDimension);
+    Select(ID_donotApplyToAll,               (void *)&donotApplyToAll);
     Select(ID_heightPlotScale,               (void *)&heightPlotScale);
     Select(ID_channelPlotOffset,             (void *)&channelPlotOffset);
     Select(ID_arrayPlotOffset,               (void *)&arrayPlotOffset);
@@ -1201,6 +1209,12 @@ LineSamplerAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool 
     {
         addToParent = true;
         node->AddNode(new DataNode("boundary", Boundary_ToString(boundary)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_instanceId, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("instanceId", instanceId));
     }
 
     if(completeSave || !FieldsEqual(ID_nArrays, &defaultObject))
@@ -1321,6 +1335,12 @@ LineSamplerAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool 
     {
         addToParent = true;
         node->AddNode(new DataNode("viewDimension", ViewDimension_ToString(viewDimension)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_donotApplyToAll, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("donotApplyToAll", donotApplyToAll));
     }
 
     if(completeSave || !FieldsEqual(ID_heightPlotScale, &defaultObject))
@@ -1569,6 +1589,8 @@ LineSamplerAttributes::SetFromNode(DataNode *parentNode)
                 SetBoundary(value);
         }
     }
+    if((node = searchNode->GetNode("instanceId")) != 0)
+        SetInstanceId(node->AsInt());
     if((node = searchNode->GetNode("nArrays")) != 0)
         SetNArrays(node->AsInt());
     if((node = searchNode->GetNode("toroidalArrayAngle")) != 0)
@@ -1679,6 +1701,8 @@ LineSamplerAttributes::SetFromNode(DataNode *parentNode)
                 SetViewDimension(value);
         }
     }
+    if((node = searchNode->GetNode("donotApplyToAll")) != 0)
+        SetDonotApplyToAll(node->AsBool());
     if((node = searchNode->GetNode("heightPlotScale")) != 0)
         SetHeightPlotScale(node->AsDouble());
     if((node = searchNode->GetNode("channelPlotOffset")) != 0)
@@ -1859,6 +1883,13 @@ LineSamplerAttributes::SetBoundary(LineSamplerAttributes::Boundary boundary_)
 }
 
 void
+LineSamplerAttributes::SetInstanceId(int instanceId_)
+{
+    instanceId = instanceId_;
+    Select(ID_instanceId, (void *)&instanceId);
+}
+
+void
 LineSamplerAttributes::SetNArrays(int nArrays_)
 {
     nArrays = nArrays_;
@@ -1998,6 +2029,13 @@ LineSamplerAttributes::SetViewDimension(LineSamplerAttributes::ViewDimension vie
 {
     viewDimension = viewDimension_;
     Select(ID_viewDimension, (void *)&viewDimension);
+}
+
+void
+LineSamplerAttributes::SetDonotApplyToAll(bool donotApplyToAll_)
+{
+    donotApplyToAll = donotApplyToAll_;
+    Select(ID_donotApplyToAll, (void *)&donotApplyToAll);
 }
 
 void
@@ -2212,6 +2250,12 @@ LineSamplerAttributes::GetBoundary() const
 }
 
 int
+LineSamplerAttributes::GetInstanceId() const
+{
+    return instanceId;
+}
+
+int
 LineSamplerAttributes::GetNArrays() const
 {
     return nArrays;
@@ -2335,6 +2379,12 @@ LineSamplerAttributes::ViewDimension
 LineSamplerAttributes::GetViewDimension() const
 {
     return ViewDimension(viewDimension);
+}
+
+bool
+LineSamplerAttributes::GetDonotApplyToAll() const
+{
+    return donotApplyToAll;
 }
 
 double
@@ -2560,6 +2610,7 @@ LineSamplerAttributes::GetFieldName(int index) const
     case ID_meshGeometry:                  return "meshGeometry";
     case ID_arrayConfiguration:            return "arrayConfiguration";
     case ID_boundary:                      return "boundary";
+    case ID_instanceId:                    return "instanceId";
     case ID_nArrays:                       return "nArrays";
     case ID_toroidalArrayAngle:            return "toroidalArrayAngle";
     case ID_nChannels:                     return "nChannels";
@@ -2580,6 +2631,7 @@ LineSamplerAttributes::GetFieldName(int index) const
     case ID_flipToroidalAngle:             return "flipToroidalAngle";
     case ID_viewGeometry:                  return "viewGeometry";
     case ID_viewDimension:                 return "viewDimension";
+    case ID_donotApplyToAll:               return "donotApplyToAll";
     case ID_heightPlotScale:               return "heightPlotScale";
     case ID_channelPlotOffset:             return "channelPlotOffset";
     case ID_arrayPlotOffset:               return "arrayPlotOffset";
@@ -2634,6 +2686,7 @@ LineSamplerAttributes::GetFieldType(int index) const
     case ID_meshGeometry:                  return FieldType_enum;
     case ID_arrayConfiguration:            return FieldType_enum;
     case ID_boundary:                      return FieldType_enum;
+    case ID_instanceId:                    return FieldType_int;
     case ID_nArrays:                       return FieldType_int;
     case ID_toroidalArrayAngle:            return FieldType_double;
     case ID_nChannels:                     return FieldType_int;
@@ -2654,6 +2707,7 @@ LineSamplerAttributes::GetFieldType(int index) const
     case ID_flipToroidalAngle:             return FieldType_bool;
     case ID_viewGeometry:                  return FieldType_enum;
     case ID_viewDimension:                 return FieldType_enum;
+    case ID_donotApplyToAll:               return FieldType_bool;
     case ID_heightPlotScale:               return FieldType_double;
     case ID_channelPlotOffset:             return FieldType_double;
     case ID_arrayPlotOffset:               return FieldType_double;
@@ -2708,6 +2762,7 @@ LineSamplerAttributes::GetFieldTypeName(int index) const
     case ID_meshGeometry:                  return "enum";
     case ID_arrayConfiguration:            return "enum";
     case ID_boundary:                      return "enum";
+    case ID_instanceId:                    return "int";
     case ID_nArrays:                       return "int";
     case ID_toroidalArrayAngle:            return "double";
     case ID_nChannels:                     return "int";
@@ -2728,6 +2783,7 @@ LineSamplerAttributes::GetFieldTypeName(int index) const
     case ID_flipToroidalAngle:             return "bool";
     case ID_viewGeometry:                  return "enum";
     case ID_viewDimension:                 return "enum";
+    case ID_donotApplyToAll:               return "bool";
     case ID_heightPlotScale:               return "double";
     case ID_channelPlotOffset:             return "double";
     case ID_arrayPlotOffset:               return "double";
@@ -2794,6 +2850,11 @@ LineSamplerAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_boundary:
         {  // new scope
         retval = (boundary == obj.boundary);
+        }
+        break;
+    case ID_instanceId:
+        {  // new scope
+        retval = (instanceId == obj.instanceId);
         }
         break;
     case ID_nArrays:
@@ -2899,6 +2960,11 @@ LineSamplerAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_viewDimension:
         {  // new scope
         retval = (viewDimension == obj.viewDimension);
+        }
+        break;
+    case ID_donotApplyToAll:
+        {  // new scope
+        retval = (donotApplyToAll == obj.donotApplyToAll);
         }
         break;
     case ID_heightPlotScale:

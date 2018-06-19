@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -221,18 +221,21 @@ LongestCommonSuffixLength(const char * const *list, int listN)
 //    Brad Whitlock, Tue Jun 23 17:07:57 PDT 2009
 //    I added a Mac implementation.
 //
+//    David Camp, Mon Mar  5 14:04:42 PST 2012
+//    Modified to use unsigned long so we can go above 4 gigabytes
+//
 // ****************************************************************************
 
 void
-GetMemorySize(unsigned int &size, unsigned int &rss)
+GetMemorySize(unsigned long &size, unsigned long &rss)
 {
     size = 0;
     rss  = 0;
 #if defined(__APPLE__)
     struct mstats m = mstats();
-    size = (unsigned int)m.bytes_used; // The bytes used out of the bytes_total.
-    rss = (unsigned int)m.bytes_total; // not quite accurate but this should be the total
-                                       // amount allocated by malloc.
+    size = (unsigned long)m.bytes_used; // The bytes used out of the bytes_total.
+    rss = (unsigned long)m.bytes_total; // not quite accurate but this should be the total
+                                        // amount allocated by malloc.
 #elif !defined(_WIN32)
     FILE *file = fopen("/proc/self/statm", "r");
     if (file == NULL)
@@ -240,14 +243,14 @@ GetMemorySize(unsigned int &size, unsigned int &rss)
         return;
     }
 
-    int count = fscanf(file, "%u%u", &size, &rss);
+    int count = fscanf(file, "%lu%lu", &size, &rss);
     if (count != 2)
     {
         fclose(file);
         return;
     }
-    size *= getpagesize();
-    rss  *= getpagesize();
+    size *= (unsigned long)getpagesize();
+    rss  *= (unsigned long)getpagesize();
     fclose(file);
 #endif
 }
@@ -665,9 +668,7 @@ SplitValues(const std::string &buff, char delim)
 //    Backing out SSH tunneling on Panther (MacOS X 10.3)
 //
 // ****************************************************************************
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
+
 bool
 ConvertArgsToTunneledValues(const std::map<int,int> &portTunnelMap,
                             std::vector<std::string> &args)
@@ -715,4 +716,59 @@ ConvertArgsToTunneledValues(const std::map<int,int> &portTunnelMap,
     args.push_back("-sshtunneling");
     return true;
 }
-#endif
+
+// ****************************************************************************
+// Method: GetSSHClient
+//
+// Purpose: 
+//   Gets the SSH_CLIENT variable if it exists.
+//
+// Arguments:
+//   sshClient : The return variable.
+//
+// Returns:    True on success; false on failure.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Apr 24 15:21:18 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+GetSSHClient(std::string &sshClient)
+{
+    bool retval = false;
+    const char *s = NULL;
+    if((s = getenv("SSH_CLIENT")) != NULL)
+    {
+        stringVector sv = SplitValues(s, ' ');
+        if(sv.size() > 0)
+        {
+            retval = true;
+            sshClient = sv[0];
+        }
+    }
+    else if((s = getenv("SSH2_CLIENT")) != NULL)
+    {
+        stringVector sv = SplitValues(s, ' ');
+        if(sv.size() > 0)
+        {
+            retval = true;
+            sshClient = sv[0];
+        }
+    }
+    else if((s = getenv("SSH_CONNECTION")) != NULL)
+    {
+        stringVector sv = SplitValues(s, ' ');
+        if(sv.size() > 0)
+        {
+            retval = true;
+            sshClient = sv[0];
+        }
+    }
+
+    return retval;
+}

@@ -7,7 +7,7 @@
  *
  * @brief       Implementation of base class for VSH5 visit plugins
  *
- * @version $Id: avtVsFileFormat.cpp 42 2008-03-31 23:09:33Z paulh $
+ * @version $Id: $
  *
  * Copyright &copy; 2007, Tech-X Corporation
  * See LICENSE file for conditions of use.
@@ -32,6 +32,7 @@
 #include <vtkVisItUtility.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkIntArray.h>
+#include <vtkInformation.h>
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
 #include <vtkStructuredGrid.h>
@@ -42,6 +43,7 @@
 // VisIt includes
 #include <avtDatabaseMetaData.h>
 #include <avtMeshMetaData.h>
+#include <avtVariableCache.h>
 #include <DebugStream.h>
 #include <InvalidVariableException.h>
 #include <InvalidDBTypeException.h>
@@ -101,7 +103,7 @@ int avtVsFileFormat::instanceCounter = 0;
 avtVsFileFormat::avtVsFileFormat(const char* filename,
                                  DBOptionsAttributes *readOpts) :
   avtSTMDFileFormat(&filename, 1), dataFileName(filename),
-  processDataSelections(true)
+  processDataSelections(false)
 {
     instanceCounter++;
   
@@ -211,9 +213,8 @@ avtVsFileFormat::~avtVsFileFormat()
                       << "exiting" << std::endl;
 }
 
-
 // ***************************************************************************
-//  Method: avtVsFileFormat::CreateCacheNameIncludingSelections 
+//  Method: avtVsFileFormat::CreateCacheNameIncludingSelections
 //
 //  Purpose:
 //      The reader will return different data sets based on data
@@ -228,27 +229,26 @@ avtVsFileFormat::~avtVsFileFormat()
 std::string
 avtVsFileFormat::CreateCacheNameIncludingSelections(std::string s)
 {
-    int mins[3], maxs[3], strides[3];
-    bool haveDataSelections = ProcessDataSelections(mins, maxs, strides);
-    if (!haveDataSelections)
-        return s;
+  int mins[3], maxs[3], strides[3];
+  bool haveDataSelections = ProcessDataSelections(mins, maxs, strides);
+  if (!haveDataSelections)
+    return s;
 
-    char str[1024];
-    strcpy(str, s.c_str());
-    int amt = strlen(str);
-    for (size_t i = 0 ; i < selList.size() ; i++)
+  char str[1024];
+  strcpy(str, s.c_str());
+  int amt = strlen(str);
+  for (size_t i = 0 ; i < selList.size() ; i++)
     {
-        if ((*selsApplied)[i])
-        {
-            std::string s = selList[i]->DescriptionString();
-            SNPRINTF(str+amt, 1024-amt, "_%s", s.c_str());
-            amt += strlen(str);
+      if ((*selsApplied)[i])
+ {
+   std::string s = selList[i]->DescriptionString();
+   SNPRINTF(str+amt, 1024-amt, "_%s", s.c_str());
+   amt += strlen(str);
         }
     }
 
-    return std::string(str);
+  return std::string(str);
 }
-
 
 // ****************************************************************************
 //  Method: avtVsFileFormat::RegisterDataSelections
@@ -395,9 +395,21 @@ vtkDataSet* avtVsFileFormat::GetMesh(int domain, const char* name)
                       << "Entering function." << std::endl;
     LoadData();
 
-    // Save the name in a temporary variable as it gets mucked with if
-    // searching for a MD mesh.
+    // Save the original name in a temporary variable
+    // so that we can do some string manipulations on it
     std::string meshName = name;
+
+    // Roopa: Check if this mesh name is a transformed mesh name. If
+    // so, use the original mesh name to get data associated
+    bool transform = false;
+    std::string origMeshName = registry->getOriginalMeshName(meshName);
+    if (!origMeshName.empty()) {
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "Original mesh for this transformed mesh " << meshName << " is "
+                        << origMeshName << std::endl;
+      transform = true;
+      meshName = origMeshName;
+    }
 
     bool haveDataSelections;
     int mins[3], maxs[3], strides[3];
@@ -473,7 +485,7 @@ vtkDataSet* avtVsFileFormat::GetMesh(int domain, const char* name)
                           << "Trying to load & return rectilinear mesh."
                           << std::endl;
         return getRectilinearMesh(static_cast<VsRectilinearMesh*>(meta),
-                                  haveDataSelections, mins, maxs, strides);
+                                  haveDataSelections, mins, maxs, strides, transform);
       }
       
       // Structured Mesh
@@ -514,18 +526,18 @@ vtkDataSet* avtVsFileFormat::GetMesh(int domain, const char* name)
     }
 
     // Variable with mesh
-    VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-
-      << "Looking for Variable With Mesh with this name." << std::endl;
-    VsVariableWithMesh* vmMeta = registry->getVariableWithMesh(name);
+    VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" 
+                      << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Looking for Variable-With-Mesh named " << meshName 
+                      << ".\n";
+    VsVariableWithMesh* vmMeta = registry->getVariableWithMesh(meshName);
 
     if (vmMeta != NULL)
     {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
 
         << "Found Variable With Mesh. Loading data and returning." << std::endl;
-      return getPointMesh(vmMeta,
-                          haveDataSelections, mins, maxs, strides);
+      return getPointMesh(vmMeta, haveDataSelections, mins, maxs, strides, transform);
     }
 
     // Curve
@@ -763,7 +775,8 @@ vtkDataSet* avtVsFileFormat::getUniformMesh(VsUniformMesh* uniformMesh,
 vtkDataSet*
 avtVsFileFormat::getRectilinearMesh(VsRectilinearMesh* rectilinearMesh,
                                     bool haveDataSelections,
-                                    int* mins, int* maxs, int* strides)
+                                    int* mins, int* maxs, int* strides,
+                                    bool transform)
 {
     // TODO - make "cleanupAndReturnNull" label, and do a "go to"
     // instead of just returning NULL all the time.
@@ -976,25 +989,86 @@ avtVsFileFormat::getRectilinearMesh(VsRectilinearMesh* rectilinearMesh,
       coords[i]->SetComponent(0, 0, 0);    
     }
 
-    // Create vtkRectilinearGrid
-    VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                      << "Creating rectilinear grid." << std::endl;
-    vtkRectilinearGrid* rgrid = vtkRectilinearGrid::New();
-    rgrid->SetDimensions(&(gdims[0]));
+    // Create a Rectilinear mesh and send it if there is no
+    // transformation requested
+    if (!transform) {
+      // Create vtkRectilinearGrid
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "Creating rectilinear grid." << std::endl;
+      vtkRectilinearGrid* rgrid = vtkRectilinearGrid::New();
+      rgrid->SetDimensions(&(gdims[0]));
   
-    // Set grid data
-    rgrid->SetXCoordinates(coords[0]);
-    rgrid->SetYCoordinates(coords[1]);
-    rgrid->SetZCoordinates(coords[2]);
+      // Set grid data
+      rgrid->SetXCoordinates(coords[0]);
+      rgrid->SetYCoordinates(coords[1]);
+      rgrid->SetZCoordinates(coords[2]);
 
+      // Cleanup local data
+      for (size_t i = 0; i < vsdim; ++i) {
+        coords[i]->Delete();
+      }
+
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "Returning data." << std::endl;
+      return rgrid;
+    } else {
+      // Roopa: Transformation to cylindrical co-ords if transform is
+      // true. Calculate the points and return a Structured mesh instead
+      // of a Rectilinear mesh
+      //
+      float temp, tempk, tempj, tempi;
+      vtkPoints* vpoints = vtkPoints::New();
+      if (isDouble) {
+       vpoints->SetDataTypeToDouble();
+      }
+      else if (isFloat) {
+       vpoints->SetDataTypeToFloat();
+      }
+      vpoints->SetNumberOfPoints((maxs[0] + 1) * (maxs[1] + 1) * (maxs[2] + 1));
+
+      int ind = 0;
+      if (isDouble) {
+        for (int j = mins[2]; j <= maxs[2]; j++) {
+         for (int i = mins[1]; i <= maxs[1]; i++) {
+           for (int k = mins[0]; k <= maxs[0]; k++) {
+             tempi = static_cast<vtkDoubleArray*>(coords[1])->GetValue(i) 
+                  * cos(static_cast<vtkDoubleArray*>(coords[2])->GetValue(j));
+             tempj = static_cast<vtkDoubleArray*>(coords[1])->GetValue(i) 
+                  * sin(static_cast<vtkDoubleArray*>(coords[2])->GetValue(j));
+              tempk = static_cast<vtkDoubleArray*>(coords[0])->GetValue(k);
+              vpoints->SetPoint(ind, tempi, tempj, tempk);
+              ind++;
+            }
+          }
+        }
+      } else if (isFloat) {
+        for (int j = mins[2]; j <= maxs[2]; j++) {
+         for (int i = mins[1]; i <= maxs[1]; i++) {
+           for (int k = mins[0]; k <= maxs[0]; k++) {
+             tempi = static_cast<vtkFloatArray*>(coords[1])->GetValue(i) 
+              * cos(static_cast<vtkFloatArray*>(coords[2])->GetValue(j));
+             tempj = static_cast<vtkFloatArray*>(coords[1])->GetValue(i) 
+              * sin(static_cast<vtkFloatArray*>(coords[2])->GetValue(j));
+             tempk = static_cast<vtkFloatArray*>(coords[0])->GetValue(k); 
+              vpoints->SetPoint(ind, tempi, tempj, tempk);
+             ind++;
+            }
+          }
+        }
+      }
+
+    // Create a Structured grid
+    vtkStructuredGrid* sgrid = vtkStructuredGrid::New();
+    sgrid->SetDimensions(&(gdims[0]));
+    sgrid->SetPoints(vpoints);
+    
     // Cleanup local data
-    for (size_t i = 0; i < vsdim; ++i) {
-      coords[i]->Delete();
-    }
-
+    vpoints->Delete();
+    
     VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                      << "Returning data." << std::endl;
-    return rgrid;
+                      << "Returning transformed data." << std::endl;
+    return sgrid;
+  }
 }
 
   
@@ -1209,79 +1283,32 @@ vtkDataSet* avtVsFileFormat::getStructuredMesh(VsStructuredMesh* structuredMesh,
                       << "Adding points to mesh." << std::endl;
 
     vtkPoints* vpoints = vtkPoints::New();
+    bool isFortranOrder = structuredMesh->isFortranOrder();
+
     if (isDouble) {
+      // Note: must precede SetNumberOfPoints for alloc to succeed
       vpoints->SetDataTypeToDouble();
+      vpoints->SetNumberOfPoints(numPoints); // will allocate
+      
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                        << __FUNCTION__ << "  " << __LINE__
+                        << " Adding " << numPoints << " with isFortranOrder = " 
+                        << isFortranOrder << ", type is double.\n";
+
+      this->setStructuredMeshCoords(gdims, dblDataPtr, isFortranOrder, vpoints);
+      delete [] dblDataPtr;
     }
     else if (isFloat) {
+      // Note: must precede SetNumberOfPoints for alloc to succeed
       vpoints->SetDataTypeToFloat();
-    }
+      vpoints->SetNumberOfPoints(numPoints); // will allocate 
 
-    vpoints->SetNumberOfPoints(numPoints);
-    //void* ptsPtr = vpoints->GetVoidPointer(0);
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                        << __FUNCTION__ << "  " << __LINE__
+                        << " Adding " << numPoints << " with isFortranOrder = " 
+                        << isFortranOrder << ", type is float.\n";
 
-    // Step through by global C index to reverse
-    VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                      << "Adding " << numPoints
-                      << " points with index order '"
-                      << structuredMesh->getIndexOrder() << "'." << std::endl;
-
-    // Using FORTRAN data ordering.
-    if (structuredMesh->isFortranOrder()) {
-      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                        << "Using FORTRAN data ordering." << std::endl;
-
-      if (isDouble) {
-        for (size_t k = 0; k<numPoints; ++k) {
-          vpoints->SetPoint(k, &dblDataPtr[k*3]);
-        }
-      } else if (isFloat) {
-        for (size_t k = 0; k<numPoints; ++k) {
-          vpoints->SetPoint(k, &fltDataPtr[k*3]);
-        }
-      }
-    }
-
-    // Using C data ordering.
-    else {
-      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                        << "Using C data ordering." << std::endl;
-      size_t indices[3] = {0, 0, 0};
-
-      // Step through by global C index
-      for (size_t k = 0; k<numPoints; ++k) {
-        
-        // Accumulate the Fortran index
-        size_t indx = indices[2];
-        for (size_t j = 2; j<=3; ++j) {
-          indx = indx*gdims[3-j] + indices[3-j];
-        }
-
-        // Set the value in the VTK array at the Fortran index to the
-        // value in the C array at the C index
-        if (isDouble) {
-          vpoints->SetPoint(indx, &dblDataPtr[k*3]);
-        }
-        else if (isFloat) {
-          vpoints->SetPoint(indx, &fltDataPtr[k*3]);
-        }
-
-        // Update the index tuple
-        size_t j = 3;
-        do {
-          --j;
-          ++indices[j];
-
-          if (indices[j] == gdims[j])
-            indices[j] = 0;
-          else
-            break;
-        } while (j != 0);
-      }
-    }
-
-    if (isDouble) {
-      delete [] dblDataPtr;
-    } else if (isFloat) {
+      this->setStructuredMeshCoords(gdims, fltDataPtr, isFortranOrder, vpoints);
       delete [] fltDataPtr;
     }
 
@@ -1307,6 +1334,9 @@ vtkDataSet* avtVsFileFormat::getStructuredMesh(VsStructuredMesh* structuredMesh,
 
     std::string maskName = structuredMesh->getMaskName();
     if (maskName != "") {
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                        << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "Mask detected, name is " << maskName << std::endl;
       // To access the data
       VsH5Dataset* mask = registry->getDataset(maskName);
       // To access the attributes
@@ -1332,121 +1362,54 @@ vtkDataSet* avtVsFileFormat::getStructuredMesh(VsStructuredMesh* structuredMesh,
           // Zero means no masking, node is visible
           maskedNodes->SetValue(k, 0);
         }
-        unsigned char* mp = maskedNodes->GetPointer(0);
 
         if (isDoubleType(maskType)) {
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
                             << __FUNCTION__ << "  " << __LINE__ << "  "
                             << "Mask is of type double." << std::endl;
-          double* maskArray = new double[numPoints];
-          herr_t err = reader->getDataSet(mask, maskArray);
-          if (err < 0) {
-            VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
-                              << __FUNCTION__ << "  " << __LINE__ << "  "
-                              << "Cannot read mask dataset "
-                              << maskName << std::endl;
-          }
-          else {
-            if (maskIsFortranOrder) {
-              for (size_t k = 0; k < numPoints; ++k) {
-                if (maskArray[k] != 0) {
-                  avtGhostData::AddGhostNodeType(mp[k],
-                                                 NODE_NOT_APPLICABLE_TO_PROBLEM);
-                }
-              }
-            }
-            else {
-              // maskArray follows C index order, but                                                                                                                                                                        
-              // mp follows Fortran index order!                                                                                                                                                                             
-              for (size_t k = 0; k < numPoints; ++k) {
-                size_t i0 = k % gdims[0];
-                size_t i1 = (k / gdims[0]) % gdims[1];
-                size_t i2 = (k / gdims[0] / gdims[1]) % gdims[2];
-                size_t kC = i2 + gdims[2]*(i1 + gdims[1]*i0);
-                if (maskArray[kC] != 0) {
-                  avtGhostData::AddGhostNodeType(mp[k],
-                                                 NODE_NOT_APPLICABLE_TO_PROBLEM);
-                }
-              }
-            }
-            delete [] maskArray;
-          }
+          this->fillInMaskNodeArray<double>(gdims, mask, 
+                                            maskIsFortranOrder, 
+                                            maskedNodes);
         }
         else if (isFloatType(maskType)) {
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
                             << __FUNCTION__ << "  " << __LINE__ << "  "
                             << "Mask is of type float." << std::endl;
-          float* maskArray = new float[numPoints];
-          herr_t err = reader->getDataSet(mask, maskArray);
-          if (err < 0) {
-            VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
-                              << __FUNCTION__ << "  " << __LINE__ << "  "
-                              << "Cannot read mask dataset "
-                              << maskName << std::endl;
-          }
-          else {
-            if (maskIsFortranOrder) {
-              for (size_t k = 0; k < numPoints; ++k) {
-                if (maskArray[k] != 0) {
-                  avtGhostData::AddGhostNodeType(mp[k],
-                                                 NODE_NOT_APPLICABLE_TO_PROBLEM);
-                }
-              }
-            }
-            else {
-              // maskArray follows C index order, but                                                                                                                                                                        
-              // mp follows Fortran index order!                                                                                                                                                                             
-              for (size_t k = 0; k < numPoints; ++k) {
-                size_t i0 = k % gdims[0];
-                size_t i1 = (k / gdims[0]) % gdims[1];
-                size_t i2 = (k / gdims[0] / gdims[1]) % gdims[2];
-                size_t kC = i2 + gdims[2]*(i1 + gdims[1]*i0);
-                if (maskArray[kC] != 0) {
-                  avtGhostData::AddGhostNodeType(mp[k],
-                                                 NODE_NOT_APPLICABLE_TO_PROBLEM);
-                }
-              }
-            }
-            delete [] maskArray;
-          }
+          this->fillInMaskNodeArray<float>(gdims, mask, 
+                                           maskIsFortranOrder, 
+                                           maskedNodes);
         }
-        else if (isIntegerType(maskType)) {
+        else if (isIntType(maskType)) {
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
                             << __FUNCTION__ << "  " << __LINE__ << "  "
                             << "Mask is of type int." << std::endl;
-          int* maskArray = new int[numPoints];
-          herr_t err = reader->getDataSet(mask, maskArray);
-          if (err < 0) {
-            VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
-                              << __FUNCTION__ << "  " << __LINE__ << "  "
-                              << "Cannot read mask dataset "
-                              << maskName << std::endl;
-          }
-          else {
-            if (maskIsFortranOrder) {
-              for (size_t k = 0; k < numPoints; ++k) {
-                if (maskArray[k] != 0) {
-                  avtGhostData::AddGhostNodeType(mp[k],
-                                                 NODE_NOT_APPLICABLE_TO_PROBLEM);
-                }
-              }
-            }
-            else {
-              // maskArray follows C index order, but                                                                                                                                                                        
-              // mp follows Fortran index order!                                                                                                                                                                             
-              for (size_t k = 0; k < numPoints; ++k) {
-                size_t i0 = k % gdims[0];
-                size_t i1 = (k / gdims[0]) % gdims[1];
-                size_t i2 = (k / gdims[0] / gdims[1]) % gdims[2];
-                size_t kC = i2 + gdims[2]*(i1 + gdims[1]*i0);
-                if (maskArray[kC] != 0) {
-                  avtGhostData::AddGhostNodeType(mp[k],
-                                                 NODE_NOT_APPLICABLE_TO_PROBLEM);
-                }
-              }
-            }
-            delete [] maskArray;
-          }
+          this->fillInMaskNodeArray<int>(gdims, mask, 
+                                         maskIsFortranOrder, 
+                                         maskedNodes);
+        }
+        else if (isShortType(maskType)) {
+          VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                            << __FUNCTION__ << "  " << __LINE__ << "  "
+                            << "Mask is of type short." << std::endl;
+          this->fillInMaskNodeArray<short>(gdims, mask, 
+                                           maskIsFortranOrder, 
+                                           maskedNodes);
+        }
+        else if (isCharType(maskType)) {
+          VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                            << __FUNCTION__ << "  " << __LINE__ << "  "
+                            << "Mask is of type char." << std::endl;
+          this->fillInMaskNodeArray<char>(gdims, mask, 
+                                          maskIsFortranOrder, 
+                                          maskedNodes);
+        }
+        else if (isUnsignedCharType(maskType)) {
+          VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                            << __FUNCTION__ << "  " << __LINE__ << "  "
+                            << "Mask is of type unsigned char." << std::endl;
+          this->fillInMaskNodeArray<unsigned char>(gdims, mask, 
+                                                   maskIsFortranOrder, 
+                                                   maskedNodes);
         }
         else {
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
@@ -1463,6 +1426,20 @@ vtkDataSet* avtVsFileFormat::getStructuredMesh(VsStructuredMesh* structuredMesh,
 
     VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                       << "Returning data." << std::endl;
+
+    //This is the "alternate" way to attach information to a dataset in the VisIt pipeline.
+    //It works for meshes, where the vtkInformation approach works for data
+    //Kept for historical purposes
+    //Attach offset information to dataset
+    //debug5 <<"avtVsFileFormat::getStructuredMesh() - attaching node offset as field data." <<std::endl;
+    //vtkDoubleArray* offsetArray = vtkDoubleArray::New();
+    //offsetArray->SetNumberOfTuples(3);
+    //offsetArray->SetValue(0, 0.1);
+    //offsetArray->SetValue(1, 0.2);
+    //offsetArray->SetValue(2, 0.3);
+    //offsetArray->SetName("nodeOffset");
+    //sgrid->GetFieldData()->AddArray(offsetArray);
+    //offsetArray->Delete();
 
     return sgrid;
 }
@@ -1584,10 +1561,23 @@ avtVsFileFormat::getUnstructuredMesh(VsUnstructuredMesh* unstructuredMesh,
       // using the generic reader.
 
       // To do so set the location in memory where each cordinate
-      // componenet will be stored.
-      int srcMins[1] = {mins[0]};
-      int srcMaxs[1] = {numNodes};
-      int srcStrides[1] = {strides[0]};
+      // component will be stored.
+      int srcMins[1] = {0};
+      int srcMaxs[1] = {0};
+      int srcStrides[1] = {0};
+      
+      if( haveDataSelections )
+      {     
+        srcMins[0] = mins[0];
+        srcMaxs[0] = numNodes;
+        srcStrides[0] = strides[0];
+      }
+      else
+      {
+        srcMins[0] = 0;
+        srcMaxs[0] = numNodes;
+        srcStrides[0] = 1;
+      }
 
       int destSize[1] = {numNodes*3};
       int destMins[1] = {0};
@@ -1844,7 +1834,7 @@ avtVsFileFormat::getUnstructuredMesh(VsUnstructuredMesh* unstructuredMesh,
       datasetLength *= connectivityDims[i];
 
     // Check for connectivity list type
-    if (!isIntegerType( connectivityMeta->getType() )) {
+    if (!isIntType( connectivityMeta->getType() )) {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                         << "Indices are not integers. Cleaning up" << std::endl;
 
@@ -2078,7 +2068,8 @@ avtVsFileFormat::getUnstructuredMesh(VsUnstructuredMesh* unstructuredMesh,
 
 vtkDataSet* avtVsFileFormat::getPointMesh(VsVariableWithMesh* variableWithMesh,
                                           bool haveDataSelections,
-                                          int* mins, int* maxs, int* strides)
+                                          int* mins, int* maxs, int* strides,
+                                          bool transform)
 {
     // TODO - make "cleanupAndReturnNull" label, and do a "go to"
     // instead of just returning NULL all the time.
@@ -2214,7 +2205,7 @@ vtkDataSet* avtVsFileFormat::getPointMesh(VsVariableWithMesh* variableWithMesh,
     }
 
     // The above stores the value in the correct location but make
-    // sure the remaing value are all zero.
+    // sure the remaining values are all zero.
     for (int i=numSpatialDims; i<3; ++i)
     {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
@@ -2236,6 +2227,59 @@ vtkDataSet* avtVsFileFormat::getPointMesh(VsVariableWithMesh* variableWithMesh,
         {
           *fltDataPtr = 0;
           fltDataPtr += 3;
+        }
+      }
+    }
+  
+    //If a transform is requested, do it
+    //Note that we only have a 3d transform available right now
+    if (transform && (numSpatialDims == 3)) {
+      VsLog::debugLog() <<"Creating transformed point mesh." <<std::endl;
+      if (isDouble) {
+        double* dblDataPtr = (double*)dataPtr;
+        
+        for (int i = 0; i < numNodes[0]; i++) {
+          int baseIndex = i * 3;
+          //Get original values
+          double zValue = dblDataPtr[baseIndex];
+          double rValue = dblDataPtr[baseIndex + 1];
+          double phiValue = dblDataPtr[baseIndex + 2];
+
+          //Calculate transform (remember, Z = Z)
+          double xValue = rValue * cos(phiValue);
+          double yValue = rValue * sin(phiValue);
+          
+          //Debugging output
+          //VsLog::debugLog() <<"Transforming point " <<i <<" z = " <<zValue <<" r = " <<rValue <<" phi = " <<phiValue <<std::endl;
+          //VsLog::debugLog() <<"Transforming point " <<i <<" x = " <<xValue <<" y = " <<yValue <<" z = "   <<zValue   <<std::endl;
+          
+          //Replace old values with new values
+          dblDataPtr[baseIndex] = xValue;
+          dblDataPtr[baseIndex+1] = yValue;
+          dblDataPtr[baseIndex+2] = zValue;
+        }
+      } else if (isFloat) {
+        float* fltDataPtr = (float*)dataPtr;
+        
+        for (int i = 0; i < numNodes[0]; i++) {
+          int baseIndex = i * 3;
+          //Get original values
+          float zValue = fltDataPtr[baseIndex];
+          float rValue = fltDataPtr[baseIndex + 1];
+          float phiValue = fltDataPtr[baseIndex + 2];
+          
+          //Calculate transform (remember, Z = Z)
+          float xValue = rValue * cos(phiValue);
+          float yValue = rValue * sin(phiValue);
+          
+          //Debugging output
+          //VsLog::debugLog() <<"Transforming point " <<i <<" z = " <<zValue <<" r = " <<rValue <<" phi = " <<phiValue <<std::endl;
+          //VsLog::debugLog() <<"Transforming point " <<i <<" x = " <<xValue <<" y = " <<yValue <<" z = "   <<zValue   <<std::endl;
+          
+          //Replace old values with new values
+          fltDataPtr[baseIndex] = xValue;
+          fltDataPtr[baseIndex+1] = yValue;
+          fltDataPtr[baseIndex+2] = zValue;
         }
       }
     }
@@ -2296,8 +2340,8 @@ vtkDataSet* avtVsFileFormat::getCurve(int domain, const std::string& requestedNa
                       << "Entering function." << std::endl;
     LoadData();
 
-    // Save the name in a temporary variable as it gets mucked with if
-    // searching for a component.
+    // Save the original name in a temporary variable
+    // so that we can do some string manipulation on it
     std::string name = requestedName;
 
     ///TODO: This method piggybacks on getVar and getMesh -
@@ -2356,7 +2400,7 @@ vtkDataSet* avtVsFileFormat::getCurve(int domain, const std::string& requestedNa
     } else if (isFloatType(varDataType)) {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                         << "Var is 32-bit real" << std::endl;
-    } else if (isIntegerType(varDataType)) {
+    } else if (isIntType(varDataType)) {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                         << "Var is int" << std::endl;
     } else {
@@ -2391,9 +2435,9 @@ vtkDataSet* avtVsFileFormat::getCurve(int domain, const std::string& requestedNa
       return NULL;
     }
 
-    vtkRectilinearGrid* meshData = NULL;
+    vtkDataSet* meshData = NULL;
     try {
-      meshData = (vtkRectilinearGrid*) GetMesh(domain, meshName.c_str());
+      meshData = GetMesh(domain, meshName.c_str());
     } catch (...) {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                         << "Caught exception from GetMesh().  Returning NULL."
@@ -2459,15 +2503,37 @@ vtkDataSet* avtVsFileFormat::getCurve(int domain, const std::string& requestedNa
     rg->GetPointData()->SetScalars(vals);
 
     vtkFloatArray* xc = vtkFloatArray::SafeDownCast(rg->GetXCoordinates());
-    vtkDataArray* meshXCoord = meshData->GetXCoordinates();
+    
+    vtkRectilinearGrid* meshDataRect = dynamic_cast<vtkRectilinearGrid*>(meshData);
+    if (meshDataRect) {
+      //Handles the incoming mesh as a rectilinear mesh
+      vtkDataArray* meshXCoord = meshDataRect->GetXCoordinates();
+      for (int i = 0; i < nPtsInOutput; i++) {
+        double* var_i = varData->GetTuple(i);
+        double* mesh_i = meshXCoord->GetTuple(i);
+        xc->SetValue(i, mesh_i[0]);
+        vals->SetValue(i, var_i[0]);
+      }
+    } else {
+      //Handles the incoming mesh as a structured mesh
+      vtkStructuredGrid* meshDataStructuredGrid = dynamic_cast<vtkStructuredGrid*>(meshData);
+      if (!meshDataStructuredGrid) {
+        VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                          << "Unable to extract points from mesh to construct curve.  Giving up." << std::endl;
+        vals->Delete();
+        return NULL;
+      }
 
-    for (int i = 0; i < nPtsInOutput; i++) {
-      double* var_i = varData->GetTuple(i);
-      double* mesh_i = meshXCoord->GetTuple(i);
-      xc->SetValue(i, mesh_i[0]);
-      vals->SetValue(i, var_i[0]);
+      vtkPoints* points = meshDataStructuredGrid->GetPoints(); 
+
+      for (int i = 0; i < nPtsInOutput; i++) {
+        double* var_i = varData->GetTuple(i);
+        double* mesh_i = points->GetPoint(i);
+        xc->SetValue(i, mesh_i[0]);
+        vals->SetValue(i, var_i[0]);
+      }    
     }
-
+    
     // Done, so clean up memory and return
     vals->Delete();
 
@@ -2495,8 +2561,8 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
                       << "Entering function." << std::endl;
     LoadData();
 
-    // Save the name in a temporary variable as it gets mucked with if
-    // searching for a component.
+    // Save the original name in a temporary variable
+    // so that we can do some string manipulation on it
     std::string name = requestedName;
 
     bool haveDataSelections;
@@ -2529,6 +2595,21 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
                         << "Found a component, which refers to variable "
                         << name << " and index " << componentIndex << std::endl;
       isAComponent = true;
+    }
+
+    // Check if this var name is a transformed var name. If
+    // so, use the original var name to get data associated
+    bool transform = false;
+    std::string origVarName = registry->getOriginalVarName(name);
+    if (!origVarName.empty()) {
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "Original var for the transformed var " << name << " is "
+                        << origVarName << std::endl;
+      transform = true;
+      name = origVarName;
+    } else {
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "Unable to find an original var for the possible transform name " <<name <<std::endl;
     }
 
     // The goal in all of the metadata loading is to fill one of
@@ -2609,9 +2690,9 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
     bool isFortranOrder = false;
     bool isCompMajor = false;
     bool isZonal = false;
-
     bool parallelRead = true;
-
+    bool hasOffset = false;
+    std::vector<double> offset(3, 0);
     std::string indexOrder;
 
     size_t numTopologicalDims;
@@ -2639,6 +2720,11 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
 
       if (meta->isZonal())
         isZonal = true;
+
+      if (meta->hasNodeOffset()) {
+        hasOffset = true;
+        offset = meta->getNodeOffset();
+      }
 
       indexOrder = meta->getIndexOrder();
       isCompMajor  = meta->isCompMajor();
@@ -2672,10 +2758,9 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
       if (varDims.size() - (int) isAComponent != numTopologicalDims )
       {
         VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                          << "WARNING: We don't think that var and mesh have the same topological dimension."
-                          << numTopologicalDims << "  " << varDims.size() << "  " << isAComponent << std::endl;
-//                          << "Returning NULL." << std::endl;
-//      return NULL;
+                          << "WARNING: We don't think that var and mesh have the same topological dimension." <<std::endl;
+        //                          << "Returning NULL." << std::endl;
+        //return NULL;
       }
 
       // For unstructured data, the variable can be subselected only when
@@ -2689,7 +2774,7 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
 
     bool isDouble = isDoubleType(varType);
     bool isFloat = isFloatType(varType);
-    bool isInteger = isIntegerType(varType);
+    bool isInteger = isIntType(varType);
 
     if (!isDouble && !isFloat && !isInteger) {
       VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
@@ -2866,9 +2951,17 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
       rv = vtkIntArray::New();
     }
 
+    //Attach offset information to array
+    if (hasOffset) {
+      vtkInformation* info = rv->GetInformation();
+      info->Set(avtVariableCache::OFFSET_3(), offset[0], offset[1], offset[2]);
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                        <<"Attaching nodeOffset information to dataset: " <<requestedName <<std::endl;
+    }
+
     rv->SetNumberOfTuples(numVariables);
 
-    // Perform if needed permutation of index as VTK expect Fortran order
+    // If in C order, perform permutation of index as VTK expect Fortran order
 
     // The index tuple is initially all zeros
     size_t* indices = new size_t[numTopologicalDims];
@@ -2909,7 +3002,7 @@ vtkDataArray* avtVsFileFormat::GetVar(int domain, const char* requestedName)
         }
         else if (isInteger) {
           int tmp = intDataPtr[indx];
-          intDataPtr[indx = intDataPtr[k];
+          intDataPtr[indx] = intDataPtr[k];
           intDataPtr[k] = tmp;
         } else {
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
@@ -3204,11 +3297,23 @@ void avtVsFileFormat::RegisterVars(avtDatabaseMetaData* md)
       }
 
       // Name of the mesh of the var
-      std::string mesh = vMeta->getMeshName();
+      std::string meshName = vMeta->getMeshName();
       VsMesh* meshMeta = vMeta->getMesh();
-      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                        << "Var lives on mesh " << mesh << "." << std::endl;
-
+      
+      // Name of the transformed mesh (if it exists)
+      bool hasTransform = false;
+      std::string transformMeshName = "";
+      VsRectilinearMesh* rectMesh = static_cast<VsRectilinearMesh*> (meshMeta);
+      if (meshMeta && meshMeta->hasTransform()) {
+        transformMeshName = meshMeta->getTransformedMeshName();
+        VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+          << __FUNCTION__ << "  " << __LINE__ << "  "
+          << "Variable lives on a mesh with a transform: "
+          <<transformMeshName
+          << std::endl;
+      }
+      
+      
       // Centering of the variable
       // Default is node centered data
       avtCentering centering = AVT_NODECENT;
@@ -3296,12 +3401,24 @@ void avtVsFileFormat::RegisterVars(avtDatabaseMetaData* md)
 
           if (!componentName.empty()) {
             VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                              << "Adding variable component "
-                              << componentName << "." << std::endl;
-            avtScalarMetaData* smd =
-              new avtScalarMetaData(componentName, mesh.c_str(), centering);
+                              << "Adding variable component " << componentName << "." << std::endl;
+            avtScalarMetaData* smd = new avtScalarMetaData(componentName, meshName.c_str(), centering);
             smd->hasUnits = false;
             md->Add(smd);
+            
+            if (vMeta->hasTransform()) {
+              std::string transformVarName = vMeta->getFullTransformedName();
+              std::string transformComponentName = registry->getComponentName(transformVarName, i);
+              if (!transformComponentName.empty()) {
+                VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                << "Registering transformed component: " <<transformVarName <<std::endl;
+                avtScalarMetaData* smd_transformed =
+                           new avtScalarMetaData(transformComponentName.c_str(), transformMeshName.c_str(), centering);
+                smd_transformed->hasUnits = false;
+                md->Add(smd_transformed);
+              }
+            }
+            
           } else {
             VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                               << "Unable to find match for variable "
@@ -3310,12 +3427,27 @@ void avtVsFileFormat::RegisterVars(avtDatabaseMetaData* md)
         }
       }
       else if (numComps == 1) {
-        VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                          << "Adding single-component variable." << std::endl;
+        VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" 
+                          << __FUNCTION__ << "  " << __LINE__ << "  "
+                          << "Adding single-component variable "
+                          << *it << " attached to mesh " 
+                          << meshName << " with centering " 
+                          << centering << std::endl;
         avtScalarMetaData* smd =
-          new avtScalarMetaData(*it, mesh.c_str(), centering);
+          new avtScalarMetaData(*it, meshName.c_str(), centering);
         smd->hasUnits = false;
         md->Add(smd);
+
+        if (vMeta->hasTransform()) {
+          std::string transformVarName = vMeta->getFullTransformedName();
+          avtScalarMetaData* smd_transformed =
+            new avtScalarMetaData(transformVarName.c_str(), transformMeshName.c_str(), centering);
+          VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                            << "Registering transformed variable: " <<transformVarName <<std::endl;
+          smd_transformed->hasUnits = false;
+          md->Add(smd_transformed);
+        }
+        
       }
       else {
         VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
@@ -3365,6 +3497,11 @@ void avtVsFileFormat::RegisterMeshes(avtDatabaseMetaData* md)
 
     std::vector<std::string>::const_iterator it;
     for (it = names.begin(); it != names.end(); ++it) {
+
+      VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                        << __FUNCTION__ << "  " << __LINE__ << "  "
+                        << "now registering mesh " << *it << std::endl;
+      
       VsMesh* meta = registry->getMesh(*it);
 
       spatialDims = meta->getNumSpatialDims();
@@ -3440,17 +3577,54 @@ void avtVsFileFormat::RegisterMeshes(avtDatabaseMetaData* md)
                           << "Adding rectilinear mesh" << *it << ".  " 
                           << "spatialDims = " << spatialDims << "." << std::endl;
 
+        VsRectilinearMesh* rectMesh = static_cast<VsRectilinearMesh*>(meta);
         meshType = AVT_RECTILINEAR_MESH;
 
         // Add in the logical bounds of the mesh.
-        static_cast<VsRectilinearMesh*>(meta)->getNumMeshDims(dims);
+        rectMesh->getNumMeshDims(dims);
         for( int i=0; i<dims.size(); ++i )
         {
           bounds[i] = dims[i]; // Logical bounds are node centric.
           numCells *= (dims[i]-1);
         }
-      }
 
+        // Roopa: Check if there is a transformation specified for this
+        // mesh. If so, register the transformed mesh here. The
+        // original mesh will also be registered later by default
+        if (rectMesh->hasTransform()) {
+          VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                            << __FUNCTION__ << "  " << __LINE__ << "  "
+                            << "Registering transform for rectilinear mesh" << *it << "." <<std::endl;
+          std::string transformedMeshName = rectMesh->getTransformedMeshName();
+          VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                            << __FUNCTION__ << "  " << __LINE__ << "  "
+                            << "Adding rectilinear mesh" << *it << ".  "
+                            << "transformedMeshName = " << transformedMeshName
+                            << "." << std::endl;
+
+          int topologicalDims = meta->getNumTopologicalDims();
+          // Add a note for this interesting case.  It is legal, but since it's a new feature
+          // we want to keep an eye on it
+          if (topologicalDims > spatialDims) {
+            VsLog::errorLog() <<__CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                              <<"ERROR - num topological dims (" << topologicalDims
+                              <<") > num spatial dims (" << spatialDims <<")" <<std::endl;
+            topologicalDims = spatialDims;
+          } else if (spatialDims != topologicalDims) {
+            VsLog::debugLog() <<__CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
+                              <<"Interesting - num topological dims (" << topologicalDims
+                              <<") != num spatial dims (" << spatialDims <<")" <<std::endl;
+          }
+
+          avtMeshMetaData* vmd =
+            new avtMeshMetaData(transformedMeshName, 1, 1, 1, 0,
+                                spatialDims, topologicalDims, meshType);
+          vmd->SetBounds( bounds );
+          vmd->SetNumberCells( numCells );                                                                                                                      
+          setAxisLabels(vmd);
+          md->Add(vmd);
+        }
+      }
       // Structured Mesh
       else if (meta->isStructuredMesh()) {
         VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
@@ -3563,6 +3737,7 @@ void avtVsFileFormat::RegisterMeshes(avtDatabaseMetaData* md)
         vmd->SetNumberCells( numCells );
         setAxisLabels(vmd);
         md->Add(vmd);
+
       }
     }
 
@@ -3646,8 +3821,7 @@ void avtVsFileFormat::RegisterMdVars(avtDatabaseMetaData* md)
           
           if (!compName.empty()) {
             VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                              << "Adding variable component " << compName
-                              << "." << std::endl;
+                              << "Adding variable component " << compName << "." << std::endl;
             avtScalarMetaData* smd = new avtScalarMetaData(compName.c_str(),
               mesh.c_str(), centering);
             smd->hasUnits = false;
@@ -3833,12 +4007,25 @@ void avtVsFileFormat::RegisterVarsWithMesh(avtDatabaseMetaData* md)
         if (!compName.empty()) {
           //register with VisIt
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
-                            << "Adding variable component " << compName
-                            << "." << std::endl;
-          avtScalarMetaData* smd = new avtScalarMetaData(compName.c_str(),
-            it->c_str(), AVT_NODECENT);
+                            << "Adding variable component " << compName << "." << std::endl;
+          avtScalarMetaData* smd = new avtScalarMetaData(compName.c_str(), it->c_str(), AVT_NODECENT);
           smd->hasUnits = false;
           md->Add(smd);
+
+          // Register the transformed var (if this variable has a transform)
+          if (vMeta->hasTransform()) {
+            std::string transformMeshName = vMeta->getTransformedMeshName();
+            std::string transformVarName = vMeta->getFullTransformedName();
+            std::string transformComponentName = registry->getComponentName(transformVarName, i);
+            VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                              << __FUNCTION__ << "  " << __LINE__ << "  "
+                              << "Registering a transformed component: "
+                              <<transformComponentName << std::endl;
+            avtScalarMetaData* smd_transformed =
+                new avtScalarMetaData(transformComponentName.c_str(), transformMeshName.c_str(), AVT_NODECENT);
+            smd_transformed->hasUnits = false;
+            md->Add(smd_transformed);
+          }        
         } else {
           VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
                             << "Unable to get component name for variable "
@@ -3864,6 +4051,21 @@ void avtVsFileFormat::RegisterVarsWithMesh(avtDatabaseMetaData* md)
       vmd->SetNumberCells( numCells );
       setAxisLabels(vmd);
       md->Add(vmd);
+      
+      // Register the transformed mesh (if this variable has a transform)
+      if (vMeta->hasTransform()) {
+        std::string transformMeshName = vMeta->getTransformedMeshName();
+        VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                          << __FUNCTION__ << "  " << __LINE__ << "  "
+                          << "Variable lives on a mesh with a transform: "
+                          <<transformMeshName
+                          << std::endl;
+        avtMeshMetaData* vmd_transform = new avtMeshMetaData(transformMeshName.c_str(),
+                                                             1, 1, 1, 0, spatialDims, 0, AVT_POINT_MESH);
+        vmd_transform->SetBounds(bounds);
+        setAxisLabels(vmd_transform);
+        md->Add(vmd_transform);
+      }
     }
 
     VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")" << __FUNCTION__ << "  " << __LINE__ << "  "
@@ -4527,3 +4729,110 @@ bool avtVsFileFormat::GetParallelDecomp( int numTopologicalDims,
   return false;
 }
 #endif
+
+// *****************************************************************************
+//  Method: avtVsFileFormat::fillInMaskNodeArray
+//
+//  Purpose:
+//      Fill in mask array (maskedNodes) from mask dataset
+//
+//  Programmer: Alex Pletzer
+//  Creation:   October, 2011
+//
+//  Modifications:
+//
+template <typename TYPE>
+void
+avtVsFileFormat::fillInMaskNodeArray(const std::vector<int>& gdims,
+                                     VsH5Dataset *mask, 
+                                     bool maskIsFortranOrder,
+                                     vtkUnsignedCharArray *maskedNodes) {
+
+  int numPoints = gdims[0] * gdims[1] * gdims[2];
+  std::vector<TYPE> maskArray(numPoints);
+  herr_t err = reader->getDataSet(mask, &maskArray[0]);
+  unsigned char* mp = maskedNodes->GetPointer(0);
+  if (err < 0) {
+    VsLog::debugLog() << __CLASS__ <<"(" <<instanceCounter <<")"
+                      << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Cannot read mask dataset " << std::endl;
+  }
+  else {
+    if (maskIsFortranOrder) {
+      for (size_t k = 0; k < numPoints; ++k) {
+        if (maskArray[k] != 0) {
+          avtGhostData::AddGhostNodeType(mp[k],
+                                         NODE_NOT_APPLICABLE_TO_PROBLEM);
+        }
+      }
+    }
+    else {
+      // maskArray follows C index order, but
+      // mp follows Fortran index order!
+      for (int k = 0; k < numPoints; ++k) {
+        int i0 = k % gdims[0];
+        int i1 = (k / gdims[0]) % gdims[1];
+        int i2 = (k / gdims[0] / gdims[1]) % gdims[2];
+        int kC = i2 + gdims[2]*(i1 + gdims[1]*i0);
+        if (maskArray[kC] != 0) {
+          avtGhostData::AddGhostNodeType(mp[k],
+                                         NODE_NOT_APPLICABLE_TO_PROBLEM);
+        }
+      }
+    }
+  }
+}
+
+// *****************************************************************************
+//  Method: avtVsFileFormat::setStructuredMeshCoords
+//
+//  Purpose:
+//     Set the node coordinates
+//
+//  Programmer: Alex Pletzer
+//  Creation:   October, 2011
+//
+//  Modifications:
+//
+template <typename TYPE>
+void avtVsFileFormat::setStructuredMeshCoords(const std::vector<int>& gdims,
+                                              const TYPE* dataPtr,
+                                              bool isFortranOrder,
+                                              vtkPoints* vpoints)
+{
+
+  int numPoints = gdims[0] * gdims[1] * gdims[2];
+  int index[3];
+  TYPE xyz[3];
+
+  // mulSizes will be used to convert from a flat index to an index set.
+  int mulSizes[3];
+  if (isFortranOrder) {
+    // Fortran order
+    mulSizes[0] = 1;
+    mulSizes[1] = gdims[0];
+    mulSizes[2] = gdims[0] * gdims[1];
+  }
+  else {
+    // C order
+    mulSizes[0] = gdims[2] * gdims[1];
+    mulSizes[1] = gdims[2];
+    mulSizes[2] = 1;
+  }
+
+  for (int k = 0; k < numPoints; ++k) {
+
+    // Set the base coordinates
+    for (size_t j = 0; j < 3; ++j) {
+      index[j] = (k / mulSizes[j]) % gdims[j];
+      xyz[j] = dataPtr[3*k + j];
+    }
+
+    // Set the node coordinates. Note: vpoints wants Fortran ordering, regardless
+    // of whether isFortranOrder == true or not.
+    int kF = index[0] + gdims[0]*(index[1] + gdims[1]*index[2]);
+
+    vpoints->SetPoint(kF, xyz);
+    
+  }
+}

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                         avtColorComposeExpression.C                           //
+//                     avtColorComposeExpression.C                           //
 // ************************************************************************* //
 
 #include <avtColorComposeExpression.h>
@@ -120,7 +120,7 @@ ClampColor(const double c)
 vtkDataArray *
 avtColorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
 {
-    int numinputs = varnames.size();
+    size_t numinputs = varnames.size();
 
     //
     // Our first operand is in the active variable. We don't know if it's

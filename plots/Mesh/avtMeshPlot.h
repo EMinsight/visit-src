@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -148,6 +148,9 @@ class     avtVariablePointGlyphMapper;
 //    Hank Childs, Wed Aug 13 11:42:07 PDT 2008
 //    Add NeedZBufferToCompositeEvenIn2D because thick lines can bleed into
 //    other processor's portion of image space.
+//   
+//    Kathleen Biagas, Wed Feb 29 13:11:09 MST 2012
+//    Add GetExtraInfoForPick.
 //
 // ****************************************************************************
 
@@ -182,6 +185,8 @@ avtMeshPlot : public avtPlot
     virtual const AttributeSubject 
                    *SetOpaqueMeshIsAppropriate(bool);
     virtual bool    NeedZBufferToCompositeEvenIn2D(void);
+
+    virtual const MapNode &GetExtraInfoForPick(void);
 
   protected:
     avtSurfaceAndWireframeRenderer_p renderer;

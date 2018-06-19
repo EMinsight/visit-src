@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -145,11 +145,12 @@ class EXPRESSION_API avtGradientExpression : public avtSingleInputExpressionFilt
                                                            vtkDataArray *,
                                                            int ,
                                                            double *);
-    static float              EvaluateComponent(float, float, float, float,
-                                                float, float, float,
+    static double             EvaluateComponent(double, double, double, double,
+                                                double, double, double,
                                                 vtkDataSet *, vtkDataArray *,
                                                 vtkIdList *);
-    static float              EvaluateValue(float, float, float, vtkDataSet *,
+    static double             EvaluateValue(double, double, double, 
+                                            vtkDataSet *,
                                             vtkDataArray *,vtkIdList *,bool &);
 };
 

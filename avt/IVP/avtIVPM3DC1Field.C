@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -373,6 +373,8 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
                << "Variable " << varname
                << " is not of type float - can not safely down cast"
                << endl;
+    if( newptr )
+        delete [] newptr;
     return 0;
   }
 }
@@ -394,15 +396,13 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 bool avtIVPM3DC1Field::IsInside(const double& t, const avtVector& x) const
 {
   double xin[3];
-  double *xieta = new double[element_dimension];
+  double xieta[3];
 
   xin[0] = x[0];
   xin[1] = x[1];
   xin[2] = x[2];
 
   int el = get_tri_coords2D(xin, xieta);
-
-  delete [] xieta;
 
   return (bool) ( el >= 0 );
 }
@@ -792,7 +792,7 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
     xpt[1] = phi;
     xpt[2] = xin[2];
 
-    el = loc->FindCell( xpt, iw );
+    el = loc->FindCell( xpt, iw, false );
 
     if( el < 0 )
       return -1;
@@ -828,21 +828,21 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
 //
 // ****************************************************************************
 
-avtVector
-avtIVPM3DC1Field::operator()( const double &t, const avtVector &p ) const
+avtIVPField::Result
+avtIVPM3DC1Field::operator()( const double &t, const avtVector &p, avtVector &vec ) const
 {
   // NOTE: Assumes the point is in cylindrical coordiantes.
   double pt[3] = { p[0], p[1], p[2] };
 
   /* Find the element containing the point; get local coords xi,eta */
-  double *xieta = new double[element_dimension];
+  double xieta[3];
   int    element;
-
-  avtVector vec;
 
   if ((element = get_tri_coords2D(pt, xieta)) < 0) 
   {
-    vec = avtVector(0,0,0);
+    vec.x = 0.0;
+    vec.y = 0.0;
+    vec.z = 0.0;
   }
   else 
   {
@@ -851,15 +851,15 @@ avtIVPM3DC1Field::operator()( const double &t, const avtVector &p ) const
     interpBcomps(B, pt, element, xieta);
 
     // The B value is in cylindrical coordiantes
-    vec = avtVector( B[0], B[1], B[2] );
+    vec.x = B[0];
+    vec.y = B[1];
+    vec.z = B[2];
   }
-
-  delete [] xieta;
 
   if( reparameterize )
     reparameterizeBcomps( p, vec );
 
-  return vec;
+  return( avtIVPSolverResult::OK );
 }
 
 

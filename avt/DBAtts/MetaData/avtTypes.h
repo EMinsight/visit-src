@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -111,6 +111,19 @@ enum avtGhostType
     AVT_HAS_GHOSTS,     /* 1 */
     AVT_CREATED_GHOSTS, /* 2 */
     AVT_MAYBE_GHOSTS    /* 3 */
+};
+
+//
+// Note:
+// These are used in a bit mask.
+// If you need to extend the available types
+// make sure to shift new enum values properly.
+//
+enum avtGhostsZonesPresent
+{
+    AVT_NO_GHOST_ZONES          = 0,
+    AVT_BOUNDARY_GHOST_ZONES,  /* 1 */
+    AVT_NESTING_GHOST_ZONES    /* 2 */
 };
 
 enum avtMeshCoordType

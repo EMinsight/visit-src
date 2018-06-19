@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,30 @@
 #define VIEWER_LOCK_ACTIONS_H
 #include <viewer_exports.h>
 #include <ViewerToggleAction.h>
+
+// ****************************************************************************
+// Class: ToggleAllowPopupAction
+//
+// Purpose:
+//   Handles the toggle allow popup action.
+//
+// Notes:
+//
+// Programmer: Marc Durant
+// Creation:   Tue Jan 10 09:18:00 MST 2012
+//
+// ****************************************************************************
+
+class VIEWER_API ToggleAllowPopupAction : public ViewerToggleAction
+{
+ public:
+  ToggleAllowPopupAction(ViewerWindow *win);
+  virtual ~ToggleAllowPopupAction(){}
+
+  virtual void Execute();
+  virtual bool Enabled() const;
+  virtual bool Checked() const;
+};
 
 // ****************************************************************************
 // Class: ToggleLockViewAction

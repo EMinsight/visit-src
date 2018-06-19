@@ -41,7 +41,11 @@
 #if !defined(FieldlineAnalyzerLib_h)
 #define FieldlineAnalyzerLib_h
 
-//#define STRAIGHTLINE_SKELETON 1
+#define STRAIGHTLINE_SKELETON 1
+
+#ifdef STRAIGHTLINE_SKELETON
+#include "skelet.h"
+#endif
 
 #include <avtVector.h>
 #include <DebugStream.h>
@@ -74,6 +78,7 @@ public:
   {
     type = FieldlineProperties::UNKNOWN_TYPE;
     analysisState = FieldlineProperties::UNKNOWN_STATE;
+    analysisMethod = FieldlineProperties::DEFAULT_METHOD;
 
     source = FieldlineProperties::UNKNOWN_TYPE;
     
@@ -84,7 +89,8 @@ public:
     toroidalWinding = 0;
     poloidalWinding = 0;
 
-    poloidalWinding2 = 0;
+    toroidalWindingP = 0;
+    poloidalWindingP = 0;
 
     toroidalResonance = 0;
     poloidalResonance = 0;
@@ -104,20 +110,29 @@ enum FieldlineType { UNKNOWN_TYPE  = 0,
                      ORIGINAL_SEED = 1,
 
                      PERIODIC = 10,
-                     RATIONAL = 11,
-                     O_POINT  = 12,
-                     X_POINT  = 13,
+                     RATIONAL = 10,
+                     O_POINT  = 11,
+                     X_POINT  = 12,
                      
                      QUASI_PERIODIC = 20,
                      IRRATIONAL     = 20,
                      FLUX_SURFACE   = 21,
-                     ISLAND_CHAIN   = 22,
-                     ISLAND_WITH_SECONDARY_ISLANDS = 23,
-                     ISLAND_AMBIGUOUS_AXIS = 24,
+                     ISLAND_PRIMARY_CHAIN = 22,
+                     ISLAND_SECONDARY_CHAIN = 23,
                      
+                     ISLAND_PRIMARY_SECONDARY_AXIS = 24,
+                     ISLAND_SECONDARY_SECONDARY_AXIS = 25,
+
                      CHAOTIC = 30 };
   
+enum AnalysisMethod { DEFAULT_METHOD,
+                      RATIONAL_SEARCH,
+                      RATIONAL_MINIMIZE,
+                      RATIONAL_BRACKET }; //Remove a curve from continueExecute logic
+
 enum AnalysisState { UNKNOWN_STATE = 0,
+
+                     OVERRIDE = 5,
 
                      ADDING_POINTS = 10,
                      RATIONAL_TEMPLATE_SEED = 11,
@@ -137,24 +152,67 @@ enum AnalysisState { UNKNOWN_STATE = 0,
 
                      ADD_RATIONAL_SEED_POINT = 55 };
 
+////// Code for rational surface search
+enum SearchingState { ORIGINAL_RATIONAL = 100,
+                      SEARCHING_SEED,
+                      WAITING_SEED,
+                      FINISHED_SEED,
+                      MINIMIZING_A      = 105,  // Used to bracket the minimum
+                      MINIMIZING_B,
+                      MINIMIZING_C,
+                      MINIMIZING_X0     = 110, // Used for Golden search routine
+                      MINIMIZING_X1,
+                      MINIMIZING_X2,
+                      MINIMIZING_X3,
+                      BRACKETING_A      = 120, //Used to bracket the minimum
+                      BRACKETING_B,
+                      BRACKETING_C };
+
 public:
 
   FieldlineType type;
 
   FieldlineType source;
 
+  ////// Code for rational surface search
+  AnalysisMethod analysisMethod;
+
   AnalysisState analysisState;
 
-  double safetyFactor;
+  ////// Code for rational surface search
+  SearchingState searchState;
 
   unsigned int iteration;
 
+  double safetyFactor;
+
+
+  // Base number of windings
   unsigned int toroidalWinding;
   unsigned int poloidalWinding;
+
+  // Secondary axis number of transits
+  unsigned int toroidalWindingP;
   unsigned int poloidalWindingP;
 
+  // Number of transists when an island to get back to the initial puncture.
   unsigned int toroidalPeriod;
   unsigned int poloidalPeriod;
+
+  // Resonance periods 
+
+  // When a surface resonances equal 1
+
+  // When a primary island the resonances equal the base number of
+  // windings and the toroidal resonance and the base toroidal winding both
+  // equal the number of islands.
+
+  // When secondary islands the toroial resonance is the total number
+  // of islands and the toroidal resonance divided by the base
+  // toroidal winding equals the number of island on each group.
+
+  unsigned int toroidalResonance;
+  unsigned int poloidalResonance;
 
   std::vector< std::pair< unsigned int, unsigned int > > windingPairs;
 
@@ -167,11 +225,16 @@ public:
   unsigned int maxPunctures;
   unsigned int nPuncturesNeeded;
 
-  std::vector< Point > OPoints;
+  std::vector< avtVector > OPoints;
   bool seedOPoints;
 
-  std::vector< int > parentIds;
-  std::vector< int > childIds;
+  ////// Code for rational surface search
+  // The rational points bounding the location of the minimization action
+  avtVector rationalPt1;
+  avtVector rationalPt2;
+
+  std::vector< avtPoincareIC *> *children;
+  ////// Code for rational surface search
 };
 #endif
 
@@ -278,7 +341,10 @@ public:
                           std::vector< Point > &ridgeline_points,
                           std::vector< double > &rotationalSums,
                           std::vector< unsigned int > &poloidalWindingCounts,
-                          float &delta );
+                          float &delta,
+                          unsigned int OLineToroidalWinding );
+
+  Point getAxisPt( Point pt, double phi, double toroidalBase );
 
   void
   GetBaseWindingPairs( std::vector< unsigned int > &poloidalWindingCounts,
@@ -303,7 +369,9 @@ public:
                        unsigned int maxToroidalWinding,
                        double windingPairConfidence,
                        double rationalSurfaceFactor,
-                       bool detectIslandCenters );
+                       bool detectIslandCenters,
+                       unsigned int OLineToroidalWinding,
+                       std::string OLineAxisFilename );
 
   void
   fieldlineProperties2( std::vector< Point > &ptList,
@@ -311,9 +379,15 @@ public:
                         FieldlineProperties &fi );
 
   void findIslandCenters( std::vector< Point > &puncturePts,
-                          unsigned int toroialWinding,
+                          unsigned int islands,
+                          unsigned int offset,
                           unsigned int nnodes,
-                          std::vector< Point > &centers );
+                          unsigned int moduloValue,
+                          std::vector< Point > &centers,
+                          std::vector< Point > &nearestBoundaryPoints );
+
+  Point findSkeletonCenter( Skeleton::Skeleton &s,
+                            unsigned int nHullPts );
 
   unsigned int
   islandProperties( std::vector< Point > &points,
@@ -360,6 +434,12 @@ public:
                 unsigned int island );
 
   bool verboseFlag;
+
+protected:
+  std::vector< Point > OLineAxisPts;
+  std::vector< double > OLineAxisPhiAngles;
+  unsigned int OLineAxisIndex;
+  std::string OLineAxisFileName;
 };
 
 

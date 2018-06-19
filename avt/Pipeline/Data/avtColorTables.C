@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -525,6 +525,9 @@ reverse_alphas(unsigned char *a, int na)
 //   Jeremy Meredith, Wed Mar 22 13:44:25 PST 2006
 //   Added molecular color tables.
 //
+//   Brad Whitlock, Fri Apr 27 15:00:48 PDT 2012
+//   Change smoothing method.
+//
 // ****************************************************************************
 
 avtColorTables::avtColorTables()
@@ -568,7 +571,7 @@ avtColorTables::avtColorTables()
             fptr += 4;
         }
 
-        ccpl.SetSmoothingFlag(predef_ct_smooth[i] == 1);
+        ccpl.SetSmoothing(ColorControlPointList::SmoothingMethod(predef_ct_smooth[i]));
         ccpl.SetEqualSpacingFlag(predef_ct_equal[i] == 1);
         ccpl.SetDiscreteFlag(predef_ct_discrete[i] == 1);
         ctAtts->AddColorTable(predef_ct_names[i], ccpl);

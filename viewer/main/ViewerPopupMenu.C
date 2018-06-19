@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -115,6 +115,9 @@ ViewerPopupMenu::~ViewerPopupMenu()
 //   I made the menu show manually when it is disabled because otherwise it
 //   does not show up.
 //
+//   Marc Durant, Thu Jan 12 13:50:00 MST 2012
+//   When the menu is disabled, do not force it to appear.
+//
 // ****************************************************************************
 
 void
@@ -124,11 +127,6 @@ ViewerPopupMenu::ShowMenu()
     {
         if(popup->isEnabled())
             popup->popup(QCursor::pos());
-        else
-        {
-            popup->move(QCursor::pos());
-            popup->show();
-        }
     }
 }
 
@@ -173,6 +171,29 @@ ViewerPopupMenu::SetEnabled(bool val)
 {
     if(popup)
         popup->setEnabled(val);
+}
+
+// ****************************************************************************
+// Method: ViewerPopupMenu::IsEnabled
+//
+// Purpose: 
+//   Gets the enabled state of the viewer popup menu.
+//
+// Arguments:
+//
+// Programmer: Marc Durant
+// Creation:   Tue Dec 27 13:54:00 MDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+ViewerPopupMenu::IsEnabled()
+{
+  if (popup)
+      return popup->isEnabled();
+  return false;
 }
 
 // ****************************************************************************

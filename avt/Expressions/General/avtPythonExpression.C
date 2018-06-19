@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -545,8 +545,8 @@ avtPythonExpression::Execute()
                      "Unable to obtain result sequences.");
 
 
-    int n_r_dsets  = PySequence_Size(py_r_dsets);
-    int n_r_domids = PySequence_Size(py_r_domids);
+    // int n_r_dsets  = PySequence_Size(py_r_dsets);
+    // int n_r_domids = PySequence_Size(py_r_domids);
 
     // check that the lists are the correct size?
 

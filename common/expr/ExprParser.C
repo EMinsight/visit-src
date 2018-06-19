@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -643,7 +643,7 @@ ExprParser::Parse(const std::string &s)
     CATCH2(ParseException, e)
     {
         char error[1024];
-        int n = (int) sizeof(error) - strlen(e.Message()) - 2;
+        size_t n = sizeof(error) - strlen(e.Message()) - 2;
         SNPRINTF(error, sizeof(error), "%s\n%s",
                  e.Message(), e.GetPos().GetErrorText(text,n).c_str());
 

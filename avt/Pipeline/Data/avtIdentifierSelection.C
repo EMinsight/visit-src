@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,9 +51,14 @@
 //  Programmer: Hank Childs
 //  Creation:   March 5, 2008
 //
+//  Modifications:
+//    Brad Whitlock, Thu Mar 15 14:17:11 PDT 2012
+//    Initialize ids, idVar.
+//
 // ****************************************************************************
 
-avtIdentifierSelection::avtIdentifierSelection()
+avtIdentifierSelection::avtIdentifierSelection() : avtDataSelection(), 
+    ids(), idVar()
 {
 }
 
@@ -82,7 +87,7 @@ avtIdentifierSelection::~avtIdentifierSelection()
 bool
 avtIdentifierSelection::operator==(const avtIdentifierSelection &sel) const
 {
-    return (ids == sel.ids);
+    return (ids == sel.ids) && (idVar == sel.idVar);
 }
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -287,7 +287,7 @@ avtOpenGLTuvokVolumeRenderer::Render(
     }
     debug_view(props.view);
 
-    tuvok_set_data(this->renderer, volume.grid, volume.data.data, volume.gmn,
+    tuvok_set_data(this->renderer, (vtkRectilinearGrid *)volume.grid, volume.data.data, volume.gmn,
                    volume.data.data->GetNumberOfTuples());
 
     tuvok_set_transfer_fqn(*this->renderer, props.atts);

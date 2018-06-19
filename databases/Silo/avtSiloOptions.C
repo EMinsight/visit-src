@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -93,7 +93,7 @@ GetSiloReadOptions(void)
     rv->SetEnumStrings(SILO_RDOPT_IGNORE_SEXTS, ignoreOpts);
     rv->SetEnum(SILO_RDOPT_IGNORE_DEXTS, 3); // Undef 
     rv->SetEnumStrings(SILO_RDOPT_IGNORE_DEXTS, ignoreOpts);
-    rv->SetBool(SILO_RDOPT_FORCE_SINGLE, true);
+    rv->SetBool(SILO_RDOPT_FORCE_SINGLE, false);
     rv->SetBool(SILO_RDOPT_SEARCH_ANNOTINT, false);
 
     // Specify obsolete options and their default values

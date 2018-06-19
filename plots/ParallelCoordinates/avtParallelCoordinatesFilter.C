@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, The Regents of the University of California
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -205,6 +205,9 @@ avtParallelCoordinatesFilter::~avtParallelCoordinatesFilter()
 //    Jeremy Meredith, Mon Apr 27 11:12:30 EDT 2009
 //    Added ability to draw focus as color-graduated bins.  Added focus gamma.
 //
+//    Brad Whitlock, Fri Apr 20 16:00:53 PDT 2012
+//    Mark that the filter can only work with float right now.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -386,7 +389,10 @@ avtParallelCoordinatesFilter::ModifyContract(avtContract_p in_contract)
         gotHistogramsFromDB = false;
 
     out_contract->NoStreaming();
-    
+
+    // This filter only supports floats right now.
+    out_contract->GetDataRequest()->UpdateAdmissibleDataTypes(VTK_FLOAT);
+
     visitTimer->StopTimer(timer1, "avtParallelCoordinatesFilter::ModifyContract()");  
 
     return out_contract;
@@ -2180,6 +2186,12 @@ avtParallelCoordinatesFilter::CreateNamedSelection(avtContract_p c,
 //    Hank Childs, Mon Apr  6 17:13:58 PDT 2009
 //    Fix a crash due to deleting a reference we don't own.
 //
+//    Brad Whitlock, Fri Oct 28 15:07:17 PDT 2011
+//    Changed due to constructor arguments.
+//
+//    Brad Whitlock, Thu Mar 15 14:19:04 PDT 2012
+//    Set the id variable for the floating point named selection.
+//
 // ****************************************************************************
 
 avtNamedSelection *
@@ -2209,7 +2221,14 @@ avtParallelCoordinatesFilter::CreateDBAcceleratedNamedSelection(
     avtIdentifierSelection *ids = GetMetaData()->GetIdentifiers(drs);
     avtNamedSelection *rv = NULL;
     if (ids != NULL)
-        rv = new avtFloatingPointIdNamedSelection(selName, ids->GetIdentifiers());
+    {
+        avtFloatingPointIdNamedSelection *fpns = 
+            new avtFloatingPointIdNamedSelection(selName);
+        fpns->SetIdentifiers(ids->GetIdentifiers());
+        fpns->SetIdVariable(ids->GetIdVariable());
+        rv = fpns;
+    }
+
     // Don't delete ids, since it is being cached at the DB level and we don't
     // own this reference.
     // delete ids;
@@ -2235,6 +2254,9 @@ avtParallelCoordinatesFilter::CreateDBAcceleratedNamedSelection(
 //    GetCellPoints assumes the passed vtkIdList has been created, so I added 
 //    initialization of pointIdList, and deleted it when no longer needed.
 // 
+//    Brad Whitlock, Fri Oct 28 11:22:36 PDT 2011
+//    I changed the avtZoneIdNamedSelection API slightly.
+//
 // ****************************************************************************
 
 avtNamedSelection *
@@ -2395,6 +2417,8 @@ avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
         numTotal += numPerProc[i];
     if (numTotal > 1000000)
     {
+        delete [] numPerProcIn;
+        delete [] numPerProc;
         EXCEPTION1(VisItException, "You have selected too many zones in your "
                    "named selection.  Disallowing ... no selection created");
     }
@@ -2418,8 +2442,8 @@ avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
     // Now construct the actual named selection and add it to our internal
     // data structure for tracking named selections.
     //
-    avtNamedSelection *ns = 
-             new avtZoneIdNamedSelection(selName,numTotal,selForDoms,selForZones);
+    avtZoneIdNamedSelection *ns = new avtZoneIdNamedSelection(selName);
+    ns->SetIdentifiers(numTotal, selForDoms, selForZones);
 
     delete [] numPerProcIn;
     delete [] numPerProc;

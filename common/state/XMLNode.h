@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,7 +82,7 @@ class STATE_API XMLNode
     void     GetAttributeNames(stringVector &) const;
     
     bool     HasChildren()    const { return !children.empty(); }
-    int      GetNumChildren() const { return children.size(); } 
+    int      GetNumChildren() const { return (int)children.size(); } 
     
     XMLNode *AddChild(const std::string  &);
     XMLNode *AddChild(const XMLNode &);

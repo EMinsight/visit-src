@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -72,6 +72,9 @@ class     vtkGenericEnSightReader;
 //    Brad Whitlock, Tue Jun 27 10:07:36 PDT 2006
 //    Added GetTimes method.
 //
+//    Hank Childs, Thu Feb 23 09:54:50 PST 2012
+//    Add support for materials.
+//
 // ****************************************************************************
 
 class avtEnSightFileFormat : public avtMTMDFileFormat
@@ -86,6 +89,10 @@ class avtEnSightFileFormat : public avtMTMDFileFormat
     virtual vtkDataArray *GetVar(int, int, const char *);
     virtual vtkDataArray *GetVectorVar(int, int, const char *);
 
+    virtual void         *GetAuxiliaryData(const char *var, int, int,
+                                           const char *type, void *args,
+                                           DestructorFunction &);
+
     virtual void          PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 
     virtual int           GetNTimesteps(void);
@@ -97,6 +104,7 @@ class avtEnSightFileFormat : public avtMTMDFileFormat
   protected:
     vtkGenericEnSightReader *reader;
     bool                  doneUpdate;
+    std::vector<std::string> matnames;
 
     void                  PrepReader(int);
     void                  InstantiateReader(const char *);

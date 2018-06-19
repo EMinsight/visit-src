@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -38,6 +38,7 @@
 
 #include <SplashScreen.h>
 #include <QApplication>
+#include <QDate>
 #include <QFont>
 #include <QLabel>
 #include <QLayout>
@@ -167,8 +168,8 @@
 //    Eric Brugger, Mon Jan 30 10:55:12 PST 2012
 //    Changed the date on the splash screen to February 2012.
 //
-//    Eric Brugger, Tue Feb 28 08:47:39 PST 2012
-//    Changed the date on the splash screen to March 2012.
+//    Brad Whitlock, Wed Feb  1 15:28:19 PST 2012
+//    Automate the copyright year.
 //
 // ****************************************************************************
 
@@ -268,7 +269,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
     lrLayout->addLayout(rLayout );
     
 
-    QString C("(c) 2000-2012 LLNS. ");
+    QString C(QString("(c) 2000-%1 LLNS. ").arg(QDate::currentDate().year()));
     C += tr("All Rights Reserved");
     C += ".";
     lLayout->addWidget(new QLabel(C, this));
@@ -294,7 +295,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
            << tr("October")
            << tr("November")
            << tr("December");
-    int currentMonth = 3;
+    int currentMonth = 4;
     lLayout->addWidget(new QLabel(versionText, this));
     lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2012", this));
 

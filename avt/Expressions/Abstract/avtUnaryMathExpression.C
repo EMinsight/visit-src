@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,6 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
-#include <vtkFloatArray.h>
 #include <vtkPointData.h>
 
 #include <ImproperUseException.h>
@@ -277,7 +276,7 @@ avtUnaryMathExpression::DeriveVariable(vtkDataSet *in_ds)
         // the mesh.
         //
         ncomps = 1;
-        dv = vtkFloatArray::New();
+        dv = CreateArrayFromMesh(in_ds);
     }
     else
     {

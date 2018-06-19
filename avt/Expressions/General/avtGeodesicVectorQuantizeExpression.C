@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,20 +47,13 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
-#include <vtkFloatArray.h>
 #include <vtkPointData.h>
-#include <vtkUnsignedIntArray.h>
 
 #include <ExprToken.h>
 #include <avtExprNode.h>
 
-#include <avtCallback.h>
-#include <avtMetaData.h>
-
 #include <snprintf.h>
-#include <DebugStream.h>
 #include <ExpressionException.h>
-#include <ImproperUseException.h>
 
 #include <GeometricHelpers.h>
 
@@ -150,11 +143,11 @@ avtGeodesicVectorQuantizeExpression::DeriveVariable(vtkDataSet *in_ds)
     }
 
     // Okay, create the output
-    vtkFloatArray *rv = vtkFloatArray::New();
+    vtkDataArray *rv  = var->NewInstance();
     rv->SetNumberOfComponents(geodesic_sphere_npts);
-    int nvals = var->GetNumberOfTuples();
+    vtkIdType nvals = var->GetNumberOfTuples();
     rv->SetNumberOfTuples(nvals);
-    for (int i = 0 ; i < nvals ; i++)
+    for (vtkIdType i = 0 ; i < nvals ; i++)
     {
         double tmp[geodesic_sphere_npts];
 

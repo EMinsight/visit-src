@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -69,16 +69,15 @@
 
 class IVP_API avtIVPFlashField: public avtIVPVTKField
 {
- protected:
-
  public:
   avtIVPFlashField( vtkDataSet* ds, avtCellLocator* loc, double fact ); 
 
   ~avtIVPFlashField();
 
-  avtVector operator()( const double &t,
+  Result    operator()( const double &t,
                         const avtVector &p,
-                        const avtVector &v ) const;
+                        const avtVector &v,
+                              avtVector &retV ) const;
 
   avtVector ConvertToCartesian(const avtVector& pt) const;
   avtVector ConvertToCylindrical(const avtVector& pt) const;

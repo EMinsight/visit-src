@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,6 +55,9 @@
 // Creation:   omitted
 //
 // Modifications:
+//
+//   Dave Pugmire, Thu Mar 15 11:21:59 EDT 2012
+//   Add location named selection.
 //   
 // ****************************************************************************
 
@@ -82,6 +85,7 @@ public:
     {
         UseZoneIDForID,
         UseGlobalZoneIDForID,
+        UseLocationsForID,
         UseVariableForID
     };
     static const double MIN;

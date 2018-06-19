@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -115,7 +115,7 @@ class PARSER_API Pos
     std::string GetText(const std::string &s) const
     {
         std::string msg = "";
-        int slen = s.length();
+        int slen = static_cast<int>(s.length());
         if (slen < p1 || slen < p2 || p1 < 0)
             return msg;
         msg = s.substr(p1, p2-p1+1);

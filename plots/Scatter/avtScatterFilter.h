@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,6 +73,9 @@
 //    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
 //    Change extents name.
 //
+//    Kathleen Biagas, Thu Mar  1 14:49:50 MST 2012
+//    Add keepNodeZone and dataArray (origNodes) arg to PointMeshFromVariables.
+//
 // ****************************************************************************
 
 class avtScatterFilter : public avtDataTreeIterator
@@ -106,6 +109,7 @@ protected:
     bool                       needYExtents;
     bool                       needZExtents;
     bool                       needColorExtents;
+    bool                       keepNodeZone;
 
     doubleVector               thisProcsSpatialExtents;
 
@@ -124,7 +128,8 @@ protected:
     vtkDataSet                *PointMeshFromVariables(DataInput *d1,
                                                       DataInput *d2,
                                                       DataInput *d3,
-                                                      DataInput *d4, bool &);
+                                                      DataInput *d4, bool &,
+                                                      vtkDataArray *);
     int                        CountSpatialDimensions() const;
     void                       PopulateDataInputs(DataInput *orderedArrays,
                                                   vtkDataArray **arr) const;

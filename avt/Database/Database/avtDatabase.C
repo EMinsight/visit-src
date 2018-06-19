@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -784,6 +784,10 @@ avtDatabase::GetOutput(const char *var, int ts)
 //    Hank Childs, Thu Aug 26 13:02:28 PDT 2010
 //    Change named of extents object.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 void
@@ -823,6 +827,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
         atts.SetYLabel(mmd->yLabel);
         atts.SetZLabel(mmd->zLabel);
         atts.SetContainsGhostZones(mmd->containsGhostZones);
+        atts.SetGhostZoneTypesPresent(mmd->presentGhostZoneTypes);
         atts.SetContainsExteriorBoundaryGhosts(
                              mmd->containsExteriorBoundaryGhosts);
         atts.SetContainsOriginalCells(mmd->containsOriginalCells);
@@ -2567,7 +2572,7 @@ avtDatabase::Query(PickAttributes *pa)
             pa->SetBzoneCoords(bzoneCoords);
             pa->SetPickPoint(ppt);
             pa->SetCellPoint(cpt);
-            if (pa->GetDisplayGlobalIds())
+            if (pa->GetShowGlobalIds())
             {
                 intVector gie;
                 int ge = -1;

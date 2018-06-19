@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -361,6 +361,9 @@ avtIVPAdamsBashforth::OnExitDomain()
 //    Dave Pugmire, Tue Dec  1 11:50:18 EST 2009
 //    Switch from avtVec to avtVector.
 //
+//    Hank Childs, Mon Mar 12 10:26:33 PDT 2012
+//    Integrate fix from Christoph Garth.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result 
@@ -368,15 +371,27 @@ avtIVPAdamsBashforth::RK4Step(const avtIVPField* field,
                               avtVector &yNew )
 {
   avtVector f[4];
+  avtIVPField::Result result;
 
-  f[0] = (*field)(t,yCur)              * h;
-  f[1] = (*field)(t,yCur + f[0] * 0.5) * h;
-  f[2] = (*field)(t,yCur + f[1] * 0.5) * h;
-  f[3] = (*field)(t,yCur + f[2])       * h;
+  if( (result = (*field)(t, yCur,              f[0])) != avtIVPSolverResult::OK )
+    return( result );
+  f[0] *= h;
+
+  if( (result = (*field)(t+0.5*h, yCur + f[0] * 0.5, f[1])) != avtIVPSolverResult::OK )
+    return( result );
+  f[1] *= h;
+
+  if( (result = (*field)(t+0.5*h, yCur + f[1] * 0.5, f[2])) != avtIVPSolverResult::OK )
+    return( result );
+  f[2] *= h;
+
+  if( (result = (*field)(t+h, yCur + f[2],       f[3])) != avtIVPSolverResult::OK )
+    return( result );
+  f[3] *= h;
 
   yNew = yCur + (f[0] + 2.0 * f[1] + 2.0 * f[2] + f[3]) * (1.0 / 6.0);
 
-  return avtIVPSolver::OK;
+  return avtIVPSolverResult::OK;
 }
 
 
@@ -409,7 +424,7 @@ avtIVPAdamsBashforth::ABStep(const avtIVPField* field,
     for (size_t i = 0; i < ADAMS_BASHFORTH_NSTEPS; i++)
         yNew += h*divisor*bashforth[i] * history[i];
 
-    return avtIVPSolver::OK;
+    return avtIVPSolverResult::OK;
 }
 
 // ****************************************************************************
@@ -473,7 +488,7 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
 
     // stepsize underflow?
     if( 0.1*std::abs(h) <= std::abs(t)*epsilon )
-        return avtIVPSolver::STEPSIZE_UNDERFLOW;
+        return avtIVPSolverResult::STEPSIZE_UNDERFLOW;
 
     avtIVPSolver::Result res;
     avtVector yNew = yCur;
@@ -483,14 +498,17 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
     {
         // Save the first vector values in the history. 
         if( numStep == 0 )
-            history[0] = (*field)(t,yCur);
+        {
+            if( (res = (*field)(t, yCur, history[0])) != avtIVPSolverResult::OK )
+                return( res );
+        }
          
         res = RK4Step( field, yNew );
     }
     else
         res = ABStep( field, yNew );
 
-    if( res == avtIVPSolver::OK )
+    if( res == avtIVPSolverResult::OK )
     {
         ivpstep->resize(2);
 
@@ -514,17 +532,19 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
         history[3] = history[2];
         history[2] = history[1];
         history[1] = history[0];
-        history[0] = (*field)(t,yNew);
+        if( (res = (*field)(t, yNew, history[0])) != avtIVPSolverResult::OK )
+            return( res );
 
         yCur = yNew;
         t = t+h;
 
         if( last )
-            res = TERMINATE;
+            res = avtIVPSolverResult::TERMINATE;
+
+        // Reset the step size on sucessful step.
+        h = h_max;
     }
 
-    // Reset the step size on sucessful step.
-    h = h_max;
     return res;
 }
 

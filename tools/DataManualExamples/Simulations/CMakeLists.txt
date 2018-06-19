@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,7 +46,10 @@
 #   are exposed to exceptions on newer Linux versions.
 #
 #   Brad Whitlock, Thu Aug 11 16:05:07 PDT 2011
-#   Added ghostzones example.
+#   Added ghostcells example.
+#
+#   Brad Whitlock, Wed Feb  1 11:06:20 PST 2012
+#   Added domainbounds example.
 #
 #****************************************************************************/
 
@@ -205,7 +208,11 @@ ADD_SIMV2_SIMULATION(csg csg.c)
 ADD_SIMV2_SIMULATION(curve curve.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fcurve fcurve.f)
 
+ADD_SIMV2_SIMULATION(domainbounds domainbounds.c)
+ADD_PARALLEL_SIMV2_SIMULATION(domainbounds_par domainbounds.c)
+
 ADD_SIMV2_SIMULATION(ghostcells ghostcells.c)
+ADD_PARALLEL_SIMV2_SIMULATION(ghostcells_par ghostcells.c)
 
 ADD_SIMV2_SIMULATION(interleave interleave.c)
 

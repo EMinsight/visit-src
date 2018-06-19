@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@ int VisIt_CurvilinearMesh_setCoords3(visit_handle obj, int dims[3], visit_handle
 int VisIt_CurvilinearMesh_setRealIndices(visit_handle obj, int min[3], int max[3]);
 int VisIt_CurvilinearMesh_setBaseIndex(visit_handle obj, int base_index[3]);
 int VisIt_CurvilinearMesh_setGhostCells(visit_handle obj, visit_handle gz);
+int VisIt_CurvilinearMesh_setGhostNodes(visit_handle obj, visit_handle gn);
 
 int VisIt_CurvilinearMesh_getCoords(visit_handle h, int *ndims, int dims[3],
                                     int *coordMode, 
@@ -63,6 +64,7 @@ int VisIt_CurvilinearMesh_getCoords(visit_handle h, int *ndims, int dims[3],
 int VisIt_CurvilinearMesh_getRealIndices(visit_handle h, int min[3], int max[3]);
 int VisIt_CurvilinearMesh_getBaseIndex(visit_handle h, int base_index[3]);
 int VisIt_CurvilinearMesh_getGhostCells(visit_handle h, visit_handle *gz);
+int VisIt_CurvilinearMesh_getGhostNodes(visit_handle h, visit_handle *gn);
 
 #ifdef __cplusplus
 }

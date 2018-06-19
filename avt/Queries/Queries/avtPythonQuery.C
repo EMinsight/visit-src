@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -104,6 +104,27 @@ avtPythonQuery::avtPythonQuery()
 avtPythonQuery::~avtPythonQuery()
 {
     CleanUp();
+}
+
+// ****************************************************************************
+//  Method: avtPythonQuery::SetInputParams
+//
+//  Purpose: Allows this query to read input parameters set by user.
+//
+//  Arguments:
+//    params    MapNode containing input.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:   March 30, 2012
+//
+// ****************************************************************************
+
+void
+avtPythonQuery::SetInputParams(const MapNode &params)
+{
+    SetVariableNames(params.GetEntry("vars")->AsStringVector());
+    SetPythonArgs(params.GetEntry("args")->AsString());
+    SetPythonScript(params.GetEntry("source")->AsString());
 }
 
 // ****************************************************************************

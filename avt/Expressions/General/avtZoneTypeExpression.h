@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                            avtZoneTypeExpression.h                            //
+//                        avtZoneTypeExpression.h                            //
 // ************************************************************************* //
 
 #ifndef AVT_ZONETYPE_FILTER_H
@@ -46,9 +46,6 @@
 #include <avtSingleInputExpressionFilter.h>
 
 class     vtkDataArray;
-class     ArgsExpr;
-class     ExprPipelineState;
-class     ConstExpr;
 
 // ****************************************************************************
 //  Class: avtZoneTypeExpression

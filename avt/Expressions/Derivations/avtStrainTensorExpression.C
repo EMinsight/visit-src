@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,13 +37,12 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                           avtStrainTensorExpression.C                         //
+//                       avtStrainTensorExpression.C                         //
 // ************************************************************************* //
 
 #include <avtStrainTensorExpression.h>
 
 #include <vtkDataArray.h>
-#include <vtkMath.h>
 
 #include <ExpressionException.h>
 
@@ -123,7 +122,6 @@ avtStrainTensorExpression::HexPartialDerivative
     {   
         EXCEPTION2(ExpressionException, outputVariableName,
                 "HexPartialDerivative, Element is degenerate! Result is invalid!");
-        detJacob = 1.0;
     }
     
     /* Develop inverse of mapping. */                         

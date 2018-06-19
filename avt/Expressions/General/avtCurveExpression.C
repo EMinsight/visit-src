@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -270,7 +270,6 @@ avtCurveExpression::ProcessArguments(ArgsExpr *args,
     for (int i = 1; i < nargs; ++i)
     {
         expression_arguments.push_back((*arguments)[i]->GetText());
-        ExprParseTreeNode *n = (*arguments)[i]->GetExpr();
         avtExprNode *expr_node = dynamic_cast<avtExprNode*>
             ((*arguments)[i]->GetExpr());
         if (expr_node == NULL)

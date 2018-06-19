@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define LINESAMPLERATTRIBUTES_NMETH 102
+#define LINESAMPLERATTRIBUTES_NMETH 106
 void           PyLineSamplerAttributes_StartUp(LineSamplerAttributes *subj, void *data);
 void           PyLineSamplerAttributes_CloseDown();
 PyMethodDef *  PyLineSamplerAttributes_GetMethodTable(int *nMethods);

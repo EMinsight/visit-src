@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,11 +79,7 @@ public:
 
     virtual std::string GetComponentName() const;
 
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
     std::map<int,int> GetPortTunnelMap();
-#endif
 
     // RPCs to access functionality on the visit component launcher.
     void LaunchProcess(const stringVector &programArgs);

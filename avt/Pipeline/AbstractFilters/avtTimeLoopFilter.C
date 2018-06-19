@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,6 +143,10 @@ avtTimeLoopFilter::~avtTimeLoopFilter()
 //    Hank Childs, Wed Dec 15 14:30:42 PST 2010
 //    Add support for parallelizing over time.
 //
+//    Hank Childs, Mon Mar  5 13:19:22 PST 2012
+//    Set attributes to prevent exception when merging objects with time
+//    parallelization.
+//
 // ****************************************************************************
 
 bool
@@ -160,6 +164,7 @@ avtTimeLoopFilter::Update(avtContract_p spec)
     // derived filters can use it for setting the start and stop
     // times.
     currentTime = spec->GetDataRequest()->GetTimestep();
+    //cout<<"avtTimeLoopFilter::Update() currentTime= "<<currentTime<<endl<<endl;
 
     FinalizeTimeLoop();
 
@@ -172,6 +177,7 @@ avtTimeLoopFilter::Update(avtContract_p spec)
     src->SetNumberOfExecutions(numIters);
 
     int curIter = 0;
+
     for (i = startTime; i < actualEnd; i+= stride)
     {
         bool shouldDoThisTimeSlice = true;
@@ -217,7 +223,7 @@ avtTimeLoopFilter::Update(avtContract_p spec)
         }
         else
             contract->NoStreaming();
-
+        
         modified |= avtFilter::Update(contract);
         
         if (ExecutionSuccessful())
@@ -228,7 +234,6 @@ avtTimeLoopFilter::Update(avtContract_p spec)
         {
             skippedTimes.push_back(currentTime);
         }
-
         avtCallback::ResetTimeout(5*60);
     } 
 
@@ -263,7 +268,10 @@ avtTimeLoopFilter::Update(avtContract_p spec)
                              GetInput()->GetInfo().GetAttributes().GetCycle());
     GetOutput()->GetInfo().GetAttributes().SetTime(
                              GetInput()->GetInfo().GetAttributes().GetTime());
+    GetOutput()->GetInfo().GetAttributes().SetTimeIndex(
+                             GetInput()->GetInfo().GetAttributes().GetTimeIndex());
 
+    //cout<<"avtTimeLoopFilter::Update()  DONE"<<endl<<endl;
     return modified;
 }
 
@@ -304,6 +312,7 @@ avtTimeLoopFilter::DataCanBeParallelizedOverTime(void)
     // This test should ultimately be enhanced to detect new attributes that
     // indicate whether the data is small enough that it can be processed by
     // a single MPI task.  The infrastructure doesn't exist yet.
+    //return true;
     return false;
 }
 

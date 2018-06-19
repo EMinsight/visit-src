@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,6 +44,9 @@
 #
 #   Brad Whitlock, Mon Dec 13 16:13:43 PST 2010
 #   I added avtNamedSelectionExtension.
+#
+#   Hank Childs, Tue Mar 13 12:59:07 PDT 2012
+#   Move avtDatasetOnDemandFilter to Filters directory.
 #
 #****************************************************************************/
 
@@ -143,7 +146,6 @@ AbstractFilters/avtDataObjectToDatasetFilter.C
 AbstractFilters/avtDataObjectToImageFilter.C
 AbstractFilters/avtDataObjectToSamplePointsFilter.C
 AbstractFilters/avtDataTreeIterator.C
-AbstractFilters/avtDatasetOnDemandFilter.C
 AbstractFilters/avtDatasetToDataObjectFilter.C
 AbstractFilters/avtDatasetToDatasetFilter.C
 AbstractFilters/avtDatasetToImageFilter.C

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -670,15 +670,15 @@ QvisQueryWindow::UpdateQueryButton()
 // Creation:   April 1, 2004 
 //
 // Modifications:
-//   
+//    Kathleen Biagas, Wed Apr 11 19:14:07 PDT 2012
+//    Call UpdateState on timeQueryOptions, instead of setEnabled.
+//
 // ****************************************************************************
 
 void
 QvisQueryWindow::UpdateTimeQueryOptions()
 {
-    bool val = (queries->GetNames().size() > 0) &&
-               (plotList->GetNumPlots() > 0);
-    timeQueryOptions->setEnabled(val);
+    timeQueryOptions->UpdateState(plotList);
 }
 
 // ****************************************************************************
@@ -1578,30 +1578,35 @@ QvisQueryWindow::ExecuteStandardQuery()
 //  Kathleen Biagas, Fri Jun 10 08:59:13 PDT 2011
 //  Send args to viewer in a MapNode.
 //
+//  Cyrus Harrison, Fri Mar 30 13:51:24 PDT 2012
+//  Convert python query filter to use new query params infrastructure.
+//
 // ****************************************************************************
 
 void
 QvisQueryWindow::ExecutePythonQuery()
 {
-    stringVector py_args;
+
     QString vars(pyVarsLineEdit->displayText().trimmed());
     QStringList vlist(vars.split(" "));
+
+    stringVector py_vars;
 
     // Split the variable list using the spaces.
     QStringListIterator itr(vlist);
     while(itr.hasNext())
-        py_args.push_back(itr.next().toStdString());
-    // blank spot for 'args' that can be passed via the cli
-    py_args.push_back("");
+        py_vars.push_back(itr.next().toStdString());
 
     // get python script from pyFilterEdit
     QString query_def = pyFilterEdit->getSource();
-    py_args.push_back(query_def.toStdString());
+    string py_script_source = query_def.toStdString();
 
     MapNode params;
     params["query_name"] = string("Python");
     params["query_type"] = (QueryList::QueryType)QueryList::DatabaseQuery;
-    params["vars"] = py_args;
+    params["vars"]       = py_vars;
+    params["args"]       = "";
+    params["source"]     = py_script_source;
 
     GetViewerMethods()->Query(params);
     Status("Executing Python Script Query");

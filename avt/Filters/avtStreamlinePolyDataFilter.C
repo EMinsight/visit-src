@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -405,7 +405,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
             
             pIdx++;
         }
-        
+
         lines->InsertNextCell(line);
         line->Delete();
         idx++;
@@ -437,7 +437,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
 
     clean->Delete();
 
-    /*
+/*
     if (1)
     {
         char f[51];
@@ -461,7 +461,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
         fflush(fp);
         fclose(fp);
     }
-    */
+ */
 }
 
 // ****************************************************************************

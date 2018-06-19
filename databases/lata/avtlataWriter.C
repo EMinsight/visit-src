@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2006, The Regents of the University of California
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -104,7 +104,7 @@ void
 avtlataWriter::OpenFile(const string &stemname, int nb)
 {
   cout<<"\n "<<__FILE__<<"openfile  nb "<<nb<<endl;
-  if (nb!=1) exit(-1);
+  if (nb!=1) return; //exit(-1);
         OpenFile(stemname);
 }
 // ****************************************************************************

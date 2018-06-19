@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                               avtCurlExpression.h                             //
+//                           avtCurlExpression.C                             //
 // ************************************************************************* //
 
 #include <avtCurlExpression.h>
@@ -143,7 +143,8 @@ avtCurlExpression::GetMacro(std::vector<std::string> &args, std::string &ne,
         }
         else
         {
-            EXCEPTION2(ExpressionException, outputVariableName, " invalid curl syntax. "
+            EXCEPTION2(ExpressionException, outputVariableName, 
+                        " invalid curl syntax. "
                         "Expected arguments: "
                         "vector_var, gradient_algorithm\n"
                         "[gradient_algorithm is optional]");
@@ -168,7 +169,8 @@ avtCurlExpression::GetMacro(std::vector<std::string> &args, std::string &ne,
         }
         else
         {
-            EXCEPTION2(ExpressionException, outputVariableName, " invalid curl syntax. "
+            EXCEPTION2(ExpressionException, outputVariableName, 
+                        " invalid curl syntax. "
                         "Expected arguments: "
                         "vector_var, gradient_algorithm\n"
                         "[gradient_algorithm is optional]");

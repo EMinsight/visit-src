@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -150,9 +150,6 @@ LauncherProxy::LaunchProcess(const stringVector &origProgramArgs)
 {
     stringVector programArgs(origProgramArgs);
 
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
     if (!GetPortTunnelMap().empty())
     {
         // If we're doing ssh tunneling, map the local host/port to the
@@ -166,7 +163,6 @@ LauncherProxy::LaunchProcess(const stringVector &origProgramArgs)
                        "tunneled ports may need to be increased.");
         }
     }
-#endif
 
     launchRPC(programArgs);
 }
@@ -218,12 +214,9 @@ LauncherProxy::ConnectSimulation(const stringVector &programArgs,
 //    Backing out SSH tunneling on Panther (MacOS X 10.3) 
 //   
 // ****************************************************************************
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
+
 std::map<int,int>
 LauncherProxy::GetPortTunnelMap()
 {
     return component->GetPortTunnelMap();
 }
-#endif

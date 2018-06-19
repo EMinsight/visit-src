@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,6 +41,17 @@
 #   Mark C. Miller, Fri Jul 30 22:06:06 PDT 2010
 #   Removed logic setting XDMF_DIR (that is done to SET_UP_THIRD_PARTY)
 #   as well as FIND_PACKAGE (also done by SET_UP_THIRD_PARTY).
+#
+#   Brad Whitlock, Fri Apr  6 11:00:10 PDT 2012
+#   Also look for vtklibxml2 if we're building statically.
+#
+#   Cyrus Harrison, Fri Apr  6 11:00:10 PDT 2012
+#   Static build: Only look for vtklibxml2 on OSX.
+#
+#   Cyrus Harrison, Tue Apr 10 13:07:08 PDT 2012
+#   Revert to standard setup. Build_visit now handles vtk deps correctly
+#   in the generated config-site.
+#
 #****************************************************************************/
 
 # Use the XDMF_DIR hint from the config-site .cmake file 
@@ -49,3 +60,4 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 SET_UP_THIRD_PARTY(XDMF lib include Xdmf)
+

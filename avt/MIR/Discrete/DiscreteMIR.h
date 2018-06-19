@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -110,9 +110,10 @@ class MIR_API DiscreteMIR : public MIR
     };
 
     int                                     origNPoints;
-    std::vector<float>                      origXCoords;
-    std::vector<float>                      origYCoords;
-    std::vector<float>                      origZCoords;
+    int                                     origCoordType;
+    std::vector<double>                     origXCoords;
+    std::vector<double>                     origYCoords;
+    std::vector<double>                     origZCoords;
     VisItArray<ReconstructedCoord>          coordsList;
     VisItArray<ReconstructedZone>           zonesList;
     VisItArray<vtkIdType>                   indexList;
@@ -358,7 +359,7 @@ class MIR_API DiscreteMIR : public MIR
 
     int dimensions[3];
 
-    float *xspacing, *yspacing, *zspacing;
+    double *xspacing, *yspacing, *zspacing;
 
     std::vector< Cell > m_mixedCells;
     unsigned char **m_mixedlabels;

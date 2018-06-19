@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,20 +40,9 @@
 //  File: BoundaryViewerPluginInfo.C
 // ************************************************************************* //
 
-#include <avtColorTables.h>
-#include <avtDatabaseMetaData.h>
-#include <avtBoundaryPlot.h>
-#include <avtTypes.h>
-#include <ViewerPlot.h>
-#include <DebugStream.h>
-#include <InvalidVariableException.h>
 #include <BoundaryPluginInfo.h>
 #include <QApplication>
-
-#include <stdio.h>
-
-#include <set>
-#include <vector>
+#include <avtBoundaryPlot.h>
 
 // ****************************************************************************
 //  Function:  GetViewerInfo
@@ -401,6 +390,18 @@ BoundaryViewerPluginInfo::XPMIconData() const
 //
 // ****************************************************************************
 
+#include <stdio.h>
+
+#include <avtColorTables.h>
+#include <avtDatabaseMetaData.h>
+#include <avtBoundaryPlot.h>
+#include <avtTypes.h>
+#include <set>
+
+#include <ViewerPlot.h>
+
+#include <DebugStream.h>
+#include <InvalidVariableException.h>
 
 void
 BoundaryViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts, 

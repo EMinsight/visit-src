@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -835,7 +835,7 @@ ViewerMethods::CreateNamedSelection(const std::string &selName)
 
 void
 ViewerMethods::CreateNamedSelection(const std::string &selName,
-    const SelectionProperties &props)
+    const SelectionProperties &props, bool useCurrentPlot)
 {
     // Set the selection properties.
     (*state->GetSelectionProperties()) = props;
@@ -846,7 +846,7 @@ ViewerMethods::CreateNamedSelection(const std::string &selName,
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::CreateNamedSelectionRPC);
     state->GetViewerRPC()->SetStringArg1(selName);
-    state->GetViewerRPC()->SetBoolFlag(false);
+    state->GetViewerRPC()->SetBoolFlag(useCurrentPlot);
 
     //
     // Issue the RPC.
@@ -4189,6 +4189,26 @@ ViewerMethods::SetViewExtentsType(int t)
     state->GetViewerRPC()->SetRPCType(ViewerRPC::SetViewExtentsTypeRPC);
     state->GetViewerRPC()->SetWindowLayout(t);
     state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::ToggleAllowPopup
+//
+// Purpose:
+//   Tells the viewer to toggle the right-click popup menu.
+//
+// Programmer: Marc Durant
+// Creation:   January 10, 2012
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ViewerMethods::ToggleAllowPopup()
+{
+  state->GetViewerRPC()->SetRPCType(ViewerRPC::ToggleAllowPopupRPC);
+  state->GetViewerRPC()->Notify();
 }
 
 // ****************************************************************************

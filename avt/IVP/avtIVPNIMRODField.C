@@ -1,6 +1,6 @@
  /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -259,13 +259,12 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
 //
 // ****************************************************************************
 
-avtVector
-avtIVPNIMRODField::operator()( const double &t, const avtVector &p ) const
+avtIVPField::Result
+avtIVPNIMRODField::operator()( const double &t, const avtVector &p, avtVector &linear_vec ) const
 {
-  avtVector linear_vec = avtIVPVTKField::operator()( t, p );
-
-  if( !FindCell( t, p ) )
-    throw Undefined();
+  Result result;
+  if( (result = avtIVPVTKField::operator()(t, p, linear_vec)) != avtIVPSolverResult::OK )
+    return( result );
 
   vtkIdList *ptIds = vtkIdList::New();
 
@@ -367,7 +366,7 @@ avtIVPNIMRODField::operator()( const double &t, const avtVector &p ) const
 
 //  interpolate( rad, theta, phi, &P, &DRV );
 
-  return linear_vec;
+  return( avtIVPSolverResult::OK );
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                        avtConstantFunctionExpression.C                        //
+//                    avtConstantFunctionExpression.C                        //
 // ************************************************************************* //
 
 #include <avtConstantFunctionExpression.h>
@@ -115,11 +115,12 @@ avtConstantFunctionExpression::~avtConstantFunctionExpression()
 vtkDataArray *
 avtConstantFunctionExpression::DeriveVariable(vtkDataSet *in_ds)
 {
-    int nvals = nodal ? in_ds->GetNumberOfPoints() : in_ds->GetNumberOfCells();
+    vtkIdType nvals = nodal ? in_ds->GetNumberOfPoints() : 
+                      in_ds->GetNumberOfCells();
 
     vtkFloatArray *rv = vtkFloatArray::New();
     rv->SetNumberOfTuples(nvals);
-    for (int i = 0 ; i < nvals ; i++)
+    for (vtkIdType i = 0 ; i < nvals ; i++)
     {
         rv->SetTuple1(i, value);
     }

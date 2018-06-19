@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,7 +253,8 @@ double Distance2ToBounds( const double x[3], double bounds[6] )
 
 
 vtkIdType avtCellLocatorClassic::FindCell( const double pos[3],
-                                           avtInterpolationWeights* weights ) const
+                                           avtInterpolationWeights* weights,
+                                           bool ignoreGhostCells ) const
 {
     int ijk[3];
 
@@ -281,7 +282,7 @@ vtkIdType avtCellLocatorClassic::FindCell( const double pos[3],
     {
         vtkIdType id = leafids->GetId( j );
 
-        if( TestCell( id, pos, weights ) )
+        if( TestCell( id, pos, weights, ignoreGhostCells ) )
             return id;
     }
 

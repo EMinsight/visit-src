@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -336,6 +336,11 @@ VariableMenuPopulator::ClearGroupingInfo()
 //    I changed the code to recover the better caching behavior we had prior
 //    to operator expressions.
 //
+//    Mark C. Miller, Wed Dec 21 10:40:35 PST 2011
+//    Subset menu was being populated with entries that were defined
+//    on meshes whose hideFromGUI flag  was true. I added logic to
+//    prevent that.
+//
 // ****************************************************************************
 
 bool
@@ -508,7 +513,22 @@ VariableMenuPopulator::PopulateVariableLists(const std::string &dbName,
         int tsIndex = topSets[i];
         avtSILSet_p pTopset = sil->GetSILSet(tsIndex);
         const intVector &maps = pTopset->GetMapsOut();
-        string setName("(" + sil->GetSILSet(tsIndex)->GetName() + ")");
+        string meshName = sil->GetSILSet(tsIndex)->GetName();
+
+        bool underlyingMeshIsHiddenFromGUI = false;
+        for (int j = 0; j < md->GetNumMeshes(); ++j)
+        {
+            const avtMeshMetaData &mmd = md->GetMeshes(j);
+            if (mmd.name == meshName && mmd.hideFromGUI)
+            {
+                underlyingMeshIsHiddenFromGUI = true;
+                break;
+            }
+        }
+        if (underlyingMeshIsHiddenFromGUI) continue;
+
+        
+        string setName("(" + meshName + ")");
         for(int j = 0; j < maps.size(); ++j)
         {
             int     idx = maps[j];
@@ -744,6 +764,10 @@ VariableMenuPopulator::GetRelevantExpressions(ExpressionList &newExpressionList,
 //   Hank Childs, Thu Dec 30 12:51:28 PST 2010
 //   Add created expressions support for scalars, vectors, and tensors.
 //
+//   Hank Childs, Tue Apr 10 17:01:01 PDT 2012
+//   Give operator plugins the existing expressions as well so they can
+//   work on those too.
+//
 // ****************************************************************************
 
 void
@@ -755,11 +779,13 @@ VariableMenuPopulator::GetOperatorCreatedExpressions(ExpressionList &newExpressi
 
     // Iterate over the meshes in the metadata and add operator-created expressions
     // for each relevant mesh.
+    avtDatabaseMetaData md2 = *md;
+    md2.GetExprList() = newExpressionList;
     for(int j = 0; j < oPM->GetNEnabledPlugins(); j++)
     {
         std::string id(oPM->GetEnabledID(j));
         CommonOperatorPluginInfo *ComInfo = oPM->GetCommonPluginInfo(id);
-        ExpressionList *fromOperators = ComInfo->GetCreatedExpressions(md);
+        ExpressionList *fromOperators = ComInfo->GetCreatedExpressions(&md2);
         if(fromOperators != NULL)
         {
             for(int k = 0; k < fromOperators->GetNumExpressions(); k++)
@@ -1504,7 +1530,7 @@ VariableMenuPopulator::VariableList::GetNextVariable(std::string &var, bool &val
 int
 VariableMenuPopulator::VariableList::Size() const
 {
-    return sorted ? sortedVariables.size() : unsortedVariableNames.size();
+    return static_cast<int>(sorted ? sortedVariables.size() : unsortedVariableNames.size());
 }
 
 // ****************************************************************************
@@ -1676,7 +1702,7 @@ VariableMenuPopulator::VariableList::IsGroupingRequired(
         // Force grouping to occur for variables in top level of path
         string path, newpath;
         int j;
-        int jmax = (pathvar.size() == 1) ? 1 : (pathvar.size() - 1);
+        int jmax = (pathvar.size() == 1) ? 1 : static_cast<int>(pathvar.size() - 1);
         for (j = 0; j < jmax; j++)
         {
             // If the set of strings at path is greater than the curoff then

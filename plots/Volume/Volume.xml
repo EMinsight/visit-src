@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-  <Plugin name="Volume" type="plot" label="Volume" version="1.1" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" vartype="scalar,species" iconFile="Volume.xpm">
+  <Plugin name="Volume" type="plot" label="Volume" version="1.1" enabled="true" mdspecificcode="false" engspecificcode="true" onlyengine="false" noengine="false" vartype="scalar,species" iconFile="Volume.xpm">
     <CXXFLAGS>
       ${QT_QTOPENGL_INCLUDE_DIR}
       ${SLIVR_INCLUDE_DIR}
@@ -10,6 +10,8 @@
       ${VISIT_INCLUDE_DIR}/third_party_builtin/tuvok/tuvok/3rdParty/boost
       ${VISIT_INCLUDE_DIR}/third_party_builtin/tuvok/tuvok
       ${VISIT_INCLUDE_DIR}/third_party_builtin/tuvok
+      ${VISIT_INCLUDE_DIR}/avt/Expressions/Abstract
+      ${VISIT_INCLUDE_DIR}/avt/Expressions/General
     </CXXFLAGS>
     <Files components="G">
       ${SLIVR_GUI_IMPL}
@@ -64,12 +66,14 @@
       ${SLIVR_LIB}
       ${GLEW_LIB}
       ${OPENGL_gl_LIBRARY}
+      avtexpressions_ser
     </LIBS>
     <LIBS components="EPar">
       ${TUVOK_LIB}
       ${SLIVR_LIB}
       ${GLEW_LIB}
       ${OPENGL_gl_LIBRARY}
+      avtexpressions_par
     </LIBS>
     <Files components="W">
       ${SLIVR_GUI_HDR}
@@ -134,10 +138,16 @@
       </Field>
       <Field name="opacityControlPoints" label="opacityControlPoints" type="att" subtype="GaussianControlPointList">
       </Field>
+      <Field name="resampleFlag" label="Resample" type="bool">
+        true
+      </Field>
       <Field name="resampleTarget" label="resampleTarget" type="int">
         50000
       </Field>
       <Field name="opacityVariable" label="opacityVariable" type="variablename" vartypes="01000000000">
+        default
+      </Field>
+      <Field name="compactVariable" label="compactVariable" type="variablename" vartypes="01000000000">
         default
       </Field>
       <Field name="freeformOpacity" label="freeformOpacity" type="ucharArray" length="256" init="true">
@@ -212,8 +222,6 @@
       </Field>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>
-      <Function name="GradientWontChange" user="true" member="true">
-      </Function>
       <Function name="GetTransferFunction" user="true" member="true">
       </Function>
       <Function name="SetDefaultColorControlPoints" user="true" member="true">
@@ -222,9 +230,9 @@
       </Function>
       <Function name="GetOpacities" user="true" member="true">
       </Function>
-      <Function name="SetSmoothingFlag" user="true" member="true">
+      <Function name="SetSmoothing" user="true" member="true">
       </Function>
-      <Function name="GetSmoothingFlag" user="true" member="true">
+      <Function name="GetSmoothing" user="true" member="true">
       </Function>
       <Function name="SetEqualSpacingFlag" user="true" member="true">
       </Function>

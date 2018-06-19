@@ -20,6 +20,7 @@ std::string VsSchema::typeAtt ="vsType";
 std::string VsSchema::kindAtt = "vsKind";
 std::string VsSchema::meshAtt = "vsMesh";
 std::string VsSchema::maskAtt = "vsMask";
+std::string VsSchema::nodeOffsetAtt = "vsNodeOffset";
 
 std::string VsSchema::centeringAtt ="vsCentering";
 std::string VsSchema::indexOrderAtt = "vsIndexOrder";
@@ -41,8 +42,13 @@ std::string VsSchema::compMinorCKey = "compMinorC"; //default ordering
 std::string VsSchema::compMajorFKey = "compMajorF"; //currently not supported
 std::string VsSchema::compMinorFKey = "compMinorF"; //supported
 
-// Meshes
+// Transforms
+std::string VsSchema::transformKey = "vsTransform";
+std::string VsSchema::transformedMeshKey = "vsTransformedMesh";
+std::string VsSchema::zrphiTransformKey = "cylindricalZRPhi";
+std::string VsSchema::zrphiTransformKey_deprecated = "Cylindrical";
 
+// Meshes
 std::string VsSchema::structuredMeshKey = "structured";
 
 std::string VsSchema::Rectilinear::key = "rectilinear";
@@ -52,7 +58,6 @@ std::string VsSchema::Rectilinear::axis1Key = "vsAxis1";
 std::string VsSchema::Rectilinear::axis1DefaultName = "axis1";
 std::string VsSchema::Rectilinear::axis2Key = "vsAxis2";
 std::string VsSchema::Rectilinear::axis2DefaultName = "axis2";
-std::string VsSchema::Rectilinear::transformKey = "vsTransform";
 
 std::string VsSchema::Uniform::key = "uniform";
 std::string VsSchema::Uniform::key_deprecated = "uniformCartesian";

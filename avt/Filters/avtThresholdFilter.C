@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,8 @@
 #include <vtkStructuredGrid.h>
 #include <vtkThreshold.h>
 #include <vtkUnstructuredGrid.h>
+
+#include <vtkVisItUtility.h>
 
 #include <avtCallback.h>
 #include <avtDataAttributes.h>
@@ -316,7 +318,7 @@ avtThresholdFilter::ProcessOneChunk(
     const char *curVarName;
     char errMsg[1024];
     
-    for (int curVarNum = 0; curVarNum < curVariables.size(); curVarNum++)
+    for (size_t curVarNum = 0; curVarNum < curVariables.size(); curVarNum++)
     {
         vtkThreshold *threshold = vtkThreshold::New();
 
@@ -451,6 +453,10 @@ avtThresholdFilter::ProcessOneChunk(
 //    you were thresholding by that expression, then the default var is the
 //    mesh and that was causing the exception to fire.
 //
+//    Brad Whitlock, Wed Mar 21 12:00:03 PDT 2012
+//    Switch to GetTuple1 since this operation is not common. Change how
+//    points are allocated.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -460,14 +466,12 @@ avtThresholdFilter::ThresholdToPointMesh(vtkDataSet *in_ds)
     int curVarCount = curVariables.size();
     int curVarNum;
     vtkPointData *inPointData = in_ds->GetPointData();
-    vtkDataArray *dataArray;
-    float *valueArray;
     
-    std::vector<float *> valueArrays;
+    std::vector<vtkDataArray *> valueArrays;
 
     for (curVarNum = 0; curVarNum < curVarCount; curVarNum++)
     {
-        dataArray = inPointData->GetArray(curVariables[curVarNum].c_str());
+        vtkDataArray *dataArray = inPointData->GetArray(curVariables[curVarNum].c_str());
         
         if (dataArray == NULL)
         {
@@ -476,8 +480,7 @@ avtThresholdFilter::ThresholdToPointMesh(vtkDataSet *in_ds)
                 "when point mesh output is requested.");
         }
 
-        valueArray = (float *)dataArray->GetVoidPointer(0);
-        valueArrays.push_back(valueArray);
+        valueArrays.push_back(dataArray);
     }
 
     const intVector    curZonePortions = atts.GetZonePortions();
@@ -492,7 +495,7 @@ avtThresholdFilter::ThresholdToPointMesh(vtkDataSet *in_ds)
     {
         for (curVarNum = 0; curVarNum < curVarCount; curVarNum++)
         {
-            doubleValue = (double)valueArrays[curVarNum][inPointID];
+            doubleValue = valueArrays[curVarNum]->GetTuple1(inPointID);
 
             if (doubleValue < curLowerBounds[curVarNum]) break;
             if (doubleValue > curUpperBounds[curVarNum]) break;
@@ -504,7 +507,7 @@ avtThresholdFilter::ThresholdToPointMesh(vtkDataSet *in_ds)
     if (plotPointCount == 0) return NULL;
 
     vtkUnstructuredGrid *outputMesh = vtkUnstructuredGrid::New();
-    vtkPoints *outMeshPoints = vtkPoints::New();
+    vtkPoints *outMeshPoints = vtkVisItUtility::NewPoints(in_ds);
     vtkPointData *outPointData = outputMesh->GetPointData();
     int outPointID = 0;
     vtkIdType vertexIDs[1];
@@ -526,7 +529,7 @@ avtThresholdFilter::ThresholdToPointMesh(vtkDataSet *in_ds)
     {
         for (curVarNum = 0; curVarNum < curVarCount; curVarNum++)
         {
-            doubleValue = (double)valueArrays[curVarNum][inPointID];
+            doubleValue = valueArrays[curVarNum]->GetTuple1(inPointID);
 
             if (doubleValue < curLowerBounds[curVarNum]) break;
             if (doubleValue > curUpperBounds[curVarNum]) break;
@@ -609,9 +612,11 @@ static void UpdateNeighborCells(int pt, const int *pt_dims,
 //  Creation:   March 27, 2005
 //
 //  Modifications:
-//
 //    Mark Blair, Tue Mar  7 13:25:00 PST 2006
 //    Reworked to support multi-variable thresholding.
+//
+//    Brad Whitlock, Wed Mar 21 11:52:40 PDT 2012
+//    Support more than float.
 //
 // ****************************************************************************
 
@@ -624,16 +629,10 @@ avtThresholdFilter::GetAssignments(vtkDataSet *in_ds, const int *dims,
     const doubleVector curLowerBounds  = atts.GetLowerBounds();
     const doubleVector curUpperBounds  = atts.GetUpperBounds();
 
-    int zoneCount = in_ds->GetNumberOfCells();
-    int pointCount = in_ds->GetNumberOfPoints();
-    int curVarNum, zoneNum, pointNum;
-
-    bool varIsPointData;
-    const char *curVarName;
-    vtkDataArray *dataArray;
-    float *varValues;
-    double lowerBound, upperBound, varValue;
-    char errMsg[1024];
+    vtkIdType zoneCount = in_ds->GetNumberOfCells();
+    vtkIdType pointCount = in_ds->GetNumberOfPoints();
+    int curVarNum;
+    vtkIdType zoneNum, pointNum;
 
     std::vector<avtStructuredMeshChunker::ZoneDesignation> curVarZDs(zoneCount);
 
@@ -642,8 +641,10 @@ avtThresholdFilter::GetAssignments(vtkDataSet *in_ds, const int *dims,
 
     for (curVarNum = 0; curVarNum < curVariables.size(); curVarNum++)
     {
-        curVarName = curVariables[curVarNum].c_str();
+        vtkDataArray *dataArray = NULL;
+        const char *curVarName = curVariables[curVarNum].c_str();
 
+        bool varIsPointData;
         if ((dataArray = in_ds->GetPointData()->GetArray(curVarName)) != NULL)
         {
             varIsPointData = true;
@@ -654,16 +655,17 @@ avtThresholdFilter::GetAssignments(vtkDataSet *in_ds, const int *dims,
         }
         else
         {
+            char errMsg[1024];
             sprintf (errMsg,
                 "Data for variable \"%s\" is not currently available.",
                 curVarName);
             EXCEPTION1(VisItException, errMsg);
         }
 
-        varValues = (float *)dataArray->GetVoidPointer(0);
-
-        lowerBound = curLowerBounds[curVarNum];
-        upperBound = curUpperBounds[curVarNum];
+        double lowerBound = curLowerBounds[curVarNum];
+        double upperBound = curUpperBounds[curVarNum];
+        double varValue;
+        const float *varValues = (const float *)dataArray->GetVoidPointer(0);
 
         if (varIsPointData)
         {
@@ -672,14 +674,30 @@ avtThresholdFilter::GetAssignments(vtkDataSet *in_ds, const int *dims,
                 for (zoneNum = 0; zoneNum < zoneCount; zoneNum++)
                     curVarZDs[zoneNum] = avtStructuredMeshChunker::DISCARD;
 
-                for (pointNum = 0; pointNum < pointCount; pointNum++)
+                if(dataArray->GetDataType() == VTK_FLOAT)
                 {
-                    varValue = (double)varValues[pointNum];
-
-                    if ((varValue >= lowerBound) && (varValue <= upperBound))
+                    for (pointNum = 0; pointNum < pointCount; pointNum++)
                     {
-                        UpdateNeighborCells(pointNum, dims,
-                        avtStructuredMeshChunker::RETAIN, curVarZDs);
+                        varValue = (double)varValues[pointNum];
+
+                        if ((varValue >= lowerBound) && (varValue <= upperBound))
+                        {
+                            UpdateNeighborCells(pointNum, dims,
+                            avtStructuredMeshChunker::RETAIN, curVarZDs);
+                        }
+                    }
+                }
+                else
+                {
+                    for (pointNum = 0; pointNum < pointCount; pointNum++)
+                    {
+                        varValue = dataArray->GetTuple1(pointNum);
+
+                        if ((varValue >= lowerBound) && (varValue <= upperBound))
+                        {
+                            UpdateNeighborCells(pointNum, dims,
+                            avtStructuredMeshChunker::RETAIN, curVarZDs);
+                        }
                     }
                 }
             }
@@ -688,28 +706,59 @@ avtThresholdFilter::GetAssignments(vtkDataSet *in_ds, const int *dims,
                 for (zoneNum = 0; zoneNum < zoneCount; zoneNum++)
                     curVarZDs[zoneNum] = avtStructuredMeshChunker::RETAIN;
 
-                for (pointNum = 0; pointNum < pointCount; pointNum++)
+                if(dataArray->GetDataType() == VTK_FLOAT)
                 {
-                    varValue = (double)varValues[pointNum];
-
-                    if ((varValue < lowerBound) || (varValue > upperBound))
+                    for (pointNum = 0; pointNum < pointCount; pointNum++)
                     {
-                        UpdateNeighborCells(pointNum, dims,
-                        avtStructuredMeshChunker::DISCARD, curVarZDs);
+                        varValue = (double)varValues[pointNum];
+
+                        if ((varValue < lowerBound) || (varValue > upperBound))
+                        {
+                            UpdateNeighborCells(pointNum, dims,
+                            avtStructuredMeshChunker::DISCARD, curVarZDs);
+                        }
+                    }
+                }
+                else
+                {
+                    for (pointNum = 0; pointNum < pointCount; pointNum++)
+                    {
+                        varValue = dataArray->GetTuple1(pointNum);
+
+                        if ((varValue < lowerBound) || (varValue > upperBound))
+                        {
+                            UpdateNeighborCells(pointNum, dims,
+                            avtStructuredMeshChunker::DISCARD, curVarZDs);
+                        }
                     }
                 }
             }
         }
         else
         {
-            for (zoneNum = 0; zoneNum < zoneCount; zoneNum++)
+            if(dataArray->GetDataType() == VTK_FLOAT)
             {
-                varValue = (double)varValues[zoneNum];
+                for (zoneNum = 0; zoneNum < zoneCount; zoneNum++)
+                {
+                    varValue = (double)varValues[zoneNum];
 
-                if ((varValue >= lowerBound) && (varValue <= upperBound))
-                    curVarZDs[zoneNum] = avtStructuredMeshChunker::RETAIN;
-                else
-                    curVarZDs[zoneNum] = avtStructuredMeshChunker::DISCARD;
+                    if ((varValue >= lowerBound) && (varValue <= upperBound))
+                        curVarZDs[zoneNum] = avtStructuredMeshChunker::RETAIN;
+                    else
+                        curVarZDs[zoneNum] = avtStructuredMeshChunker::DISCARD;
+                }
+            }
+            else
+            {
+                for (zoneNum = 0; zoneNum < zoneCount; zoneNum++)
+                {
+                    varValue = dataArray->GetTuple1(zoneNum);
+
+                    if ((varValue >= lowerBound) && (varValue <= upperBound))
+                        curVarZDs[zoneNum] = avtStructuredMeshChunker::RETAIN;
+                    else
+                        curVarZDs[zoneNum] = avtStructuredMeshChunker::DISCARD;
+                }
             }
         }
 
@@ -1106,6 +1155,12 @@ avtThresholdFilter::ModifyContract(avtContract_p in_spec)
 //    a fix Hank did on Mon Apr 6 17:13:58 PDT 2009 in 
 //    avtParallelCoordinatesFilter::CreateDBAcceleratedNamedSelection 
 //
+//    Brad Whitlock, Fri Oct 28 11:00:26 PDT 2011
+//    Change named selection API.
+//
+//    Brad Whitlock, Thu Mar 15 14:19:04 PDT 2012
+//    Set the id variable for the floating point named selection.
+//
 // ****************************************************************************
 
 avtNamedSelection *
@@ -1139,7 +1194,13 @@ avtThresholdFilter::CreateNamedSelection(avtContract_p c, const std::string &s)
     avtIdentifierSelection *ids = GetMetaData()->GetIdentifiers(drs);
     avtNamedSelection *rv = NULL;
     if (ids != NULL)
-        rv = new avtFloatingPointIdNamedSelection(s, ids->GetIdentifiers());
+    {
+        avtFloatingPointIdNamedSelection *fpns = new avtFloatingPointIdNamedSelection(s);
+        fpns->SetIdentifiers(ids->GetIdentifiers());
+        fpns->SetIdVariable(ids->GetIdVariable());
+        rv = fpns;
+    }
+
     // Don't delete ids, since it is being cached at the DB level and we don't
     // own this reference.
     // delete ids;

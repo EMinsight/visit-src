@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -185,6 +185,11 @@ avtDatasetToDataObjectFilter::SearchDataForSpatialExtents(double *extents)
 //  Programmer:  Jeremy Meredith
 //  Creation:    February 15, 2007
 //
+//  Modifications:
+//    Kathleen Biagas, Thu Apr 26 13:56:47 PDT 2012
+//    Added debug statement to aid in debugging new filters that inadvertently
+//    trigger the transformation.
+//
 // ****************************************************************************
 
 void
@@ -201,6 +206,8 @@ avtDatasetToDataObjectFilter::PreExecute(void)
     if (inatts.GetRectilinearGridHasTransform() &&
         !FilterUnderstandsTransformedRectMesh())
     {
+        debug3 << "avtDatasetToDataObjectFilter transforming rectilinear grid"
+               << " to curvilinear grid." << endl;
         avtDataTree_p tree = GetInputDataTree();
         bool dummy;
         tree->Traverse(CApplyTransformToRectGrid,

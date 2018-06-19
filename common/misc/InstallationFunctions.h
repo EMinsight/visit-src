@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,8 @@ bool        MISC_API ReadInstallationInfo(std::string &distName,
 std::string MISC_API GetVisItArchitectureDirectory();
 std::string MISC_API GetVisItArchitectureDirectory(const char *version);
 std::string MISC_API GetVisItLauncher();
+std::string MISC_API GetVisItLibraryDirectory();
+std::string MISC_API GetVisItLibraryDirectory(const char *version);
 
 // User installation / data functions
 std::string MISC_API GetUserVisItDirectory();
@@ -65,6 +67,15 @@ std::string MISC_API GetSystemVisItRCFile();
 
 std::string MISC_API GetAndMakeUserVisItHostsDirectory();
 std::string MISC_API GetSystemVisItHostsDirectory();
+
+typedef enum {
+    VISIT_RESOURCES,
+    VISIT_RESOURCES_COLORTABLES,
+    VISIT_RESOURCES_TRANSLATIONS,
+    VISIT_RESOURCES_MOVIETEMPLATES
+} VisItResourceDirectoryType;
+
+std::string MISC_API GetVisItResourcesDirectory(VisItResourceDirectoryType t);
 
 int         MISC_API ConfigStateGetRunCount(ConfigStateEnum &code);
 void        MISC_API ConfigStateIncrementRunCount(ConfigStateEnum &code);

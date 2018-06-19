@@ -18,16 +18,20 @@
 #ifndef VS_FILE_FORMAT_H
 #define VS_FILE_FORMAT_H
 
+#include <vtkUnsignedCharArray.h>
+#include <vtkPoints.h>
+#include <VsH5Dataset.h>
 //#include <VsH5Reader.h>
 #include <avtSTMDFileFormat.h>
 #include <hdf5.h>
 #include <visit-hdf5.h>
 
-#include <map>
 #include <string>
 #include <vector>
 
 // Forward references to minimize compilation
+class vtkPoints;
+class vtkUnsignedCharArray;
 class vtkDataSet;
 class vtkDataArray;
 class avtDatabaseMetaData;
@@ -197,10 +201,10 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    * Create various meshes.
    */
   vtkDataSet* getUniformMesh(VsUniformMesh*, bool, int*, int*, int*);
-  vtkDataSet* getRectilinearMesh(VsRectilinearMesh*, bool, int*, int*, int*);
+  vtkDataSet* getRectilinearMesh(VsRectilinearMesh*, bool, int*, int*, int*, bool);
   vtkDataSet* getStructuredMesh(VsStructuredMesh*, bool, int*, int*, int*);
   vtkDataSet* getUnstructuredMesh(VsUnstructuredMesh*, bool, int*, int*, int*);
-  vtkDataSet* getPointMesh(VsVariableWithMesh*, bool, int*, int*, int*);
+  vtkDataSet* getPointMesh(VsVariableWithMesh*, bool, int*, int*, int*, bool);
   vtkDataSet* getCurve(int domain, const std::string& name);
 
   /**
@@ -229,6 +233,18 @@ class avtVsFileFormat: public avtSTMDFileFormat {
                           int *maxs,
                           int *strides,
                           bool isNodal = true );
+  
+  template <typename TYPE>
+  void fillInMaskNodeArray(const std::vector<int>& gdims,
+                           VsH5Dataset *mask, bool maskIsFortranOrder,
+                           vtkUnsignedCharArray *maskedNodes);
+
+  template <typename TYPE>
+    void setStructuredMeshCoords(const std::vector<int>& gdims,
+                                 const TYPE* dataPtr,
+                                 bool isFortranOrder,
+                                 vtkPoints* vpoints);
+
 
 #else
   avtVsFileFormat(const char* dfnm) : avtSTMDFileFormat(&dfnm, 1) {;};

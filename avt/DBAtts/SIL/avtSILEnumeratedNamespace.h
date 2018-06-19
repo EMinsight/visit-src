@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,7 +76,7 @@ class DBATTS_API avtSILEnumeratedNamespace : public avtSILNamespace
     virtual            ~avtSILEnumeratedNamespace() {;};
 
     virtual int                      GetNumberOfElements(void) const
-                                                 { return elements.size(); };
+                                                 { return static_cast<int>(elements.size()); };
     virtual int                      GetElement(int idx) const
                                                  { return elements[idx]; };
     virtual NamespaceAttributes     *GetAttributes(void) const;

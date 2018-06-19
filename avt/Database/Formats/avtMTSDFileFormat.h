@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -104,6 +104,10 @@ class     avtIOInformation;
 //
 //    Mark C. Miller, Fri Oct 29 09:58:43 PDT 2010
 //    Moved implementation of SetDatabaseMetaData to the .C file.
+//
+//    Hank Childs, Tue Apr 10 15:12:58 PDT 2012
+//    Add method SetReadAllCyclesAndTimes.
+//
 // ****************************************************************************
 
 class DATABASE_API avtMTSDFileFormat : public avtFileFormat
@@ -133,11 +137,17 @@ class DATABASE_API avtMTSDFileFormat : public avtFileFormat
                                { avtFileFormat::PopulateIOInformation(ioInfo); };
     virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md, int ts = 0);
 
+    void                   SetReadAllCyclesAndTimes(bool b) 
+                                             { readAllCyclesAndTimes = b; };
+    bool                   GetReadAllCyclesAndTimes(void)
+                                             { return readAllCyclesAndTimes; };
+
   protected:
     char                 **filenames;
     int                    nFiles;
     int                    myDomain;
     int                    timeSliceOffset;
+    bool                   readAllCyclesAndTimes;
 
     // The second of these should really be pure virtual and the first
     // non-existant. However, both are just virtual to maintain 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,12 +107,6 @@ avtIVPVTKTimeVaryingField::avtIVPVTKTimeVaryingField( vtkDataSet* dataset,
                     "avtIVPVTKTimeVaryingField: Can't locate second pair of vectors to interpolate." );
     }
 
-    // Cache a raw pointer to the ghost zone flags
-    vtkUnsignedCharArray* ghostData = 
-        vtkUnsignedCharArray::SafeDownCast( ds->GetCellData()->GetArray( "avtGhostZones" ) );
-
-    ghostPtr = ghostData ? ghostData->GetPointer(0) : NULL;
-
     lastCell = -1;
     lastPos.x = lastPos.y = lastPos.z =
         std::numeric_limits<double>::quiet_NaN();
@@ -139,28 +133,6 @@ avtIVPVTKTimeVaryingField::~avtIVPVTKTimeVaryingField()
 {
     if( ds )
         ds->Delete();
-}
-
-// ****************************************************************************
-//  Method: avtIVPVTKTimeVaryingField::HasGhostZones
-//
-//  Purpose:
-//      Determine if this vector field has ghost zones.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 8, 2009
-//
-//  Modifications:
-//
-//   Christoph Garth, Fri Jul 9, 10:10:22 PDT 2010
-//   Incorporate vtkVisItInterpolatedVelocityField in avtIVPVTKTimeVaryingField.
-//
-// ****************************************************************************
-
-bool
-avtIVPVTKTimeVaryingField::HasGhostZones() const
-{
-    return ghostPtr != NULL; 
 }
 
 // ****************************************************************************
@@ -201,6 +173,13 @@ avtIVPVTKTimeVaryingField::GetExtents( double extents[6] ) const
 //   David Camp, Tue Feb  1 09:43:32 PST 2011
 //   Added a check for time range to the FindCell
 //
+//   Christoph Garth, Tue Mar 6 16:38:00 PDT 2012
+//   Moved ghost data handling into cell locator and changed IsInside()
+//   to only consider non-ghost cells.
+//
+//   Hank Childs, Fri Mar  9 16:50:48 PST 2012
+//   Add support for reverse pathlines.
+//
 // ****************************************************************************
 
 bool
@@ -210,18 +189,21 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
     {
         lastPos  = pos;
         
-        if( -1 == (lastCell = loc->FindCell( &pos.x, &lastWeights )) )
+        if( -1 == (lastCell = loc->FindCell( &pos.x, &lastWeights, false )) )
             return false;
-
-        if( ghostPtr && ghostPtr[lastCell] & 0xfc )
-        {
-            lastCell = -1;
-            return false;
-        }
     }       
 
-    if( time < t0 || time > t1 )
-        return false;
+    if (t0 < t1)
+    {
+        if( time < t0 || time > t1 )
+            return false;
+    }
+    else
+    {
+        // backwards integration
+        if( time < t1 || time > t0 )
+            return false;
+    }
 
     return lastCell != -1;
 }
@@ -246,15 +228,30 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
 //   Christoph Garth, Fri Jul 9, 10:10:22 PDT 2010
 //   Incorporate vtkVisItInterpolatedVelocityField in avtIVPVTKTimeVaryingField.
 //
+//   Hank Childs, Fri Mar  9 16:50:48 PST 2012
+//   Add support for reverse pathlines.
+//
 // ****************************************************************************
 
-avtVector
-avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p ) const
+avtIVPField::Result
+avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p, avtVector &vel ) const
 {
-    if( t < t0 || t > t1 || !FindCell( t, p ) )
-        throw Undefined();
-
-    avtVector vel( 0.0, 0.0, 0.0 );
+    if( !FindCell( t, p ) )
+        return( avtIVPSolverResult::OUTSIDE_DOMAIN );
+    bool outsideTimeFrame = false;
+    if (t0 < t1)
+    {
+        if( t < t0 || t > t1 )
+            outsideTimeFrame = true;
+    }
+    else
+    {
+        // backwards integration
+        if( t < t1 || t > t0 )
+            outsideTimeFrame = true;
+    }
+    if (outsideTimeFrame)
+        return( avtIVPSolverResult::OUTSIDE_TIME_FRAME );
 
     if( velCellBased )
     {
@@ -287,7 +284,7 @@ avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p ) con
         }
     }
 
-    return vel;
+    return( avtIVPSolverResult::OK );
 }
 
 // ****************************************************************************
@@ -358,7 +355,8 @@ avtIVPVTKTimeVaryingField::ComputeVorticity( const double& t, const avtVector &p
     if( velCellBased )
         return 0.0;
 
-    avtVector y = this->operator()( t, pt );
+    avtVector y;
+    this->operator()( t, pt, y );
 
     double ylen = y.length();
 
@@ -432,7 +430,7 @@ avtIVPVTKTimeVaryingField::ComputeScalarVariable(unsigned char index,
         return 0.0;
 
     if( !FindCell( t, pt ) )
-        throw Undefined();
+        return 0.0;
 
     double result = 0.0, tmp0, tmp1;
 
@@ -608,7 +606,18 @@ avtIVPVTKTimeVaryingField::SetNormalized( bool v )
 void
 avtIVPVTKTimeVaryingField::GetTimeRange( double range[2] ) const
 {
-    range[0] = t0;
-    range[1] = t1;
+    if (t0 < t1)
+    {
+        range[0] = t0;
+        range[1] = t1;
+    }
+    else
+    {
+        // we have a field for reverse pathlines.
+        // we need to put the times in ascending order to keep the logic
+        // in avtIntegralCurve consistent.
+        range[0] = t1;
+        range[1] = t0;
+    }
 }
 

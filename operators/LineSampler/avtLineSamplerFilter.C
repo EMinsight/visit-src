@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,7 +75,8 @@
 // ****************************************************************************
 
 avtLineSamplerFilter::avtLineSamplerFilter() :
-  composite_ds(0), cachedAngle(0), validTimeAxis(true), lastTimeAxisValue(-1.0e12)
+  composite_ds(0), cachedAngle(0), validTimeAxis(true),
+  lastTimeAxisValue(-1.0e12)
 {
 }
 
@@ -127,7 +128,7 @@ avtLineSamplerFilter::Create()
 void
 avtLineSamplerFilter::SetAtts(const AttributeGroup *a)
 {
-    atts = *(const LineSamplerAttributes*)a;
+  atts = *(const LineSamplerAttributes*)a;
 }
 
 
@@ -186,12 +187,18 @@ avtLineSamplerFilter::InitializeTimeLoop(void)
     // If doing the current time step set the bounds to be the
     // currentTime.
 
-    if( atts.GetTimeSampling() == LineSamplerAttributes::CurrentTimeStep )
+    if( atts.GetTimeSampling() == LineSamplerAttributes::CurrentTimeStep ||
+        // For two and three plots just show the geometry for the
+        // current time frame regardless of what the user is sampling.
+        atts.GetViewDimension() == LineSamplerAttributes::Two ||
+        atts.GetViewDimension() == LineSamplerAttributes::Three )
     {
       // Update the start and end frame as well as the stride.
       SetStartFrame(currentTime);
       SetEndFrame(currentTime);
       SetStride( 1 );
+
+      nTimeSteps = 1;
     }
 
     // For mulitple times set the bounds from the attributes.
@@ -201,27 +208,67 @@ avtLineSamplerFilter::InitializeTimeLoop(void)
       if( atts.GetTimeStepStart() < 0 )
       {
         std::string msg(GetType());
-        msg = msg + ": Start index/Number of slices must be positive.";
+        msg = msg + ": The Start index/Number of slices must be positive.";
+
+        avtCallback::IssueWarning(msg.c_str());
         EXCEPTION1(ImproperUseException, msg);
       }
 
       if( atts.GetTimeStepStop() < 0 )
       {
         std::string msg(GetType());
-        msg = msg + ": Stop index/Number of slices must be positive.";
+        msg = msg + ": The Stop index/Number of slices must be positive.";
+        avtCallback::IssueWarning(msg.c_str());
         EXCEPTION1(ImproperUseException, msg);
       }
+
+      if( atts.GetTimeStepStart() > atts.GetTimeStepStop() )
+      {
+        std::string msg(GetType());
+        msg = msg + ": The Start time must be smaller than the stop time.";
+        avtCallback::IssueWarning(msg.c_str());
+        EXCEPTION1(ImproperUseException, msg);
+      }
+
 
       SetStartFrame( atts.GetTimeStepStart() );
       SetEndFrame( atts.GetTimeStepStop() );
       SetStride( atts.GetTimeStepStride() );
 
+      nTimeSteps = 2 + (atts.GetTimeStepStop()-atts.GetTimeStepStart()) /
+        atts.GetTimeStepStride();
     }
 
     // Misc initializations
     if( atts.GetToroidalIntegration() ==
-        LineSamplerAttributes::ToroidalTimeSample )
-      cachedAngle = 0;
+        LineSamplerAttributes::ToroidalTimeSample ||
+        atts.GetToroidalIntegration() ==
+        LineSamplerAttributes::IntegrateToroidally )
+    {
+      if( atts.GetToroidalAngleStart() >= atts.GetToroidalAngleStop() )
+      {
+        std::string msg(GetType());
+        msg = msg + ": The Start angle must be smaller than the Stop angle.";
+        avtCallback::IssueWarning(msg.c_str());
+        EXCEPTION1(ImproperUseException, msg);
+      }
+
+      if( atts.GetToroidalAngleStop() - atts.GetToroidalAngleStart() > 360 )
+      {
+        std::string msg(GetType());
+        msg = msg + ": The total toroidal angle sampling is greater than 360 degrees.";
+        avtCallback::IssueWarning(msg.c_str());
+      }
+
+      if( atts.GetToroidalAngleSampling() ==
+          LineSamplerAttributes::ToroidalAngleAbsoluteSampling )
+        cachedAngle = 0;
+      else if( atts.GetToroidalAngleSampling() ==
+          LineSamplerAttributes::ToroidalAngleRelativeSampling )
+        cachedAngle = atts.GetToroidalAngleStart();
+      else
+        cachedAngle = 0;
+    }
     else
       cachedAngle = -180;
 
@@ -283,25 +330,20 @@ avtLineSamplerFilter::Execute()
     // Time axis value - only used when time sampling.
     double timeAxisValue;
 
-    if( atts.GetTimeSampling() ==
-        LineSamplerAttributes::MultipleTimeSteps &&
-        atts.GetToroidalIntegration() ==
-        LineSamplerAttributes::NoToroidalIntegration )
-    {
-      if( atts.GetDisplayTime() == LineSamplerAttributes::Time &&
-          GetInput()->GetInfo().GetAttributes().TimeIsAccurate() )
-        timeAxisValue =
-          GetInput()->GetInfo().GetAttributes().GetTime();
-            
-      else if( atts.GetDisplayTime() == LineSamplerAttributes::Cycle &&
-               GetInput()->GetInfo().GetAttributes().CycleIsAccurate() )
-        timeAxisValue =
-          GetInput()->GetInfo().GetAttributes().GetCycle();
-      else
-        timeAxisValue = currentTime;
+    if( atts.GetDisplayTime() == LineSamplerAttributes::Time &&
+        GetInput()->GetInfo().GetAttributes().TimeIsAccurate() )
+      timeAxisValue =
+        GetInput()->GetInfo().GetAttributes().GetTime();
+    
+    else if( atts.GetDisplayTime() == LineSamplerAttributes::Cycle &&
+             GetInput()->GetInfo().GetAttributes().CycleIsAccurate() )
+      timeAxisValue =
+        GetInput()->GetInfo().GetAttributes().GetCycle();
+    else
+      timeAxisValue = currentTime;
 
-      if( lastTimeAxisValue >= timeAxisValue )
-        validTimeAxis = false;
+    if( lastTimeAxisValue >= timeAxisValue )
+      validTimeAxis = false;
 
 //     std::cerr << lastTimeAxisValue << "  " << timeAxisValue << "  "
 //            << validTimeAxis << "  " << currentTime << "  "
@@ -309,21 +351,35 @@ avtLineSamplerFilter::Execute()
 //            << GetInput()->GetInfo().GetAttributes().GetCycle() << "  "
 //            << std::endl;
 
-      lastTimeAxisValue = timeAxisValue;
-    }
+    lastTimeAxisValue = timeAxisValue;
 
-    double startAngle, stopAngle, deltaAngle;
+    double startAngle = 0, stopAngle = 1, deltaAngle = 1;
 
     if( atts.GetToroidalIntegration() ==
-        LineSamplerAttributes::ToroidalTimeSample )
+        LineSamplerAttributes::ToroidalTimeSample ||
+        atts.GetToroidalIntegration() ==
+        LineSamplerAttributes::IntegrateToroidally )
     {
       // Reset the cached angle for absolute sampling.
       if( atts.GetToroidalAngleSampling() ==
           LineSamplerAttributes::ToroidalAngleAbsoluteSampling )
+      {
         cachedAngle = 0;
 
-      startAngle = cachedAngle + atts.GetToroidalAngleStart();
-      stopAngle  = cachedAngle + atts.GetToroidalAngleStop();
+        startAngle = atts.GetToroidalAngleStart();
+        stopAngle  = atts.GetToroidalAngleStop();
+      }
+
+      // Set the start using the cached angle with the stop being
+      // relative.
+      else if( atts.GetToroidalAngleSampling() ==
+               LineSamplerAttributes::ToroidalAngleRelativeSampling )
+      {
+        startAngle = cachedAngle;
+        stopAngle  = cachedAngle +
+          (atts.GetToroidalAngleStop()-atts.GetToroidalAngleStart());
+      }
+
       deltaAngle = atts.GetToroidalAngleStride();
     }
     else // if( atts.GetToroidalIntegration() ==
@@ -334,8 +390,30 @@ avtLineSamplerFilter::Execute()
       deltaAngle = 1;
     }
 
+    int nArrays, nChannels;
+
+    if( atts.GetArrayConfiguration() == LineSamplerAttributes::Geometry )
+    {
+      nArrays = atts.GetNArrays();
+      nChannels = atts.GetNChannels();
+    }
+    else //if( atts.GetArrayConfiguration() == LineSamplerAttributes::Manual )
+    {
+      nArrays = atts.GetNChannelListArrays();
+      
+      // Currently only one type of conf file.
+      std::vector<double> listOfChannels = atts.GetChannelList();
+      nChannels = listOfChannels.size() / 4;
+    }
+
+    // Storage for when the samples are integrated on a toriodal basis.
+    std::vector< double > ToroidalIntegrationSum;
+    float nSamples = 0;
+
     // Embed the sample toroidally as time in an outer loop.
-    for( cachedAngle=startAngle; cachedAngle<stopAngle; cachedAngle+=deltaAngle )
+    for( cachedAngle=startAngle;
+         cachedAngle<stopAngle;
+         cachedAngle+=deltaAngle, ++nSamples )
     {
       vtkDataSet *tmp_ds = ExecuteChannelData(currDs, 0, "");
 
@@ -356,15 +434,16 @@ avtLineSamplerFilter::Execute()
       else // if( atts.GetTimeSampling() ==
            //     LineSamplerAttributes::MultipleTimeSteps ||
            //     atts.GetToroidalIntegration() ==
-           //     LineSamplerAttributes::ToroidalTimeSample )
+           //     LineSamplerAttributes::ToroidalTimeSample ||
+           //     atts.GetToroidalIntegration() ==
+           //     LineSamplerAttributes::IntegrateToroidally )
       {
-        if( atts.GetViewDimension() == LineSamplerAttributes::Two ||
-            atts.GetViewDimension() == LineSamplerAttributes::Three )
+        if( atts.GetViewDimension() == LineSamplerAttributes::Two )
         {
           std::string msg;
-          msg += "The view dimension is not one. " +
+          msg += "The view dimension is two. " +
             std::string(" For collating multiple angles and/or time steps ") +
-            std::string("the resulting plots are one dimensional. ") +
+            std::string("the resulting plots are not two dimensional. ") +
             std::string("Showing the original channel sampling.");
           
           avtCallback::IssueWarning(msg.c_str());
@@ -399,22 +478,6 @@ avtLineSamplerFilter::Execute()
         int tPoints = composite_ds->GetNumberOfPoints();
         int nPoints = tmp_ds->GetNumberOfPoints();
         
-        int nArrays, nChannels;
-
-        if( atts.GetArrayConfiguration() == LineSamplerAttributes::Geometry )
-        {
-          nArrays = atts.GetNArrays();
-          nChannels = atts.GetNChannels();
-        }
-        else //if( atts.GetArrayConfiguration() == LineSamplerAttributes::Manual )
-        {
-          nArrays = atts.GetNChannelListArrays();
-
-          // Currently only one type of conf file.
-          std::vector<double> listOfChannels = atts.GetChannelList();
-          nChannels = listOfChannels.size() / 4;
-        }
-
         // Sanity check.
         if( nPoints != nArrays* nChannels )
         {
@@ -425,111 +488,187 @@ avtLineSamplerFilter::Execute()
           avtCallback::IssueWarning(msg.c_str());
         }
 
+        // First time through when integrating toroidally set the
+        // number entries and initize to zero.
+        if( atts.GetToroidalIntegration() ==
+            LineSamplerAttributes::IntegrateToroidally && 
+            ToroidalIntegrationSum.size() == 0 )
+        {
+          ToroidalIntegrationSum.resize( nPoints );
+          
+          for( unsigned int i=0; i<nPoints; ++i )
+            ToroidalIntegrationSum[i] = 0;
+        }
+
+        double nextPathPoint[3];
+
+        if( atts.GetViewDimension() == LineSamplerAttributes::One )
+        {
+          // When samplng toroidally and over time use the time as the
+          // major "index" and the angle (0->360) as the minor "index".
+          if( atts.GetToroidalIntegration() ==
+              LineSamplerAttributes::ToroidalTimeSample )
+          {
+            if( atts.GetTimeSampling() ==
+                LineSamplerAttributes::MultipleTimeSteps )
+            {
+              nextPathPoint[0] = currentTime * (stopAngle-startAngle) +
+                cachedAngle - (double) (360.0 * (int) (cachedAngle / 360.0));
+            }
+            
+            // Toroidal sampling so use the angle (0->360).
+            else
+            {
+              nextPathPoint[0] =
+                cachedAngle - (double) (360.0 * (int) (cachedAngle / 360.0));
+            }
+          }
+          
+          // Sampling toroidally with integration gives a single value.
+          else if( atts.GetToroidalIntegration() ==
+                   LineSamplerAttributes::IntegrateToroidally )
+          {
+            nextPathPoint[0] = timeAxisValue;
+          }
+          
+          // Pure sampling over time so use the value specifed by the
+          // user.
+          else if( atts.GetTimeSampling() ==
+                   LineSamplerAttributes::MultipleTimeSteps )
+          {
+              nextPathPoint[0] = timeAxisValue;
+          }
+          
+          nextPathPoint[2] = 0;
+        }
+
         // Traverse all points
         for( unsigned int i=0; i<nPoints; ++i )
         {
           // Get the next point and update its coordinates if necessary
           vtkDataArray *scalars = tmp_ds->GetPointData()->GetScalars();
 
-          double nextPathPoint[3];
+          double val = *(scalars->GetTuple(i));
 
-          // When samplng toroidally and over time use the time as the
-          // major "index" and the angle (0->360) as the minor "index".
-          if( atts.GetTimeSampling() ==
-              LineSamplerAttributes::MultipleTimeSteps &&
-              atts.GetToroidalIntegration() ==
-              LineSamplerAttributes::ToroidalTimeSample )
+          if( atts.GetViewDimension() == LineSamplerAttributes::One )
           {
-            nextPathPoint[0] = currentTime * (stopAngle-startAngle) +
-              cachedAngle - (double) (360.0 * (int) (cachedAngle / 360.0));
+            // If doing a toroidal integration sum the values and cache.
+            if( atts.GetToroidalIntegration() ==
+                LineSamplerAttributes::IntegrateToroidally )
+            {
+              ToroidalIntegrationSum[i] += val;
+              
+              // Last sample so set the value as it is used below.
+              if( cachedAngle+deltaAngle>=stopAngle )
+              {
+                val = ToroidalIntegrationSum[i] / nSamples;
+              }
+            }
           }
 
-          // Pure sampling over time so use the value specifed by the
-          // user.
-          else if( atts.GetTimeSampling() ==
-              LineSamplerAttributes::MultipleTimeSteps )
+          // If not integrating toroidally then add the point. If
+          // integrating toroidally add the point when the last sample
+          // is taken.
+          if( atts.GetViewDimension() == LineSamplerAttributes::Three ||
+
+              (atts.GetToroidalIntegration() !=
+               LineSamplerAttributes::IntegrateToroidally) ||
+
+              (atts.GetToroidalIntegration() ==
+               LineSamplerAttributes::IntegrateToroidally &&
+               cachedAngle + deltaAngle >= stopAngle) )
           {
-            nextPathPoint[0] = timeAxisValue;
-          }
 
-          // Toroidal sampling so use the angle (0->360).
-          else if( atts.GetToroidalIntegration() ==
-                   LineSamplerAttributes::ToroidalTimeSample )
-          {
-              nextPathPoint[0] =
-                cachedAngle - (double) (360.0 * (int) (cachedAngle / 360.0));
-          }
+            if( atts.GetViewDimension() == LineSamplerAttributes::One )
+            {
+              nextPathPoint[1] = val * heightPlotScale +
+                (double) i * channelPlotOffset;
+            }
+            else
+            {
+              tmp_ds->GetPoint(i, nextPathPoint);
+            }
 
-          nextPathPoint[1] = (double) i * channelPlotOffset +
-            heightPlotScale * *(scalars->GetTuple(i));
-
-          nextPathPoint[2] = 0;
-
-          // Insert the new point into the list.
-          vtkPoints* pathPoints = uGrid->GetPoints();
-          pathPoints->InsertNextPoint( nextPathPoint );
-
-          // The index of the new point
-          int  newPointIndex = uGrid->GetPoints()->GetNumberOfPoints()-1;
-          int  newCellIndex = uGrid->GetNumberOfCells()-1;
+            // Insert the new point into the list.
+            vtkPoints* pathPoints = uGrid->GetPoints();
+            pathPoints->InsertNextPoint( nextPathPoint );
+            
+            // The index of the new point
+            int newPointIndex = uGrid->GetPoints()->GetNumberOfPoints()-1;
+            int newCellIndex = uGrid->GetNumberOfCells()-1;
         
-          // Copy the pointdata from the input mesh to the output mesh
-          vtkPointData* allData  = uGrid->GetPointData();
-          vtkPointData* currData = tmp_ds->GetPointData();
+            // Copy the pointdata from the input mesh to the output mesh
+            vtkPointData* allData  = uGrid->GetPointData();
+            vtkPointData* currData = tmp_ds->GetPointData();
 
-          for( unsigned int j=0; j<allData->GetNumberOfArrays(); j++)
-          {
-            allData->GetArray(j)->
-              InsertTuple( newPointIndex, currData->GetArray(j)->GetTuple(i) );
-          }
+            for( unsigned int j=0; j<currData->GetNumberOfArrays(); j++)
+            {
+              allData->GetArray(j)->
+                InsertTuple( newPointIndex, currData->GetArray(j)->GetTuple(i) );
+            }
           
-          vtkCellData* allCellData = uGrid->GetCellData();
-          vtkCellData* currCellData = tmp_ds->GetCellData();
+            vtkCellData* allCellData = uGrid->GetCellData();
+            vtkCellData* currCellData = tmp_ds->GetCellData();
           
-          for( unsigned int j=0; j<allCellData->GetNumberOfArrays(); j++)
-          {
-            allCellData->GetArray(j)->
-              InsertTuple( newCellIndex, currCellData->GetArray(j)->GetTuple(i) );
-          }
-        
-          newCellIndex++;
-
-          if( atts.GetViewGeometry() == LineSamplerAttributes::Points )
-          {
-            vtkIdType* pointList = new vtkIdType[1];
-            pointList[0] = newPointIndex;
-
-            uGrid->InsertNextCell(VTK_VERTEX, 1, pointList);
-
-            for( unsigned int j=0; j<allCellData->GetNumberOfArrays(); j++)
+            for( unsigned int j=0; j<currCellData->GetNumberOfArrays(); j++)
             {
               allCellData->GetArray(j)->
                 InsertTuple( newCellIndex, currCellData->GetArray(j)->GetTuple(i) );
             }
-          
+        
             newCellIndex++;
-            delete[] pointList;
-          }
 
-          // Add a new line segment
-          else if( tPoints )
-          {
-            //define the points of the lines
-            vtkIdType* pointList = new vtkIdType[2];
-            pointList[0]   = newPointIndex - nPoints;
-            pointList[1]   = newPointIndex;
+            // If the geometry is not points but only a single time
+            // step use points anyways so something gets displayed.
+            if( atts.GetViewGeometry() == LineSamplerAttributes::Points ||
+
+                (atts.GetToroidalIntegration() ==
+                 LineSamplerAttributes::IntegrateToroidally && 
+                 atts.GetTimeSampling() ==
+                 LineSamplerAttributes::CurrentTimeStep) ||
+
+                (atts.GetViewDimension() == LineSamplerAttributes::One &&
+                 atts.GetTimeSampling() ==
+                 LineSamplerAttributes::MultipleTimeSteps && nTimeSteps == 1) ||
+
+                (atts.GetViewDimension() == LineSamplerAttributes::Three &&
+                 (stopAngle-startAngle)/deltaAngle <= 1.0) )
+            {
+              vtkIdType* pointList = new vtkIdType[1];
+              pointList[0] = newPointIndex;
+
+              uGrid->InsertNextCell(VTK_VERTEX, 1, pointList);
+
+              for( unsigned int j=0; j<currCellData->GetNumberOfArrays(); j++)
+              {
+                allCellData->GetArray(j)->
+                  InsertTuple( newCellIndex, currCellData->GetArray(j)->GetTuple(i) );
+              }
+          
+              newCellIndex++;
+              delete[] pointList;
+            }
 
             // Add a new line segment
-            uGrid->InsertNextCell( VTK_LINE, 2, pointList );
-
-            for( unsigned int j=0; j<allCellData->GetNumberOfArrays(); j++)
+            else if( tPoints )
             {
-              allCellData->GetArray(j)->
-                InsertTuple( newCellIndex, currCellData->GetArray(j)->GetTuple(i) );
+              //define the points of the lines
+              vtkIdType* pointList = new vtkIdType[2];
+              pointList[0]   = newPointIndex - nPoints;
+              pointList[1]   = newPointIndex;
+
+              // Add a new line segment
+              uGrid->InsertNextCell( VTK_LINE, 2, pointList );
+
+              for( unsigned int j=0; j<currCellData->GetNumberOfArrays(); j++)
+              {
+                allCellData->GetArray(j)->
+                  InsertTuple( newCellIndex, currCellData->GetArray(j)->GetTuple(i) );
+              }
+              
+              newCellIndex++;
+              delete[] pointList;
             }
-          
-            newCellIndex++;
-            delete[] pointList;
           }
         }
       }
@@ -880,7 +1019,9 @@ avtLineSamplerFilter::ExecuteChannelData(vtkDataSet *in_ds, int, std::string)
           double toroidalAngle;
 
           if( atts.GetToroidalIntegration() ==
-              LineSamplerAttributes::ToroidalTimeSample )
+              LineSamplerAttributes::ToroidalTimeSample ||
+              atts.GetToroidalIntegration() ==
+              LineSamplerAttributes::IntegrateToroidally )
           {
             if( atts.GetToroidalAngleSampling() ==
                 LineSamplerAttributes::ToroidalAngleAbsoluteSampling )
@@ -961,7 +1102,6 @@ avtLineSamplerFilter::ExecuteChannelData(vtkDataSet *in_ds, int, std::string)
 
           // Transform the normal
           applyTransform( transform, normal );
-
 
 
           // Transform the start and stop points and check the extents so
@@ -1291,7 +1431,7 @@ avtLineSamplerFilter::ExecuteChannelData(vtkDataSet *in_ds, int, std::string)
               for( unsigned int i=0; i<nChannelSamples; ++i )
                 sum += sampleVolume * *out_data++;
 
-              scalars->InsertTuple1(0, sum);
+              scalars->InsertTuple1(0, sum / (float) nChannelSamples);
 
               vtkUnstructuredGrid *uGrid = vtkUnstructuredGrid::New();
               vtkIdType vertex = 0;
@@ -1306,7 +1446,7 @@ avtLineSamplerFilter::ExecuteChannelData(vtkDataSet *in_ds, int, std::string)
               points->Delete();
               scalars->Delete();
 
-              //          out_ds->Delete();
+//            out_ds->Delete();
 
               out_ds = uGrid;
             }
@@ -2233,6 +2373,10 @@ avtLineSamplerFilter::CreateFinalOutput(void)
     // If integrating reset the original data extents.
     if( atts.GetChannelIntegration() ==
         LineSamplerAttributes::IntegrateAlongChannel ||
+
+        atts.GetToroidalIntegration() ==
+        LineSamplerAttributes::IntegrateToroidally ||
+
         atts.GetChannelGeometry() == LineSamplerAttributes::Cylinder )
       outAtts.GetThisProcsOriginalDataExtents(pipelineVariable)->Set(range);
 
@@ -2242,29 +2386,54 @@ avtLineSamplerFilter::CreateFinalOutput(void)
     {
       outAtts.SetTopologicalDimension(1);
       outAtts.SetSpatialDimension(2);
-      
+
+      // If integrating report that and average was taken
       if( atts.GetChannelIntegration() ==
-          LineSamplerAttributes::NoChannelIntegration )
+          LineSamplerAttributes::IntegrateAlongChannel ||
+
+          atts.GetToroidalIntegration() ==
+          LineSamplerAttributes::IntegrateToroidally )
+        outAtts.SetYLabel(std::string( "Average ") + pipelineVariable);
+      else
         outAtts.SetYLabel(pipelineVariable);
-      else if( atts.GetChannelIntegration() ==
-               LineSamplerAttributes::IntegrateAlongChannel )
-        outAtts.SetYLabel(std::string( "Integrated ") + pipelineVariable);
 
       outAtts.SetYUnits( inAtts.GetVariableUnits() );
 
       if( atts.GetToroidalIntegration() ==
-          LineSamplerAttributes::ToroidalTimeSample &&
-          atts.GetTimeSampling() ==
-          LineSamplerAttributes::MultipleTimeSteps )
+          LineSamplerAttributes::ToroidalTimeSample )
+      {
+        if( atts.GetTimeSampling() ==
+            LineSamplerAttributes::MultipleTimeSteps )
         {
           outAtts.SetXLabel("Time with Angle");
           outAtts.SetXUnits("");
         }
+        else
+        {
+          outAtts.SetXLabel("Angle");
+          outAtts.SetXUnits("Degrees");
+        }
+      }
       else if( atts.GetToroidalIntegration() ==
-               LineSamplerAttributes::ToroidalTimeSample )
+               LineSamplerAttributes::IntegrateToroidally )
       {
-        outAtts.SetXLabel("Angle");
-        outAtts.SetXUnits("Degrees");
+        if( atts.GetDisplayTime() == LineSamplerAttributes::Time &&
+            GetInput()->GetInfo().GetAttributes().TimeIsAccurate() )
+        {
+          outAtts.SetXLabel("Time");
+          outAtts.SetXUnits("seconds");
+        }
+        else if( atts.GetDisplayTime() == LineSamplerAttributes::Cycle &&
+                 GetInput()->GetInfo().GetAttributes().CycleIsAccurate() )
+        {
+          outAtts.SetXLabel("Cycles");
+          outAtts.SetXUnits("");
+        }
+        else
+        {
+          outAtts.SetXLabel("Time Step");
+          outAtts.SetXUnits("");
+        }
       }
       else if( atts.GetTimeSampling() ==
                LineSamplerAttributes::MultipleTimeSteps )

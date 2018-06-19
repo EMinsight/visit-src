@@ -77,7 +77,7 @@ void VsRegistry::remove(VsH5Group* group) {
   allGroupsShort.erase(group->getShortName());
 }
 
-VsH5Group* VsRegistry::getGroup(std::string name) {
+VsH5Group* VsRegistry::getGroup(const std::string& name) {
   std::string fullName = makeCanonicalName(name);
 
   std::map<std::string, VsH5Group*>::iterator it = allGroups.find(fullName);
@@ -239,7 +239,7 @@ void VsRegistry::remove(VsH5Dataset* dataset) {
   allDatasetsShort.erase(dataset->getShortName());
 }
 
-VsH5Dataset* VsRegistry::getDataset(std::string name) {
+VsH5Dataset* VsRegistry::getDataset(const std::string& name) {
   std::string fullName = makeCanonicalName(name);
 
   std::map<std::string, VsH5Dataset*>::iterator it = allDatasets.find(fullName);
@@ -383,7 +383,7 @@ void VsRegistry::remove(VsMesh* mesh) {
   allMeshesShort.erase(mesh->getShortName());
 }
 
-VsMesh* VsRegistry::getMesh(std::string name) {
+VsMesh* VsRegistry::getMesh(const std::string& name) {
   std::string fullName = makeCanonicalName(name);
 
   std::map<std::string, VsMesh*>::iterator it = allMeshes.find(fullName);
@@ -434,7 +434,7 @@ void VsRegistry::getAllMeshNames(std::vector<std::string>& names)  {
 
 /************* MD MESHES **************/
 
-VsMDMesh* VsRegistry::getMDMesh(std::string name) {
+VsMDMesh* VsRegistry::getMDMesh(const std::string& name) {
   // Make name fully qualified
   std::string fullName = makeCanonicalName(name);
   
@@ -556,7 +556,47 @@ void VsRegistry::buildMDMeshes() {
   VsLog::debugLog() <<"VsRegistry::buildMDMeshes() - Exiting." <<std::endl;
 }
 
-/*********** VARIBLES ***********/
+/*********** TRANSFORMED VARIABLES ****************************/
+void VsRegistry::buildTransformedVariables() {
+  std::map<std::string, VsVariable*>::const_iterator it;
+  for (it = allVariables.begin(); it != allVariables.end(); ++it) {
+    VsLog::debugLog() <<"VsRegistry::buildTransformedVariables() - Creating transform names for Variable " <<it->first <<std::endl;
+    it->second->createTransformedVariable();
+  }
+
+  std::map<std::string, VsVariableWithMesh*>::const_iterator it2;
+  for (it2 = allVariablesWithMesh.begin(); it2 != allVariablesWithMesh.end(); ++it2) {
+    VsLog::debugLog() <<"VsRegistry::buildTransformedVariables() - Creating transform names for Variable with Mesh " <<it2->first <<std::endl;
+    it2->second->createTransformedVariableAndMesh();
+  }
+}
+
+/*********** TRANSFORMED MESHES *******************************/
+void VsRegistry::buildTransformedMeshes() {
+  //go through all meshes looking for "vsTransform" flags
+  VsLog::debugLog() <<"VsRegistry::buildTransformedMeshes() - Entering." <<std::endl;
+  
+  // Roopa: Check if there is a transformation specified for this
+  // mesh. If so, register the transformed mesh here
+  std::map<std::string, VsMesh*>::const_iterator it;
+  for (it = allMeshes.begin(); it != allMeshes.end(); it++) {
+    VsLog::debugLog() <<"VsRegistry::buildTransformedMeshes() - examining mesh " <<(*it).first <<std::endl;
+    VsMesh* mesh = (*it).second;
+    if (!mesh) {
+      VsLog::errorLog() <<"VsRegistry::buildTransformedMeshes() - mesh is NULL?" <<std::endl;
+      continue;
+    }
+    if (mesh->hasTransform()) {
+      std::string transformedMeshName = mesh->getTransformedMeshName();
+      VsLog::debugLog() <<"VsRegistry::buildTransformedMeshes() - mesh " <<(*it).first <<" has transformed mesh " <<transformedMeshName <<std::endl;
+      registerTransformedMeshName(transformedMeshName, mesh->getFullName());
+    }
+  }
+  
+  VsLog::debugLog() <<"VsRegistry::buildTransformedMeshes() - Returning." <<std::endl;
+}
+
+/*********** VARIABLES ***********/
 void VsRegistry::add(VsVariable* variable) {  
   //check for duplicate long name
   VsVariable* foundVariable = this->getVariable(variable->getFullName());
@@ -587,7 +627,7 @@ void VsRegistry::remove(VsVariable* variable) {
   allVariablesShort.erase(variable->getShortName());
 }
 
-VsVariable* VsRegistry::getVariable(std::string name) {
+VsVariable* VsRegistry::getVariable(const std::string& name) {
   std::string fullName = makeCanonicalName(name);
 
   std::map<std::string, VsVariable*>::iterator it = allVariables.find(fullName);
@@ -639,7 +679,7 @@ void VsRegistry::getAllVariableNames(std::vector<std::string>& names)  {
 
 /*********** MD VARIABLES ***************/
 
-VsMDVariable* VsRegistry::getMDVariable(std::string name) {
+VsMDVariable* VsRegistry::getMDVariable(const std::string& name) {
   // Make name fully qualified
   std::string fullName = makeCanonicalName(name);
   
@@ -786,7 +826,7 @@ void VsRegistry::remove(VsVariableWithMesh* variable) {
   allVariablesWithMeshShort.erase(variable->getShortName());
 }
 
-VsVariableWithMesh* VsRegistry::getVariableWithMesh(std::string name) {
+VsVariableWithMesh* VsRegistry::getVariableWithMesh(const std::string& name) {
   std::string fullName = makeCanonicalName(name);
 
   std::map<std::string, VsVariableWithMesh*>::iterator it = allVariablesWithMesh.find(fullName);
@@ -835,8 +875,73 @@ void VsRegistry::getAllVariableWithMeshNames(std::vector<std::string>& names)  {
     names.push_back(it->first);
 }
 
+/********************* TRANSFORMED MESH NAMES ************************/
+bool VsRegistry::registerTransformedMeshName(std::string transformedName, std::string origName) {
+  //first, look for a match and report failure if the name is already registered
+  std::string oName = getOriginalMeshName(transformedName);
+  if (!oName.empty()) {
+    if (origName != oName) {
+      VsLog::debugLog() << "ERROR VsRegistry::registerTransformedMeshName() - " 
+                        << transformedName << " is already registered to " 
+                        << oName << std::endl;
+      return false;
+    } else {
+      VsLog::debugLog() << "VsRegistry::registerTransformedMeshName() - received duplicate registration for " 
+                        << origName << std::endl;
+      VsLog::debugLog() << "VsRegistry::registerTransformedMeshName() - but all info matches, so it should be ok"
+                        << std::endl;
+      return true;
+    }
+  }
+
+  // Ok, register the new name mapping
+  transformedMeshNames[transformedName] = origName;
+  VsLog::debugLog() << "VsRegistry::registerTransformedMeshName(" 
+                    << transformedName << ", " << transformedMeshNames[transformedName]  
+                    << ") - registration succeeded." << std::endl;
+  return true;
+}
+
+std::string VsRegistry::getOriginalMeshName(std::string transformedMeshName) {
+  // return the value if the name is registered
+  return transformedMeshNames[transformedMeshName];
+}
+
+/******************* TRANSFORMED VARS *******************/
+bool VsRegistry::registerTransformedVarName(std::string transformedName, std::string origName) {
+  //first, look for a match and report failure if the name is already registered
+  std::string oName = getOriginalVarName(transformedName);
+  if (!oName.empty()) {
+    if (origName != oName) {
+      VsLog::debugLog() << "ERROR VsRegistry::registerTransformedVarName() - "
+                        << transformedName << " is already registered to "
+                        << oName << std::endl;
+      return false;
+    } else {
+      VsLog::debugLog() << "VsRegistry::registerTransformedVarName() - received duplicate registration for "
+                        << origName << std::endl;
+      VsLog::debugLog() << "VsRegistry::registerTransformedVarName() - but all info matches, so it should be ok"
+                        << std::endl;
+      return true;
+    }
+  }
+
+  // Ok, register the new name mapping
+  transformedVarNames[transformedName] = origName;
+  VsLog::debugLog() << "VsRegistry::registerTransformedVarName("
+                    << transformedName << ", " << transformedVarNames[transformedName]
+                    << ") - registration succeeded." << std::endl;
+  return true;
+}
+
+std::string VsRegistry::getOriginalVarName(std::string transformedVarName) {
+  // return the value if the name is registered
+  return transformedVarNames[transformedVarName];
+}
+
 /******************* EXPRESSIONS ************************/
-void VsRegistry::addExpression(std::string name, std::string value) {
+void VsRegistry::addExpression(const std::string& name, 
+                               const std::string& value) {
   //check for duplicates
   std::map<std::string, std::string>::const_iterator it;
   it = allExpressions.find(name);
@@ -849,7 +954,7 @@ void VsRegistry::addExpression(std::string name, std::string value) {
 }
 
 /**
- * VsRegistry::buildbuildExpressions()
+ * VsRegistry::buildExpressions()
  * 
  * A "VsVars" group represents a set of names and values
  * Each attribute in the group represents one expression
@@ -916,14 +1021,16 @@ void VsRegistry::createComponents() {
 
   std::map<std::string, VsVariableWithMesh*>::const_iterator it3;
   for (it3 = allVariablesWithMesh.begin(); it3 != allVariablesWithMesh.end(); ++it3) {
-    VsLog::debugLog() <<"VsRegistry::createComponents() - Creating components for Variable With Mesh" <<it3->first <<std::endl;
+    VsLog::debugLog() <<"VsRegistry::createComponents() - Creating components for Variable With Mesh " <<it3->first <<std::endl;
     it3->second->createComponents();
   }
   
   VsLog::debugLog() <<"VsRegistry::createComponents() - Returning." <<std::endl;
 }
   
-void VsRegistry::registerComponent(std::string varName, int componentNumber, std::string userSuppliedName) {
+void VsRegistry::registerComponent(const std::string& varName, 
+                                   int componentNumber, 
+                                   const std::string& userSuppliedName) {
   
   //If the user supplied a name, try to use it
   if (!userSuppliedName.empty()) {
@@ -937,7 +1044,9 @@ void VsRegistry::registerComponent(std::string varName, int componentNumber, std
   }
 }
 
-bool VsRegistry::registerComponentInfo(std::string componentName, std::string varName, int componentNumber) {
+bool VsRegistry::registerComponentInfo(const std::string& componentName, 
+                                       const std::string& varName, 
+                                       int componentNumber) {
   //yes, I should use a std::hash_map for this
   
   //first, look for a match and report failure if the name is already registered
@@ -950,7 +1059,7 @@ bool VsRegistry::registerComponentInfo(std::string componentName, std::string va
       VsLog::debugLog() <<"ERROR VsH5Reader::registerComponentInfo() - " <<componentName <<" is already registered to component " <<temp <<" index " <<tempIndex <<std::endl;
       return false;
     } else {
-      VsLog::debugLog() <<"VsH5Reader::registerComponentInfo() - recieved duplicate registration for " <<varName <<" and index " <<componentNumber <<std::endl;
+      VsLog::debugLog() <<"VsH5Reader::registerComponentInfo() - received duplicate registration for " <<varName <<" and index " <<componentNumber <<std::endl;
       VsLog::debugLog() <<"VsH5Reader::registerComponentInfo() - but all info matches, so it should be ok" <<std::endl;
       return true;
     }
@@ -972,7 +1081,8 @@ bool VsRegistry::registerComponentInfo(std::string componentName, std::string va
   return true;
 }
 
-void VsRegistry::getComponentInfo(std::string componentName, NamePair* namePair) {
+void VsRegistry::getComponentInfo(const std::string& componentName, 
+                                  NamePair* namePair) {
   //yes, I should use a std::hash_map for this
   
   //look for a match and return the value if the name is registered
@@ -990,7 +1100,8 @@ void VsRegistry::getComponentInfo(std::string componentName, NamePair* namePair)
   namePair->second = -1;
 }
 
-std::string VsRegistry::getComponentName(std::string varName, int componentNumber) {
+std::string VsRegistry::getComponentName(const std::string& varName, 
+                                         int componentNumber) {
   for (unsigned int i = 0; i < componentNames.size(); i++) {
     std::pair<std::string, NamePair > foundPair = componentNames[i];
     NamePair tempNamePair = foundPair.second;
@@ -1004,7 +1115,8 @@ std::string VsRegistry::getComponentName(std::string varName, int componentNumbe
   return "";
 }
 
-void VsRegistry::getComponentInfo(std::string varName, int componentNumber, NamePair* namePair) {
+void VsRegistry::getComponentInfo(const std::string& varName, 
+                                  int componentNumber, NamePair* namePair) {
   //yes, I should use a std::hash_map for this
   
   NamePair tempNamePair;
@@ -1026,7 +1138,8 @@ void VsRegistry::getComponentInfo(std::string varName, int componentNumber, Name
   namePair->second = -1;
 }
 
-std::string VsRegistry::getOldComponentName(std::string varName, int componentIndex) {
+std::string VsRegistry::getOldComponentName(const std::string& varName, 
+                                            int componentIndex) {
   //generates an old-style name for the component
   //of the form "varName_index"
   

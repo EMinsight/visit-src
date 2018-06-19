@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -72,7 +72,7 @@ class avtICAlgorithm;
 #define STREAMLINE_INTEGRATE_LEAPFROG 1
 #define STREAMLINE_INTEGRATE_DORMAND_PRINCE 2
 #define STREAMLINE_INTEGRATE_ADAMS_BASHFORTH 3
-//#define STREAMLINE_INTEGRATE_UNUSED 4
+#define STREAMLINE_INTEGRATE_RK4 4
 #define STREAMLINE_INTEGRATE_M3D_C1_2D 5
 
 #define STREAMLINE_TERMINATE_DISTANCE 0
@@ -301,6 +301,7 @@ class AVTFILTERS_API avtPICSFilter :
     void                      ComputeDomainToRankMapping();
     bool                      OwnDomain(DomainType &domain);
     void                      Initialize();
+    void                      InitializeTimeInformation(int);
     void                      ComputeRankList(const std::vector<int> &domList,
                                               std::vector<int> &ranks,
                                               std::vector<int> &doms );
@@ -311,7 +312,16 @@ class AVTFILTERS_API avtPICSFilter :
     void                      ClearDomainToCellLocatorMap();
     virtual avtIVPField      *GetFieldForDomain(const DomainType&, vtkDataSet*);
 
-    void                      UpdateIntervalTree();
+    void                      UpdateIntervalTree(int timeSlice);
+
+    // Use this to be able to save the ICs for restart.
+    std::vector<avtIntegralCurve *> _ics;
+    int                             restart;
+
+    void                      SaveICs( std::vector<avtIntegralCurve *> &ics, int timeStep );
+    void                      RestoreICs( std::vector<avtIntegralCurve *> &ics, int timeStep );
+    bool                      CheckIfRestart( int &timeStep );
+    void                      RestoreICsFilename( int timeStep, char *filename, size_t filenameSize );
 
     friend class avtICAlgorithm;
 };

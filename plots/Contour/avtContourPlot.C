@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -917,3 +917,21 @@ avtContourPlot::ReleaseData(void)
 }
 
 
+// ****************************************************************************
+//  Method: avtContourPlot::GetExtraInfoForPick
+//
+//  Purpose:
+//    Overide default settings for extraInfoForPick.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   February 29, 2012
+//
+// ****************************************************************************
+
+const MapNode &
+avtContourPlot::GetExtraInfoForPick()
+{
+    extraPickInfo["2DCreatesLines"] = true;
+
+    return extraPickInfo;
+}

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,7 +108,7 @@ class vtkCrackWidthFilter : public vtkDataSetToDataSetFilter
     vtkSlicer *Slicer;
     vtkMassProperties *MassProp;
 
-    double  CrackWidthForCell(vtkCell *cell, int cellId, const double *center,
+    double  CrackWidthForCell(vtkCell *cell, vtkIdType cellId, const double *center,
            const double delta, const double *dir,
            const double zvol, const double L1L2);
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1499,7 +1499,7 @@ avtBOVFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
     if (!avtDatabase::OnlyServeUpMetaData() && nbricks > 1)
     {
-        unsigned int size, rss;
+        unsigned long size, rss;
         GetMemorySize(size, rss);
         debug5 << "Memory size before creating domain boundaries object: "
                << size << ", rss=" << rss << endl;

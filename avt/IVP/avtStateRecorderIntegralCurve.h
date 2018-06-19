@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,8 +75,15 @@
 //    Hank Childs, Sun Dec  5 10:18:13 PST 2010
 //    Add an avtIVPField as an argument to CheckForTermination.
 //
-//   Dave Pugmire, Fri Jan 28 14:49:50 EST 2011
-//   Add scalar2
+//    Dave Pugmire, Fri Jan 28 14:49:50 EST 2011
+//    Add scalar2
+//
+//    Hank Childs, Tue Dec  6 19:01:30 PST 2011
+//    Add methods LessThan and PrepareForFinalCommunication.
+//
+//   David Camp, Wed Mar  7 10:43:07 PST 2012
+//   Added a Serialize flag to the arguments. This is to support the restore
+//   ICs code.
 //
 // ****************************************************************************
 
@@ -125,9 +132,10 @@ public:
     virtual ~avtStateRecorderIntegralCurve();
 
     virtual void  Serialize(MemStream::Mode mode, MemStream &buff, 
-                                avtIVPSolver *solver);
+                            avtIVPSolver *solver, SerializeFlags serializeFlags);
     virtual void  PrepareForSend(void)
-                           { serializeFlags |= SERIALIZE_INC_SEQ; };
+                           { _serializeFlags = (SerializeFlags)(_serializeFlags | avtIntegralCurve::SERIALIZE_INC_SEQ); };
+    virtual void      ResetAfterSend(void) { _serializeFlags = SERIALIZE_NO_OPT;}
     virtual bool  SameCurve(avtIntegralCurve *ic);
 
     virtual avtIntegralCurve* MergeIntegralCurveSequence(
@@ -136,6 +144,9 @@ public:
                              const avtIntegralCurve *slB);
     static bool IdRevSeqCompare(const avtIntegralCurve *slA,
                                 const avtIntegralCurve *slB);
+    virtual bool LessThan(const avtIntegralCurve *ic) const;
+    virtual void PrepareForFinalCommunication(void)
+                     { _serializeFlags = avtIntegralCurve::SERIALIZE_STEPS; };
 
     typedef std::vector<float>::const_iterator iterator;
 
@@ -151,7 +162,7 @@ public:
     size_t    GetSampleStride() const;
 
   public:
-    unsigned long       serializeFlags;
+    SerializeFlags      _serializeFlags;
     long                sequenceCnt;
     unsigned char       historyMask;
 

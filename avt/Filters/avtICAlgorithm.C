@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -710,6 +710,12 @@ avtICAlgorithm::ComputeDomainLoadStatistic()
     
     for (it = picsFilter->domainLoadCount.begin(); it != picsFilter->domainLoadCount.end(); it++)
     {
+        if (it->first >= numDomains)
+        {
+            // This can happen with pathlines ... we aren't even doing the right sort of
+            // counting ... just give up.
+            continue;
+        }
         domLoads[it->first] = it->second;
         totDomainsLoaded += it->second;
         
@@ -884,7 +890,7 @@ avtICAlgorithm::ReportStatistics(ostream &os)
     os<<endl;
     ReportCounters(os, true);
 
-    os<<endl<<"Per Proccess:"<<endl;
+    os<<endl<<"Per Process:"<<endl;
     ReportTimings(os, false);
     ReportCounters(os, false);
     os<<endl;
@@ -1081,3 +1087,29 @@ avtICAlgorithm::PrintCounter(ostream &os,
         os<<endl;
     }
 }
+
+// ****************************************************************************
+//  Method: avtICAlgorithm::UpdateICsDomain
+//
+//  Purpose:
+//      For Pathlines the mesh may change between time frames and we need to
+//  update the domain for the ICs.
+//
+//  Programmer: David Camp
+//  Creation:   Dec 20, 2011
+//
+//  Modifications:
+//
+// ****************************************************************************
+void
+avtICAlgorithm::UpdateICsDomain( int curTimeSlice )
+{
+    list<avtIntegralCurve *>::const_iterator it;
+    for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
+    {
+        // Update the current time slice ICs. No need to update others ICs.
+        if( (*it)->domain.timeStep == curTimeSlice )
+            SetDomain( (*it) );
+    }
+}
+

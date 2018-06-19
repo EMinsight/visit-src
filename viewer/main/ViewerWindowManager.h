@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -428,6 +428,9 @@ typedef struct {
 //    Brad Whitlock, Fri Jul 23 11:23:25 PDT 2010
 //    I added selection support.
 //
+//    Marc Durant, Tue Jan 10 09:18:00 MST 2012
+//    Added ToggleAllowPopup.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindowManager : public ViewerBase
@@ -517,6 +520,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     void ToggleCameraViewMode(int windowIndex = -1);
     void ToggleFullFrameMode(int windowIndex = -1);
 
+    void ToggleAllowPopup(int windowIndex = -1);
     void ToggleLockTime(int windowIndex = -1);
     void ToggleLockTools(int windowIndex = -1);
     void ToggleLockViewMode(int windowIndex = -1);

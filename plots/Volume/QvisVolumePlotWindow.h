@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -153,6 +153,9 @@ typedef int WidgetID;
 //    Hank Childs, Fri May 21 12:05:03 PDT 2010
 //    Add argument to UpdateHistogram.
 //
+//    Allen Harvey, Thurs Nov 3 7:21:13 EST 2011
+//    Make resampling optional.
+//
 // ****************************************************************************
 
 class QvisVolumePlotWindow : public QvisPostableWindowObserver
@@ -198,6 +201,7 @@ private slots:
     void attenuationChanged(int opacity);
     void legendToggled(bool val);
     void lightingToggled(bool val);
+    void resampleToggled(bool val);
     void lowGradientLightingReductionChanged(int val);
     void lowGradientClampToggled(bool val);
     void lowGradientClampProcessText();
@@ -206,12 +210,13 @@ private slots:
     void colorMinProcessText();
     void colorMaxToggled(bool val);
     void colorMaxProcessText();
+    void compactVariableChanged(const QString &);
     void opacityVariableChanged(const QString &);
     void opacityMinToggled(bool val);
     void opacityMinProcessText();
     void opacityMaxToggled(bool val);
     void opacityMaxProcessText();
-    void smoothToggled(bool val);
+    void smoothingMethodChanged(int val);
     void smoothDataToggled(bool val);
     void equalSpacingToggled(bool val);
     void alphaValuesChanged();
@@ -237,7 +242,7 @@ private:
     // 1D transfer function widgets
     QWidget                  *tfParent1D;
     QGroupBox                *colorWidgetGroup;
-    QCheckBox                *smoothCheckBox;
+    QComboBox                *smoothingMethod;
     QCheckBox                *equalCheckBox;
     QvisSpectrumBar          *spectrumBar;
     QvisColorSelectionWidget *colorSelect;
@@ -248,6 +253,7 @@ private:
     QLineEdit                *colorMax;
     QButtonGroup             *scalingButtons;
     QLineEdit                *skewLineEdit;
+    QvisVariableButton       *compactVariable;
     QvisVariableButton       *opacityVariable;
     QCheckBox                *opacityMinToggle;
     QLineEdit                *opacityMin;
@@ -279,6 +285,7 @@ private:
     // General widgets
     QCheckBox                *legendToggle;
     QCheckBox                *lightingToggle;
+    QCheckBox                *resampleToggle;
     QLabel                   *lowGradientLightingReductionLabel;
     QComboBox                *lowGradientLightingReductionCombo;
     QCheckBox                *lowGradientClampToggle;
@@ -296,6 +303,7 @@ private:
     QRadioButton             *centeredDiffButton;
     QRadioButton             *sobelButton;
     QLabel                   *resampleTargetLabel;
+    QLabel                   *compactVarLabel;
     QSpinBox                 *resampleTarget;
     QLabel                   *num3DSlicesLabel;
     QSpinBox                 *num3DSlices;

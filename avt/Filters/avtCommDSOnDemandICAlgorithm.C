@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -449,7 +449,7 @@ avtCommDSOnDemandICAlgorithm::HandleMessages(bool checkMsgs,
 // ****************************************************************************
 
 void
-avtCommDSOnDemandICAlgorithm::ResetIntegralCurvesForContinueExecute()
+avtCommDSOnDemandICAlgorithm::ResetIntegralCurvesForContinueExecute(int curTimeSlice)
 {
     while (! terminatedICs.empty())
     {
@@ -469,6 +469,11 @@ avtCommDSOnDemandICAlgorithm::ResetIntegralCurvesForContinueExecute()
 // Programmer:  Dave Pugmire
 // Creation:    December 15, 2010
 //
+// Modifications:
+//
+//  Hank Childs, Fri Mar  9 16:49:06 PST 2012
+//  Add support for reverse pathlines.
+//
 // ****************************************************************************
 
 bool
@@ -477,7 +482,7 @@ avtCommDSOnDemandICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
     list<avtIntegralCurve *>::const_iterator it;
     for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
     {
-        if ((*it)->domain.domain != -1 && (*it)->domain.timeStep > curTimeSlice)
+        if ((*it)->domain.domain != -1 && (*it)->domain.timeStep != curTimeSlice)
         {
             return true;
         }

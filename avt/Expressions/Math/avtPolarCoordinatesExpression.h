@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                         avtPolarCoordinatesExpression.h                       //
+//                     avtPolarCoordinatesExpression.h                       //
 // ************************************************************************* //
 
 #ifndef AVT_POLAR_COORDINATES_FILTER_H
@@ -47,12 +47,6 @@
 #include <avtSingleInputExpressionFilter.h>
 
 
-class     vtkCell;
-class     vtkCellDataToPointData;
-class     vtkDataArray;
-class     vtkDataSet;
-class     vtkIdList;
-class     vtkScalarData;
 
 
 // ****************************************************************************

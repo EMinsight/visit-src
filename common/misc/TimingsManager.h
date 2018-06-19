@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -192,7 +192,7 @@ class MISC_API SystemTimingsManager : public TimingsManager
     void                       ClearValues()
                                    { values.clear(); };
     int                        GetNValues() const
-                                   { return values.size(); };
+                                   { return static_cast<int>(values.size()); };
 
   protected:
     std::vector<struct TIMEINFO> values;
@@ -208,7 +208,7 @@ class MISC_API MPITimingsManager : public TimingsManager
     void                       ClearValues()
                                    { values.clear(); };
     int                        GetNValues() const
-                                   { return values.size(); };
+                                   { return static_cast<int>(values.size()); };
 
   protected:
     std::vector<double>        values;

@@ -44,7 +44,7 @@
 #include <IndexSelectAttributes.h>
 
 #include <visit-config.h>
-extern "C" OP_EXPORT const char *IndexSelectVisItPluginVersion = VISIT_VERSION;
+VISIT_PLUGIN_VERSION(IndexSelect,OP_EXPORT)
 
 // ****************************************************************************
 //  Function:  GetGeneralInfo

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,10 +43,6 @@
 #include <FilledBoundaryPluginInfo.h>
 #include <QApplication>
 #include <avtFilledBoundaryPlot.h>
-
-#include <set>
-#include <string>
-#include <vector>
 
 // ****************************************************************************
 //  Function:  GetViewerInfo
@@ -421,9 +417,6 @@ FilledBoundaryViewerPluginInfo::XPMIconData() const
 
 #include <DebugStream.h>
 #include <InvalidVariableException.h>
-
-using std::string;
-using std::set;
 
 void
 FilledBoundaryViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts, 

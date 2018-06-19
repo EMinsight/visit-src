@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -133,7 +133,7 @@ class PIPELINE_API avtIntervalTree
     void                      OptimizeForRepeatedQueries(void) 
                                          { optimizeForRepeatedQueries = true; };
 
-    void                      AddElement(int, double *);
+    void                      AddElement(int, const double *);
     void                      Calculate(bool = false);
 
     int                       GetNLeaves(void) const { return nElements; };

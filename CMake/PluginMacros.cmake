@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,6 +40,11 @@
 #   are grouped by name in VisualStudio for ease of building/debugging
 #   individual plugins.
 #
+#   Kathleen Biagas, Tue Nov 22 14:37:17 MST 2011
+#   Remove VISIT_PLUGIN_TARGET_PREFIX in favor of VISIT_PLUGIN_TARGET_RTOD
+#   which sets runtime output directory, which works with all versions of
+#   Visual Studio, while the target prefix version didn't work with 2010.
+#
 #****************************************************************************/
 
 
@@ -64,7 +69,7 @@ MACRO(VISIT_INSTALL_PLUGINS type)
             # below.  Then during install, ${BUILD_TYPE} will be expanded.
             FOREACH(target ${ARGN})
                 IF(MSVC_IDE)
-                  SET(filename "${VISIT_BINARY_DIR}/exe/\${BUILD_TYPE}/${type}/lib${target}.dll")
+                  SET(filename "${VISIT_BINARY_DIR}/exe/\${BUILD_TYPE}/${type}/${target}.dll")
                   INSTALL(FILES ${filename}
                     DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
                     COMPONENT RUNTIME
@@ -74,7 +79,7 @@ MACRO(VISIT_INSTALL_PLUGINS type)
                     CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                   )
                 ELSE()  # For no IDE, installed straight into exe
-                  SET(filename "${VISIT_BINARY_DIR}/exe/lib${target}.dll")
+                  SET(filename "${VISIT_BINARY_DIR}/exe/${target}.dll")
                   INSTALL(FILES ${filename}
                     DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
                     COMPONENT RUNTIME
@@ -90,7 +95,7 @@ MACRO(VISIT_INSTALL_PLUGINS type)
                 SET(filename lib${target}.dylib)
                 INSTALL(CODE 
                     "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                         COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_PLUGINS}/${type}/${filename}\"
+                         COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_PLUGINS}/${type}/${filename}\"
                          OUTPUT_VARIABLE OSXOUT)
                      MESSAGE(STATUS \"\${OSXOUT}\")
                     ")
@@ -111,11 +116,20 @@ MACRO(VISIT_INSTALL_PLOT_PLUGINS)
     VISIT_INSTALL_PLUGINS(plots ${ARGN})
 ENDMACRO(VISIT_INSTALL_PLOT_PLUGINS)
 
-MACRO(VISIT_PLUGIN_TARGET_PREFIX) 
+MACRO(VISIT_PLUGIN_TARGET_RTOD type) 
     IF(WIN32)
-        SET_TARGET_PROPERTIES(${ARGN} PROPERTIES PREFIX "../lib")
+        SET_TARGET_PROPERTIES(${ARGN} PROPERTIES 
+            RUNTIME_OUTPUT_DIRECTORY_RELEASE
+                "${VISIT_EXECUTABLE_DIR}/${type}"
+            RUNTIME_OUTPUT_DIRECTORY_DEBUG
+                "${VISIT_EXECUTABLE_DIR}/${type}"
+            RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO
+                "${VISIT_EXECUTABLE_DIR}/${type}"
+            RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL
+                "${VISIT_EXECUTABLE_DIR}/${type}"
+        )
     ENDIF(WIN32)
-ENDMACRO(VISIT_PLUGIN_TARGET_PREFIX)
+ENDMACRO(VISIT_PLUGIN_TARGET_RTOD)
 
 MACRO(VISIT_PLUGIN_TARGET_FOLDER type pname) 
     SET_TARGET_PROPERTIES(${ARGN} PROPERTIES FOLDER "plugins/${type}/${pname}")

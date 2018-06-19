@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -77,7 +77,7 @@ public:
 
     void            PushName(std::string s) {name_stack.push_back(s);} 
     std::string     PopName();
-    int             GetNumNames(void) const { return name_stack.size(); };
+    int             GetNumNames(void) const { return static_cast<int>(name_stack.size()); };
 
     void            SetDataObject(avtDataObject_p d) {dataObject = d;}
     avtDataObject_p GetDataObject() {return dataObject;}

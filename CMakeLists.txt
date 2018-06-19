@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -262,6 +262,9 @@
 #    Gunther H. Weber, Wed Oct  5 19:14:27 PDT 2011
 #    Change NERSC_HOST to VISIT_HOSTNAME to make it more general
 #
+#    Dave Pugmire, Tue Jan 10 15:30:02 EST 2012
+#    Added support for R.
+#
 #    Kathleen Biagas, Tue Jan 24 12:22:47 MST 2012
 #    On windows, use VisIt version of FindMPI.cmake to ensure correct search
 #    paths.  Also ensure paths returned from FindMPI are converted to NATIVE
@@ -269,6 +272,9 @@
 #
 #    Eric Brugger, Wed Feb 22 10:14:46 PST 2012
 #    I added support for building without mesa.
+#
+#    Kathleen Biagas, Fri Mar  9 15:30:58 PST 2012
+#    Prevent retesting of PROTOTYPE functions on re-configure.
 #
 #****************************************************************************/
 
@@ -451,6 +457,7 @@ OPTION(VISIT_STATIC   "Build VisIt statically." OFF)
 IF(VISIT_STATIC)
     ADD_DEFINITIONS(-DVISIT_STATIC -DGLEW_STATIC)
 ENDIF(VISIT_STATIC)
+OPTION(VISIT_OSX_USE_RPATH      "Use rpath instead of executable_path while installing" OFF)
 OPTION(VISIT_PYTHON_SCRIPTING      "Build VisIt with Python scripting support." ON)
 OPTION(VISIT_PYTHON_FILTERS        "Build VisIt with Python Engine Filter support." ON)
 
@@ -470,16 +477,25 @@ OPTION(VISIT_DISABLE_SELECT "Disable use of the select() function" OFF)
 OPTION(VISIT_USE_NOSPIN_BCAST "Use VisIt's no-spin Bcast in parallel" ON)
 OPTION(VISIT_INSTALL_THIRD_PARTY "Install VisIt's 3rd party I/O libs and includes to permit plugin development" OFF)
 OPTION(VISIT_NOLINK_MPI_WITH_LIBRARIES "Do not link MPI with VisIt's parallel shared libraries; just with executables" OFF)
-OPTION(VISIT_CREATE_SOCKET_RELAY "Create a separate executable that forwards VisIt's socket connection between engine and component launcher" OFF)
+OPTION(VISIT_CREATE_SOCKET_RELAY_EXECUTABLE "Create a separate executable that forwards VisIt's socket connection between engine and component launcher" OFF)
 OPTION(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH "Install rpath relative to executable location using \$ORIGIN tag" OFF)
 OPTION(VISIT_FORTRAN "Enable compilation of Fortran example progams" OFF)
 OPTION(VISIT_DATA_MANUAL_EXAMPLES "Build Getting Data Into VisIt examples" OFF)
+OPTION(VISIT_MANTA "Use Manta ray tracer for polygonal rendering" OFF)
+IF (VISIT_MANTA)
+  INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindManta.cmake)
+  #FIND_PACKAGE(Manta)
+ENDIF(VISIT_MANTA)
 
 OPTION(IGNORE_THIRD_PARTY_LIB_PROBLEMS "Ignore problems finding requested third party libraries")
 OPTION(VISIT_FORCE_SSH_TUNNELING "Force ssh tunnelling for sockets" OFF)
 OPTION(VISIT_CREATE_APPBUNDLE_PACKAGE "Create DMG file with Mac App bundle with make package" OFF) 
 IF(WIN32)
   OPTION(VISIT_MAKE_NSIS_INSTALLER "Create an installer package using NSIS" OFF)
+  OPTION(VISIT_WINDOWS_APPLICATION "Create Windows-style applications with no console" ON)
+  IF(VISIT_WINDOWS_APPLICATION)
+      SET(VISIT_APPLICATION_STYLE "WIN32")
+  ENDIF(VISIT_WINDOWS_APPLICATION)
 ENDIF(WIN32)
 IF(VISIT_MESA_DIR)
   OPTION(VISIT_USE_MANGLED_MESA "Enable use of mangled Mesa classes in VisIt"
@@ -563,6 +579,7 @@ VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
 VISIT_3RDPARTY_VAR(MILI_DIR      "Path containing the Mili library's include and lib")
 VISIT_3RDPARTY_VAR(NETCDF_DIR    "Path containing the NETCDF library's include and lib")
 VISIT_3RDPARTY_DEP(NETCDF_LIBDEP "NETCDF library dependencies")
+VISIT_3RDPARTY_VAR(R_DIR         "Path containing the R library's include and lib")
 VISIT_3RDPARTY_VAR(SILO_DIR      "Path containing the Silo library's include and lib")
 VISIT_3RDPARTY_DEP(SILO_LIBDEP   "Silo library dependencies")
 VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the ViSUS library's include and lib")
@@ -608,6 +625,8 @@ IF(WIN32)
         CACHE PATH "VisIt plugins install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_ARCHIVES ${CMAKE_INSTALL_PREFIX}/lib 
         CACHE PATH "3rd party I/O archives install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_RESOURCES ${CMAKE_INSTALL_PREFIX}/resources
+        CACHE PATH "VisIt resources install directory" FORCE)
 ELSE(WIN32)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/DetermineVisItArchitecture.cmake)
     DETERMINE_VISIT_ARCHITECTURE(VISIT_INSTALL_PLATFORM)
@@ -625,6 +644,8 @@ ELSE(WIN32)
         CACHE PATH "VisIt plugins install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_ARCHIVES ${VISIT_INSTALLED_VERSION}/archives 
         CACHE PATH "3rd party I/O archives install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_RESOURCES ${VISIT_INSTALLED_VERSION}/resources
+        CACHE PATH "VisIt resources install directory" FORCE)
 
     IF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
         SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
@@ -662,17 +683,99 @@ VISIT_INSTALLED_VERSION_ARCHIVES
 VISIT_INSTALLED_VERSION_INCLUDE
 )
 
-MACRO(VISIT_INSTALL_TARGETS)
+# MACRO(VISIT_INSTALL_TARGETS)
+#     IF(VISIT_STATIC)
+#         # Skip installation of static libraries when we build statically
+#         FOREACH(T ${ARGN})
+#             GET_TARGET_PROPERTY(pType ${T} TYPE)
+#             IF(NOT ${pType} STREQUAL "STATIC_LIBRARY")
+#                 INSTALL(TARGETS ${T}
+#                     RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+#                     BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+#                     LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
+#                     ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
+#                     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+#                                 GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+#                                 WORLD_READ             WORLD_EXECUTE
+#                     CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+#                 )
+#             ENDIF(NOT ${pType} STREQUAL "STATIC_LIBRARY")
+#         ENDFOREACH(T)
+#     ELSE(VISIT_STATIC)
+#         INSTALL(TARGETS ${ARGN}
+#             RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+#             BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+#             LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
+#             ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
+#             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+#                         GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+#                         WORLD_READ             WORLD_EXECUTE
+#             CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+#         )
+#         IF(APPLE)
+#             FOREACH(target ${ARGN})
+#                 GET_TARGET_PROPERTY(type ${target} TYPE)
+#                 IF(${type} STREQUAL "SHARED_LIBRARY")
+#                     # This turns out to be a better way to get the 
+#                     # base filename of the output target.
+#                     GET_TARGET_PROPERTY(filename ${target} LOCATION)
+#                     GET_FILENAME_COMPONENT(filename ${filename} NAME)
+#                     INSTALL(CODE 
+#                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+#                              COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
+#                              OUTPUT_VARIABLE OSXOUT)
+#                          MESSAGE(STATUS \"\${OSXOUT}\")
+#                         ")
+#                 ELSEIF(${type} STREQUAL "MODULE_LIBRARY")
+#                     # This turns out to be a better way to get the 
+#                     # base filename of the output target.
+#                     GET_TARGET_PROPERTY(filename ${target} LOCATION)
+#                     GET_FILENAME_COMPONENT(filename ${filename} NAME)
+#                     INSTALL(CODE 
+#                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+#                              COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
+#                              OUTPUT_VARIABLE OSXOUT)
+#                          MESSAGE(STATUS \"\${OSXOUT}\")
+#                         ")                
+#                 ELSEIF(${type} STREQUAL "EXECUTABLE")
+#                     GET_TARGET_PROPERTY(filename ${target} OUTPUT_NAME)
+#                     IF(filename STREQUAL "filename-NOTFOUND")
+#                         SET(filename ${target})
+#                     ENDIF(filename STREQUAL "filename-NOTFOUND")
+#                     GET_TARGET_PROPERTY(bundle ${target} MACOSX_BUNDLE)
+#                     IF(${bundle} STREQUAL "ON")
+#                         INSTALL(CODE 
+#                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+#                                 COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}\" ${filename}
+#                                 OUTPUT_VARIABLE OSXOUT)
+#                              MESSAGE(STATUS \"\${OSXOUT}\")
+#                             ")
+#                     ELSE(${bundle} STREQUAL "ON")
+#                         INSTALL(CODE 
+#                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+#                                 COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${filename}\"
+#                                 OUTPUT_VARIABLE OSXOUT)
+#                              MESSAGE(STATUS \"\${OSXOUT}\")
+#                             ")
+#                     ENDIF(${bundle} STREQUAL "ON")
+#                 ENDIF(${type} STREQUAL "SHARED_LIBRARY")
+#             ENDFOREACH(target)
+#         ENDIF(APPLE)
+#     ENDIF(VISIT_STATIC)
+# ENDMACRO(VISIT_INSTALL_TARGETS)
+
+
+MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
     IF(VISIT_STATIC)
         # Skip installation of static libraries when we build statically
         FOREACH(T ${ARGN})
             GET_TARGET_PROPERTY(pType ${T} TYPE)
             IF(NOT ${pType} STREQUAL "STATIC_LIBRARY")
                 INSTALL(TARGETS ${T}
-                    RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-                    BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-                    LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
-                    ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
+                    RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}
+                    BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}
+                    LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}
+                    ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}/${dest_dir}
                     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
                                 GROUP_READ GROUP_WRITE GROUP_EXECUTE 
                                 WORLD_READ             WORLD_EXECUTE
@@ -682,10 +785,10 @@ MACRO(VISIT_INSTALL_TARGETS)
         ENDFOREACH(T)
     ELSE(VISIT_STATIC)
         INSTALL(TARGETS ${ARGN}
-            RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-            BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-            LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
-            ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
+            RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}
+            BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}
+            LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}
+            ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}/${dest_dir}
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
                         GROUP_READ GROUP_WRITE GROUP_EXECUTE 
                         WORLD_READ             WORLD_EXECUTE
@@ -695,13 +798,13 @@ MACRO(VISIT_INSTALL_TARGETS)
             FOREACH(target ${ARGN})
                 GET_TARGET_PROPERTY(type ${target} TYPE)
                 IF(${type} STREQUAL "SHARED_LIBRARY")
-                    # This turns out to be a better way to get the 
+                    # This turns out to be a better way to get the
                     # base filename of the output target.
                     GET_TARGET_PROPERTY(filename ${target} LOCATION)
                     GET_FILENAME_COMPONENT(filename ${filename} NAME)
                     INSTALL(CODE 
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
+                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
                              OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")
@@ -712,7 +815,7 @@ MACRO(VISIT_INSTALL_TARGETS)
                     GET_FILENAME_COMPONENT(filename ${filename} NAME)
                     INSTALL(CODE 
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
+                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
                              OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")                
@@ -725,14 +828,14 @@ MACRO(VISIT_INSTALL_TARGETS)
                     IF(${bundle} STREQUAL "ON")
                         INSTALL(CODE 
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}\" ${filename}
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}\" ${filename}
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
                     ELSE(${bundle} STREQUAL "ON")
                         INSTALL(CODE 
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${filename}\"
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}//${dest_dir}${filename}\"
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
@@ -741,23 +844,31 @@ MACRO(VISIT_INSTALL_TARGETS)
             ENDFOREACH(target)
         ENDIF(APPLE)
     ENDIF(VISIT_STATIC)
+ENDMACRO(VISIT_INSTALL_TARGETS_RELATIVE)
+
+MACRO(VISIT_INSTALL_TARGETS)
+    VISIT_INSTALL_TARGETS_RELATIVE("" ${ARGN})
 ENDMACRO(VISIT_INSTALL_TARGETS)
 
 # Install the headers for directories that we need in order to build plugins
-INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin viewer visit_vtk visitpy vtkqt winutil
-    DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit
-    FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
-                     GROUP_READ GROUP_WRITE 
-                     WORLD_READ
-    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                          GROUP_READ GROUP_WRITE GROUP_EXECUTE 
-                          WORLD_READ             WORLD_EXECUTE
-    CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
-    FILES_MATCHING PATTERN "*.h"
-    PATTERN "*.hpp"
-    PATTERN ".svn" EXCLUDE
-    PATTERN "CMakeFiles" EXCLUDE
-)
+IF(VISIT_HEADERS_SKIP_INSTALL)
+    MESSAGE(STATUS "Skipping VisIt headers installation")
+ELSE(VISIT_HEADERS_SKIP_INSTALL)
+    INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin viewer visit_vtk visitpy vtkqt winutil
+        DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+                         GROUP_READ GROUP_WRITE 
+                         WORLD_READ
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                              GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                              WORLD_READ             WORLD_EXECUTE
+        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        FILES_MATCHING PATTERN "*.h"
+        PATTERN "*.hpp"
+        PATTERN ".svn" EXCLUDE
+        PATTERN "CMakeFiles" EXCLUDE
+    )
+ENDIF(VISIT_HEADERS_SKIP_INSTALL)
 
 #-----------------------------------------------------------------------------
 # Detect packages here. We could probably write macros that we can include from
@@ -811,6 +922,11 @@ IF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
 ENDIF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
 
+IF(VISIT_R_DIR)
+    # Configure R support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindR.cmake)
+ENDIF(VISIT_R_DIR)
+
 # Configure VTK support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
 
@@ -861,7 +977,7 @@ SET(GLEW_FOUND 1)
 ADD_DEFINITIONS(-DHAVE_LIBGLEW)
 SET(GLEW_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/glew/glew/include)
 SET(GLEW_LIBRARY_DIR ${VISIT_SOURCE_DIR}/lib)
-SET(GLEW_LIB GLEW)
+SET(GLEW_LIB visitGLEW)
 
 # Set up the tuvok library if it was enabled.
 IF(VISIT_TUVOK)
@@ -1157,13 +1273,13 @@ IF(VISIT_PARALLEL)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
             IF(WIN32)
               INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMPI.cmake)
-               IF(MPI_FOUND)
+              IF(MPI_FOUND)
                 IF(MPI_COMPILE_FLAGS)
                     LIST(APPEND VPFLAGS "${MPI_COMPILE_FLAGS}")
                 ENDIF(MPI_COMPILE_FLAGS)
                 IF(MPI_INCLUDE_PATH)
                     FILE(TO_NATIVE_PATH ${MPI_INCLUDE_PATH} MIP_NATIVE)
-                    LIST(APPEND VPFLAGS "/I \"${MIP_NATIVE}\"")
+                    LIST(APPEND VPFLAGS "/I\"${MIP_NATIVE}\"")
                 ENDIF(MPI_INCLUDE_PATH)
                 STRING(REPLACE ";" " " VPFLAGS "${VPFLAGS}")
                 SET(VISIT_PARALLEL_CFLAGS "${VPFLAGS}" 
@@ -1398,10 +1514,6 @@ IF (WIN32)
   REPLACE_FLAG("/MDd" "/MD" CMAKE_MODULE_LINKER_FLAGS_DEBUG 
                "Flags used by the linker during debug builds")
 
-  # Change /Zi to /ZI for CXX flags
-  REPLACE_FLAG("/Zi" "/ZI" CMAKE_CXX_FLAGS_DEBUG 
-               "Flags used by the compiler during debug builds")
-
   # Remove /machine:I386 from linker flags
   REPLACE_FLAG("/machine:I386" "" CMAKE_EXE_LINKER_FLAGS
                "Flags used by the linker")
@@ -1549,6 +1661,7 @@ IF(NOT WIN32)
 ENDIF(NOT WIN32)
 
 FUNCTION(CHECK_ISFINITE_EXISTS VAR)
+  IF("${VAR}" MATCHES "^${VAR}$")
     MESSAGE(STATUS "Check for isfinite")
     TRY_COMPILE(tmpVar
             ${CMAKE_CURRENT_BINARY_DIR}
@@ -1559,14 +1672,17 @@ FUNCTION(CHECK_ISFINITE_EXISTS VAR)
         SET(${VAR} 1 CACHE INTERNAL "isfinite found")
         MESSAGE(STATUS "Check for isfinite - found")
     ELSE(tmpVar)
+        SET(${VAR} 0 CACHE INTERNAL "isfinite found")
         MESSAGE(STATUS "Check for isfinite - not found")
         IF (NOT WIN32)
             MESSAGE(STATUS "Check for isfinite - ${outvar}")
         ENDIF (NOT WIN32)
     ENDIF(tmpVar)
+  ENDIF("${VAR}" MATCHES "^${VAR}$")
 ENDFUNCTION(CHECK_ISFINITE_EXISTS)
 
 FUNCTION(CHECK_STRTOF_PROTOTYPE VAR)
+  IF("${VAR}" MATCHES "^${VAR}$")
     MESSAGE(STATUS "Check for strtof prototype")
     TRY_COMPILE(tmpVar
             ${CMAKE_CURRENT_BINARY_DIR}
@@ -1576,11 +1692,14 @@ FUNCTION(CHECK_STRTOF_PROTOTYPE VAR)
         SET(${VAR} 1 CACHE INTERNAL "strtof prototype")
         MESSAGE(STATUS "Check for strtof prototype - found")
     ELSE(tmpVar)
+        SET(${VAR} 0 CACHE INTERNAL "strtof prototype")
         MESSAGE(STATUS "Check for strtof prototype - not found")
     ENDIF(tmpVar)
+  ENDIF("${VAR}" MATCHES "^${VAR}$")
 ENDFUNCTION(CHECK_STRTOF_PROTOTYPE)
 
 FUNCTION(CHECK_FTIME_PROTOTYPE VAR)
+  IF("${VAR}" MATCHES "^${VAR}$")
     MESSAGE(STATUS "Check for ftime prototype")
     TRY_COMPILE(tmpVar
             ${CMAKE_CURRENT_BINARY_DIR}
@@ -1590,8 +1709,10 @@ FUNCTION(CHECK_FTIME_PROTOTYPE VAR)
         SET(${VAR} 1 CACHE INTERNAL "ftime prototype")
         MESSAGE(STATUS "Check for ftime prototype - found")
     ELSE(tmpVar)
+        SET(${VAR} 0 CACHE INTERNAL "ftime prototype")
         MESSAGE(STATUS "Check for ftime prototype - not found")
     ENDIF(tmpVar)
+  ENDIF("${VAR}" MATCHES "^${VAR}$")
 ENDFUNCTION(CHECK_FTIME_PROTOTYPE)
 
 # Check for some functions
@@ -1652,7 +1773,9 @@ CONFIGURE_FILE(${VISIT_SOURCE_DIR}/common/misc/ConfigureInfo.C.in
 # The normal plugin case. We redefine these when we build against an installed
 # version of VisIt
 SET(VISIT_INCLUDE_DIR ${VISIT_SOURCE_DIR}  CACHE INTERNAL "Path to VisIt's includes")
-SET(VISIT_LIBRARY_DIR ${VISIT_SOURCE_DIR}/lib CACHE INTENAL "Path to VisIt's libraries")
+# VISIT_LIBRARY_DIR set previsouly, why change it now? And especially to point 
+# to source  changing the name to _DIR2 to see if it munges anything.
+SET(VISIT_LIBRARY_DIR2 ${VISIT_SOURCE_DIR}/lib CACHE INTERNAL "Path to VisIt's libraries")
 IF(NOT WIN32)
     SET(VISIT_PLUGIN_DIR  ${VISIT_BINARY_DIR}/plugins CACHE INTERNAL "Path to VisIt's plugins")
 ELSE(NOT WIN32)
@@ -1849,7 +1972,7 @@ ADD_SUBDIRECTORY(bin)
 ADD_SUBDIRECTORY(lib)
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(help)
-ADD_SUBDIRECTORY(svn_bin)
+ADD_SUBDIRECTORY(resources)
 
 #-----------------------------------------------------------------------------
 # Add the "data" directory if it exists

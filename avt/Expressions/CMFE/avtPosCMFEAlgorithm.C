@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,7 +55,6 @@
 #include <vtkCharArray.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
-#include <vtkFloatArray.h>
 #include <vtkGenericCell.h>
 #include <vtkPointData.h>
 #include <vtkRectilinearGrid.h>
@@ -99,6 +98,10 @@ using std::vector;
 //    Hank Childs, Thu Jan 12 11:24:23 PST 2006
 //    Modify index of default variable.
 //
+//    Hank Childs, Wed Mar 14 08:47:56 PDT 2012
+//    Add a serial only mode.  (This is needed when we do on-demand processing
+//    of pieces when parallelizing over seeds in the PICS filter.)
+//
 // ****************************************************************************
 
 avtDataTree_p
@@ -106,10 +109,9 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
                                  avtDataTree_p mesh_to_be_sampled,
                                  const std::string &invar,
                                  const std::string &default_var,
-                                 const std::string &outvar)
+                                 const std::string &outvar,
+                                 bool serialOnly)
 {
-    int   i, j;
-
     //
     // Get all of the mesh to sample and get information about the variable
     // we are sampling.
@@ -137,13 +139,19 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
                          ->GetNumberOfComponents();
         }
     }
-    centering = UnifyMaximumValue(centering);
+    if (!serialOnly)
+        centering = UnifyMaximumValue(centering);
     if (centering == 0)
     {
+        if (serialOnly && sample_list.datasets.size() == 0)
+        {
+            return new avtDataTree();
+        }
         EXCEPTION2(ExpressionException, outvar, "Could not do database comparison, "
                        "because the secondary database had no data.");
     }
-    nComp = UnifyMaximumValue(nComp);
+    if (!serialOnly)
+        nComp = UnifyMaximumValue(nComp);
     if (nComp == 0)
     {
         EXCEPTION2(ExpressionException, outvar, "Could not do database comparison, "
@@ -156,7 +164,7 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     // mesh to be sampled quickly.
     //
     FastLookupGrouping flg(invar, isNodal);
-    for (i = 0 ; i < sample_list.datasets.size() ; i++)
+    for (size_t i = 0 ; i < sample_list.datasets.size() ; i++)
         flg.AddMesh(sample_list.datasets[i]);
 
     //
@@ -170,33 +178,36 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     // Set up the data structure that keeps track of the sample points we need.
     //
     DesiredPoints dp(isNodal, nComp);
-    for (i = 0 ; i < output_list.datasets.size() ; i++)
+    for (size_t i = 0 ; i < output_list.datasets.size() ; i++)
         dp.AddDataset(output_list.datasets[i]);
 
 #ifdef PARALLEL
-    //
-    // There is no guarantee that the "dp" and "flg" overlap spatially.  It's
-    // likely that the parts of the "flg" mesh that the points in "dp" are
-    // interested in are located on different processors.  So we do a large
-    // communication phase to get all of the points on the right processors.
-    //
-    int t3 = visitTimer->StartTimer();
     SpatialPartition spat_part;
     double bounds[6];
     std::vector<avtDataTree_p> tree_list;
-    tree_list.push_back(output_mesh);
-    tree_list.push_back(mesh_to_be_sampled);
-    avtDatasetExaminer::GetSpatialExtents(tree_list, bounds);
-    UnifyMinMax(bounds, 6);
-
-    // Need to "finalize" in pre-partitioned form so that the spatial
-    // partitioner can access their data.
-    dp.Finalize();
-
-    spat_part.CreatePartition(dp, flg, bounds);
-    dp.RelocatePointsUsingPartition(spat_part);
-    flg.RelocateDataUsingPartition(spat_part);
-    visitTimer->StopTimer(t3, "Spatial re-distribution");
+    if (! serialOnly)
+    {
+        //
+        // There is no guarantee that the "dp" and "flg" overlap spatially.  It's
+        // likely that the parts of the "flg" mesh that the points in "dp" are
+        // interested in are located on different processors.  So we do a large
+        // communication phase to get all of the points on the right processors.
+        //
+        int t3 = visitTimer->StartTimer();
+        tree_list.push_back(output_mesh);
+        tree_list.push_back(mesh_to_be_sampled);
+        avtDatasetExaminer::GetSpatialExtents(tree_list, bounds);
+        UnifyMinMax(bounds, 6);
+    
+        // Need to "finalize" in pre-partitioned form so that the spatial
+        // partitioner can access their data.
+        dp.Finalize();
+    
+        spat_part.CreatePartition(dp, flg, bounds);
+        dp.RelocatePointsUsingPartition(spat_part);
+        flg.RelocateDataUsingPartition(spat_part);
+        visitTimer->StopTimer(t3, "Spatial re-distribution");
+    }
 #endif
     flg.Finalize();
     dp.Finalize();
@@ -207,10 +218,10 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     //
     int t1 = visitTimer->StartTimer();
     int npts = dp.GetNumberOfPoints();
-    float *comps = new float[nComp];
-    for (i = 0 ; i < npts ; i++)
+    double *comps = new double[nComp];
+    for (int i = 0 ; i < npts ; i++)
     {
-        float pt[3];
+        double pt[3];
         dp.GetPoint(i, pt);
         bool gotValue = flg.GetValue(pt, comps);
         if (!gotValue)
@@ -227,9 +238,12 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     // get the correct values back to this processor so that we can set
     // up the output variable array.
     //
-    int t4 = visitTimer->StartTimer();
-    dp.UnRelocatePoints(spat_part);
-    visitTimer->StopTimer(t4, "Collecting sample points back");
+    if (!serialOnly)
+    {
+        int t4 = visitTimer->StartTimer();
+        dp.UnRelocatePoints(spat_part);
+        visitTimer->StopTimer(t4, "Collecting sample points back");
+    }
 #endif
 
     //
@@ -238,7 +252,7 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     //
     int t2 = visitTimer->StartTimer();
     avtDataTree_p *leaves = new avtDataTree_p[output_list.datasets.size()];
-    for (i = 0 ; i < output_list.datasets.size() ; i++)
+    for (size_t i = 0 ; i < output_list.datasets.size() ; i++)
     {
         vtkDataSet *in_ds1 = output_list.datasets[i];
         vtkDataArray *defaultVar = NULL;
@@ -267,15 +281,15 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
         }
         vtkDataSet *new_obj = (vtkDataSet *) in_ds1->NewInstance();
         new_obj->ShallowCopy(in_ds1);
-        vtkFloatArray *addarr = vtkFloatArray::New();
+        vtkDataArray *addarr = defaultVar->NewInstance();
         addarr->SetName(outvar.c_str());
         addarr->SetNumberOfComponents(nComp);
         int nvals = (isNodal ? in_ds1->GetNumberOfPoints() 
                              : in_ds1->GetNumberOfCells());
         addarr->SetNumberOfTuples(nvals);
-        for (j = 0 ; j < nvals ; j++)
+        for (int j = 0 ; j < nvals ; j++)
         {
-            const float *val = dp.GetValue(i, j);
+            const double *val = dp.GetValue(i, j);
             if (*val != +FLT_MAX)
                 addarr->SetTuple(j, dp.GetValue(i, j));
             else
@@ -324,12 +338,13 @@ avtPosCMFEAlgorithm::DesiredPoints::DesiredPoints(bool isN, int nc)
 {
     isNodal   = isN;
     nComps    = nc;
-    map_to_ds = NULL;
-    ds_start  = NULL;
-    vals      = NULL;
     total_nvals  = 0;
     num_datasets = 0;
     num_rgrids   = 0;
+    rgrid_start  = 0;
+    map_to_ds = NULL;
+    ds_start  = NULL;
+    vals      = NULL;
 }
 
 
@@ -348,14 +363,12 @@ avtPosCMFEAlgorithm::DesiredPoints::DesiredPoints(bool isN, int nc)
 
 avtPosCMFEAlgorithm::DesiredPoints::~DesiredPoints()
 {
-    int   i;
-
     delete [] map_to_ds;
     delete [] ds_start;
     delete [] vals;
-    for (i = 0 ; i < pt_list.size() ; i++)
+    for (size_t i = 0 ; i < pt_list.size() ; i++)
         delete [] pt_list[i];
-    for (i = 0 ; i < rgrid_pts.size() ; i++)
+    for (size_t i = 0 ; i < rgrid_pts.size() ; i++)
         delete [] rgrid_pts[i];
 }
 
@@ -405,7 +418,7 @@ avtPosCMFEAlgorithm::DesiredPoints::AddDataset(vtkDataSet *ds)
         // Set up the X-coordinates.
         //
         vtkDataArray *x    = rgrid->GetXCoordinates();
-        float        *newX = new float[dims[0]];
+        double       *newX = new double[dims[0]];
         for (i = 0 ; i < dims[0] ; i++)
         {
             if (isNodal)
@@ -422,7 +435,7 @@ avtPosCMFEAlgorithm::DesiredPoints::AddDataset(vtkDataSet *ds)
         // Set up the Y-coordinates.
         //
         vtkDataArray *y    = rgrid->GetYCoordinates();
-        float        *newY = new float[dims[1]];
+        double       *newY = new double[dims[1]];
         for (i = 0 ; i < dims[1] ; i++)
         {
             if (isNodal)
@@ -439,7 +452,7 @@ avtPosCMFEAlgorithm::DesiredPoints::AddDataset(vtkDataSet *ds)
         // Set up the Z-coordinates.
         //
         vtkDataArray *z    = rgrid->GetZCoordinates();
-        float        *newZ = new float[dims[2]];
+        double       *newZ = new double[dims[2]];
         for (i = 0 ; i < dims[2] ; i++)
         {
             if (isNodal)
@@ -454,24 +467,19 @@ avtPosCMFEAlgorithm::DesiredPoints::AddDataset(vtkDataSet *ds)
     }
     else
     {
-        float *plist = new float[3*nvals];
+        double *plist = new double[3*nvals];
         pt_list.push_back(plist);
         pt_list_size.push_back(nvals);
-   
-        double dcp[3]; 
-        for (i = 0 ; i < nvals ; i++)
+        double *cur_pt = plist;
+        for (i = 0 ; i < nvals ; i++, cur_pt += 3)
         {
-            float *cur_pt = plist + 3*i;
             if (isNodal)
-                ds->GetPoint(i, dcp);
+                ds->GetPoint(i, cur_pt);
             else
             {
                 vtkCell *cell = ds->GetCell(i);
-                vtkVisItUtility::GetCellCenter(cell, dcp);
+                vtkVisItUtility::GetCellCenter(cell, cur_pt);
             }
-            cur_pt[0] = (float)dcp[0];
-            cur_pt[1] = (float)dcp[1];
-            cur_pt[2] = (float)dcp[2];
         }
     }
 }
@@ -492,6 +500,9 @@ avtPosCMFEAlgorithm::DesiredPoints::AddDataset(vtkDataSet *ds)
 //
 //    Hank Childs, Sat Mar 18 09:42:29 PST 2006
 //    Add support for rectilinear grids.
+//
+//    Hank Childs/David Camp, Tue Mar 13 06:55:36 PDT 2012
+//    Fix crash when there are no data sets.
 //
 // ****************************************************************************
 
@@ -530,7 +541,8 @@ avtPosCMFEAlgorithm::DesiredPoints::Finalize(void)
                                * rgrid_pts_size[3*i+2];
 
     ds_start = new int[num_datasets];
-    ds_start[0] = 0;
+    if (num_datasets > 0)
+        ds_start[0] = 0;
     for (i = 1 ; i < num_datasets ; i++)
         ds_start[i] = ds_start[i-1] + ds_size[i-1];
     delete [] ds_size;
@@ -554,7 +566,7 @@ avtPosCMFEAlgorithm::DesiredPoints::Finalize(void)
         }
     }
 
-    vals = new float[total_nvals*nComps];
+    vals = new double[total_nvals*nComps];
 }
 
 
@@ -570,8 +582,8 @@ avtPosCMFEAlgorithm::DesiredPoints::Finalize(void)
 // ****************************************************************************
 
 void
-avtPosCMFEAlgorithm::DesiredPoints::GetRGrid(int idx, const float *&x,
-                   const float *&y, const float *&z, int &nx, int &ny, int &nz)
+avtPosCMFEAlgorithm::DesiredPoints::GetRGrid(int idx, const double *&x,
+                   const double *&y, const double *&z, int &nx, int &ny, int &nz)
 {
     if (idx < 0 || idx >= num_rgrids)
     {
@@ -603,7 +615,7 @@ avtPosCMFEAlgorithm::DesiredPoints::GetRGrid(int idx, const float *&x,
 // ****************************************************************************
 
 void
-avtPosCMFEAlgorithm::DesiredPoints::GetPoint(int p, float *pt) const
+avtPosCMFEAlgorithm::DesiredPoints::GetPoint(int p, double *pt) const
 {
     if (p < 0 || p >= total_nvals)
     {
@@ -614,7 +626,7 @@ avtPosCMFEAlgorithm::DesiredPoints::GetPoint(int p, float *pt) const
     int rel_index = p-start;
     if (p < rgrid_start)
     {
-        float *ptr = pt_list[ds] + 3*rel_index;
+        double *ptr = pt_list[ds] + 3*rel_index;
         pt[0] = ptr[0];
         pt[1] = ptr[1];
         pt[2] = ptr[2];
@@ -646,10 +658,11 @@ avtPosCMFEAlgorithm::DesiredPoints::GetPoint(int p, float *pt) const
 // ****************************************************************************
 
 void 
-avtPosCMFEAlgorithm::DesiredPoints::SetValue(int p, float *v)
+avtPosCMFEAlgorithm::DesiredPoints::SetValue(int p, const double *v)
 {
+    double *dest = vals + p * nComps;
     for (int i = 0 ; i < nComps ; i++)
-        vals[p*nComps + i] = v[i];
+        dest[i] = v[i];
 }
 
 
@@ -665,7 +678,7 @@ avtPosCMFEAlgorithm::DesiredPoints::SetValue(int p, float *v)
 //
 // ****************************************************************************
 
-const float *
+const double *
 avtPosCMFEAlgorithm::DesiredPoints::GetValue(int ds_idx, int pt_idx) const
 {
     if (ds_idx < 0 || ds_idx >= num_datasets)
@@ -693,16 +706,16 @@ avtPosCMFEAlgorithm::DesiredPoints::GetValue(int ds_idx, int pt_idx) const
 
 void
 avtPosCMFEAlgorithm::DesiredPoints::GetProcessorsForGrid(int grid,
-                    std::vector<int> &procId, std::vector<float> &procBoundary,
+                    std::vector<int> &procId, std::vector<double> &procBoundary,
                     SpatialPartition &spat_part)
 {
-    float *xp = rgrid_pts[3*grid];
-    float *yp = rgrid_pts[3*grid+1];
-    float *zp = rgrid_pts[3*grid+2];
+    double *xp = rgrid_pts[3*grid];
+    double *yp = rgrid_pts[3*grid+1];
+    double *zp = rgrid_pts[3*grid+2];
     int nX = rgrid_pts_size[3*grid];
     int nY = rgrid_pts_size[3*grid+1];
     int nZ = rgrid_pts_size[3*grid+2];
-    float bounds[6];
+    double bounds[6];
     bounds[0] = xp[0];
     bounds[1] = xp[nX-1];
     bounds[2] = yp[0];
@@ -752,11 +765,11 @@ avtPosCMFEAlgorithm::DesiredPoints::GetProcessorsForGrid(int grid,
 
 bool
 avtPosCMFEAlgorithm::DesiredPoints::GetSubgridForBoundary(int grid,
-                                                 float *bounds, int *extents)
+    const double *bounds, int *extents)
 {
-    float *xp = rgrid_pts[3*grid];
-    float *yp = rgrid_pts[3*grid+1];
-    float *zp = rgrid_pts[3*grid+2];
+    double *xp = rgrid_pts[3*grid];
+    double *yp = rgrid_pts[3*grid+1];
+    double *zp = rgrid_pts[3*grid+2];
     int nX = rgrid_pts_size[3*grid];
     int nY = rgrid_pts_size[3*grid+1];
     int nZ = rgrid_pts_size[3*grid+2];
@@ -835,14 +848,11 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
     for (i = 0 ; i < pt_list_size.size() ; i++)
     {
         const int npts = pt_list_size[i];
-        float    *pts  = pt_list[i];
+        double   *pts  = pt_list[i];
         for (j = 0 ; j < npts ; j++)
         {
-            float pt[3];
-            pt[0] = *pts++;
-            pt[1] = *pts++;
-            pt[2] = *pts++;
-            int proc = spat_part.GetProcessor(pt);
+            int proc = spat_part.GetProcessor(pts);
+            pts += 3;
             pt_cts[proc]++;
         }
     }
@@ -850,13 +860,13 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
     vector<int> total_size(nProcs, 0);
     for (i = 0 ; i < num_rgrids ; i++) 
     {
-        vector<int> procId;
-        vector<float> procBoundary;
+        vector<int>    procId;
+        vector<double> procBoundary;
         GetProcessorsForGrid(i, procId, procBoundary, spat_part);
         for (j = 0 ; j < procId.size() ; j++)
         {
             int extents[6];
-            float bounds[6];
+            double bounds[6];
             for (k = 0 ; k < 6 ; k++)
                 bounds[k] = procBoundary[6*j+k];
             bool overlaps = GetSubgridForBoundary(i, bounds, extents);
@@ -883,10 +893,10 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
     for (j = 0 ; j < nProcs ; j++)
     {
         sendcount[j] = sizeof(int); // npts for non-rgrids;
-        sendcount[j] += 3*sizeof(float)*pt_cts[j];
+        sendcount[j] += 3*sizeof(double)*pt_cts[j];
         sendcount[j] += sizeof(int); // num rgrids;
         sendcount[j] += 3*grids[j]*sizeof(int); // dims for each rgrid
-        sendcount[j] += total_size[j]*sizeof(float); // coords for all rgrids
+        sendcount[j] += total_size[j]*sizeof(double); // coords for all rgrids
         total_msg_size += sendcount[j];
     }
 
@@ -918,16 +928,14 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
     for (i = 0 ; i < pt_list_size.size() ; i++)
     {
         const int npts = pt_list_size[i];
-        float    *pts  = pt_list[i];
+        double   *pts  = pt_list[i];
         for (j = 0 ; j < npts ; j++)
         {
-            float pt[3];
-            pt[0] = *pts++;
-            pt[1] = *pts++;
-            pt[2] = *pts++;
+            double *pt = pts;
+            pts += 3;
             int proc = spat_part.GetProcessor(pt);
-            memcpy(sub_ptr[proc], (void *) pt, 3*sizeof(float));
-            sub_ptr[proc] += 3*sizeof(float);
+            memcpy(sub_ptr[proc], (void *) pt, 3*sizeof(double));
+            sub_ptr[proc] += 3*sizeof(double);
         }
     }
 
@@ -947,13 +955,13 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
     //
     for (i = 0 ; i < num_rgrids ; i++) 
     {
-        vector<int> procId;
-        vector<float> procBoundary;
+        vector<int>    procId;
+        vector<double> procBoundary;
         GetProcessorsForGrid(i, procId, procBoundary, spat_part);
         for (j = 0 ; j < procId.size() ; j++)
         {
             int extents[6];
-            float bounds[6];
+            double bounds[6];
             for (k = 0 ; k < 6 ; k++)
                 bounds[k] = procBoundary[6*j+k];
             bool overlaps = GetSubgridForBoundary(i, bounds, extents);
@@ -970,12 +978,12 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
             memcpy(sub_ptr[proc], (void *) &nZ, sizeof(int));
             sub_ptr[proc] += sizeof(int);
 
-            memcpy(sub_ptr[proc],rgrid_pts[3*i] + extents[0],sizeof(float)*nX);
-            sub_ptr[proc] += sizeof(float)*nX;
-            memcpy(sub_ptr[proc],rgrid_pts[3*i+1]+extents[2],sizeof(float)*nY);
-            sub_ptr[proc] += sizeof(float)*nY;
-            memcpy(sub_ptr[proc],rgrid_pts[3*i+2]+extents[4],sizeof(float)*nZ);
-            sub_ptr[proc] += sizeof(float)*nZ;
+            memcpy(sub_ptr[proc],rgrid_pts[3*i] + extents[0],sizeof(double)*nX);
+            sub_ptr[proc] += sizeof(double)*nX;
+            memcpy(sub_ptr[proc],rgrid_pts[3*i+1]+extents[2],sizeof(double)*nY);
+            sub_ptr[proc] += sizeof(double)*nY;
+            memcpy(sub_ptr[proc],rgrid_pts[3*i+2]+extents[4],sizeof(double)*nZ);
+            sub_ptr[proc] += sizeof(double)*nZ;
         }
     }
 
@@ -1015,7 +1023,7 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
     //
     int numPts = 0;
     pt_list_came_from.clear();
-    vector<float *> new_pt_list;
+    vector<double *> new_pt_list;
     vector<int> new_pt_list_size;
     for (j = 0 ; j < nProcs ; j++)
     {
@@ -1024,18 +1032,18 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
         sub_ptr[j] += sizeof(int);
         if (numFromProcJ == 0)
             continue;
-        float *newPts = new float[3*numFromProcJ];
-        memcpy(newPts, sub_ptr[j], numFromProcJ * 3 * sizeof(float));
+        double *newPts = new double[3*numFromProcJ];
+        memcpy(newPts, sub_ptr[j], numFromProcJ * 3 * sizeof(double));
         new_pt_list.push_back(newPts);
         new_pt_list_size.push_back(numFromProcJ);
         pt_list_came_from.push_back(j);
-        sub_ptr[j] += numFromProcJ * 3 * sizeof(float);
+        sub_ptr[j] += numFromProcJ * 3 * sizeof(double);
     }
 
     //
     // Translate the buffers that correspond to rgrids.
     //
-    vector<float *> new_rgrid_pts;
+    vector<double *> new_rgrid_pts;
     vector<int>     new_rgrid_pts_size;
     rgrid_came_from.clear();
     for (j = 0 ; j < nProcs ; j++)
@@ -1053,15 +1061,15 @@ avtPosCMFEAlgorithm::DesiredPoints::RelocatePointsUsingPartition(
             memcpy((void *) &nZ, sub_ptr[j], sizeof(int));
             sub_ptr[j] += sizeof(int);
 
-            float *x = new float[nX];
-            memcpy(x, sub_ptr[j], sizeof(float)*nX);
-            sub_ptr[j] += sizeof(float)*nX;
-            float *y = new float[nY];
-            memcpy(y, sub_ptr[j], sizeof(float)*nY);
-            sub_ptr[j] += sizeof(float)*nY;
-            float *z = new float[nZ];
-            memcpy(z, sub_ptr[j], sizeof(float)*nZ);
-            sub_ptr[j] += sizeof(float)*nZ;
+            double *x = new double[nX];
+            memcpy(x, sub_ptr[j], sizeof(double)*nX);
+            sub_ptr[j] += sizeof(double)*nX;
+            double *y = new double[nY];
+            memcpy(y, sub_ptr[j], sizeof(double)*nY);
+            sub_ptr[j] += sizeof(double)*nY;
+            double *z = new double[nZ];
+            memcpy(z, sub_ptr[j], sizeof(double)*nZ);
+            sub_ptr[j] += sizeof(double)*nZ;
 
             new_rgrid_pts.push_back(x);
             new_rgrid_pts.push_back(y);
@@ -1150,12 +1158,12 @@ avtPosCMFEAlgorithm::DesiredPoints::UnRelocatePoints(
     for (i = 0 ; i < nProcs ; i++)
         sendcount[i] = 0;
     for (i = 0 ; i < pt_list_came_from.size() ; i++)
-        sendcount[pt_list_came_from[i]]+=pt_list_size[i]*sizeof(float)*nComps;
+        sendcount[pt_list_came_from[i]]+=pt_list_size[i]*sizeof(double)*nComps;
     for (i = 0 ; i < rgrid_came_from.size() ; i++)
     {
         int npts = rgrid_pts_size[3*i] * rgrid_pts_size[3*i+1]
                  * rgrid_pts_size[3*i+2];
-        sendcount[rgrid_came_from[i]] += npts*sizeof(float)*nComps;
+        sendcount[rgrid_came_from[i]] += npts*sizeof(double)*nComps;
     }
 
     int  totalSend = 0;
@@ -1171,13 +1179,13 @@ avtPosCMFEAlgorithm::DesiredPoints::UnRelocatePoints(
     for (i = 1 ; i < nProcs ; i++)
         sub_ptr[i] = sub_ptr[i-1] + sendcount[i-1];
 
-    float *vals_tmp = vals;
+    double *vals_tmp = vals;
     for (i = 0 ; i < pt_list_came_from.size() ; i++)
     {
         int msgGoingTo = pt_list_came_from[i];
         memcpy(sub_ptr[msgGoingTo], vals_tmp, 
-               pt_list_size[i]*sizeof(float)*nComps);
-        sub_ptr[msgGoingTo] += pt_list_size[i]*sizeof(float)*nComps;
+               pt_list_size[i]*sizeof(double)*nComps);
+        sub_ptr[msgGoingTo] += pt_list_size[i]*sizeof(double)*nComps;
         vals_tmp += pt_list_size[i]*nComps;
     }
     for (i = 0 ; i < rgrid_came_from.size() ; i++)
@@ -1185,8 +1193,8 @@ avtPosCMFEAlgorithm::DesiredPoints::UnRelocatePoints(
         int msgGoingTo = rgrid_came_from[i];
         int npts = rgrid_pts_size[3*i] * rgrid_pts_size[3*i+1]
                  * rgrid_pts_size[3*i+2];
-        memcpy(sub_ptr[msgGoingTo], vals_tmp, npts*sizeof(float)*nComps);
-        sub_ptr[msgGoingTo] += npts*sizeof(float)*nComps;
+        memcpy(sub_ptr[msgGoingTo], vals_tmp, npts*sizeof(double)*nComps);
+        sub_ptr[msgGoingTo] += npts*sizeof(double)*nComps;
         vals_tmp += npts*nComps;
     }
 
@@ -1235,18 +1243,16 @@ avtPosCMFEAlgorithm::DesiredPoints::UnRelocatePoints(
     for (i = 0 ; i < pt_list_size.size() ; i++)
     {
         const int npts = pt_list_size[i];
-        float    *pts  = pt_list[i];
+        double   *pts  = pt_list[i];
         for (j = 0 ; j < npts ; j++)
         {
-            float pt[3];
-            pt[0] = *pts++;
-            pt[1] = *pts++;
-            pt[2] = *pts++;
+            double *pt = pts;
+            pts += 3;
             int proc = spat_part.GetProcessor(pt);
-            float *p = (float *) recvmessages[proc];
+            double *p = (double *) recvmessages[proc];
             for (k = 0 ; k < nComps ; k++)
                 vals[idx++] = *p++;
-            recvmessages[proc] += sizeof(float)*nComps;
+            recvmessages[proc] += sizeof(double)*nComps;
         }
     }
     for (i = 0 ; i < num_rgrids ; i++) 
@@ -1256,12 +1262,12 @@ avtPosCMFEAlgorithm::DesiredPoints::UnRelocatePoints(
         int realNZ = rgrid_pts_size[3*i+2];
         int npts = realNX * realNY * realNZ;
         vector<int> procId;
-        vector<float> procBoundary;
+        vector<double> procBoundary;
         GetProcessorsForGrid(i, procId, procBoundary, spat_part);
         for (j = 0 ; j < procId.size() ; j++)
         {
             int extents[6];
-            float bounds[6];
+            double bounds[6];
             for (k = 0 ; k < 6 ; k++)
                 bounds[k] = procBoundary[6*j+k];
             // Find out how much of the rectilinear grid overlapped with
@@ -1271,15 +1277,21 @@ avtPosCMFEAlgorithm::DesiredPoints::UnRelocatePoints(
             if (!overlaps)
                 continue;
             for (int z = extents[4] ; z <= extents[5] ; z++)
+            {
+                int zoffset = z*realNX*realNY;
                 for (int y = extents[2] ; y <= extents[3] ; y++)
+                {
+                    int yzoffset = zoffset + y*realNX;
                     for (int x = extents[0] ; x <= extents[1] ; x++)
                     {
-                        int valIDX = z*realNX*realNY + y*realNX + x;
-                        float *p = (float *) recvmessages[procId[j]];
+                        int valIDX = yzoffset + x;
+                        double *p = (double *) recvmessages[procId[j]];
                         for (k = 0 ; k < nComps ; k++)
                             vals[idx + nComps*valIDX + k] = *p++;
-                        recvmessages[procId[j]] += sizeof(float)*nComps;
+                        recvmessages[procId[j]] += sizeof(double)*nComps;
                     }
+                }
+            }
         }
         idx += npts*nComps;
     }
@@ -1307,6 +1319,7 @@ avtPosCMFEAlgorithm::FastLookupGrouping::FastLookupGrouping(std::string v,
 {
     varname   = v;
     isNodal   = isN;
+    nZones    = 0;
     itree     = NULL;
     map_to_ds = NULL;
     ds_start  = NULL;
@@ -1365,7 +1378,7 @@ avtPosCMFEAlgorithm::FastLookupGrouping::AddMesh(vtkDataSet *mesh)
 void
 avtPosCMFEAlgorithm::FastLookupGrouping::ClearAllInputMeshes(void)
 {
-    for (int i = 0 ; i < meshes.size() ; i++)
+    for (size_t i = 0 ; i < meshes.size() ; i++)
     {
         meshes[i]->Delete();
     }
@@ -1392,18 +1405,17 @@ avtPosCMFEAlgorithm::FastLookupGrouping::ClearAllInputMeshes(void)
 void
 avtPosCMFEAlgorithm::FastLookupGrouping::Finalize(void)
 {
-    int   i, j;
     int   index = 0;
 
     int   t0 = visitTimer->StartTimer();
 
     nZones = 0;
-    for (i = 0 ; i < meshes.size() ; i++)
+    for (size_t i = 0 ; i < meshes.size() ; i++)
         nZones += meshes[i]->GetNumberOfCells();
 
     ds_start = new int[meshes.size()];
     ds_start[0] = 0;
-    for (i = 1 ; i < meshes.size() ; i++)
+    for (size_t i = 1 ; i < meshes.size() ; i++)
         ds_start[i] = ds_start[i-1] + meshes[i-1]->GetNumberOfCells();
 
     bool degenerate = false;
@@ -1415,10 +1427,10 @@ avtPosCMFEAlgorithm::FastLookupGrouping::Finalize(void)
     itree = new avtIntervalTree(nZones, 3);
     map_to_ds = new int[nZones];
     index = 0;
-    for (i = 0 ; i < meshes.size() ; i++)
+    for (size_t i = 0 ; i < meshes.size() ; i++)
     {
         int nCells = meshes[i]->GetNumberOfCells();
-        for (j = 0 ; j < nCells ; j++)
+        for (int j = 0 ; j < nCells ; j++)
         {
             vtkCell *cell = meshes[i]->GetCell(j);
             double bounds[6];
@@ -1463,7 +1475,7 @@ avtPosCMFEAlgorithm::FastLookupGrouping::Finalize(void)
 // ****************************************************************************
 
 bool
-avtPosCMFEAlgorithm::FastLookupGrouping::GetValue(const float *pt, float *val)
+avtPosCMFEAlgorithm::FastLookupGrouping::GetValue(const double *pt, double *val)
 {
     //
     // Start off by using the list from the previous search.  Searching the
@@ -1516,7 +1528,7 @@ avtPosCMFEAlgorithm::FastLookupGrouping::GetValue(const float *pt, float *val)
 
 bool
 avtPosCMFEAlgorithm::FastLookupGrouping::GetValueUsingList(vector<int> &list,
-                                                   const float *pt, float *val)
+    const double *pt, double *val)
 {
     double closestPt[3];
     int subId;
@@ -1528,7 +1540,7 @@ avtPosCMFEAlgorithm::FastLookupGrouping::GetValueUsingList(vector<int> &list,
     non_const_pt[1] = pt[1];
     non_const_pt[2] = pt[2];
 
-    for (int j = 0 ; j < list.size() ; j++)
+    for (size_t j = 0 ; j < list.size() ; j++)
     {
         int mesh = map_to_ds[list[j]];
         int index = list[j] - ds_start[mesh];
@@ -1867,23 +1879,23 @@ const int npivots = 5;
 class Boundary
 {
    public:
-                      Boundary(const float *, int, Axis);
+                      Boundary(const double *, int, Axis);
      virtual         ~Boundary() {;};
 
-     float           *GetBoundary() { return bounds; };
+     const double    *GetBoundary() { return bounds; };
      bool             AttemptSplit(Boundary *&, Boundary *&);
      bool             IsDone(void) { return isDone; };
      bool             IsLeaf(void) { return (numProcs == 1); };
-     void             AddCell(const float *);
-     void             AddPoint(const float *);
-     void             AddRGrid(const float *, const float *, const float *,
+     void             AddCell(const double *);
+     void             AddPoint(const double *);
+     void             AddRGrid(const double *, const double *, const double *,
                                int, int, int);
      static void      SetIs2D(bool b) { is2D = b; };
      static void      PrepareSplitQuery(Boundary **, int);
      
    protected:
-     float            bounds[6];
-     float            pivots[npivots];
+     double           bounds[6];
+     double           pivots[npivots];
      int              numCells[npivots+1];
      int              numProcs;
      int              nAttempts;
@@ -1903,7 +1915,7 @@ bool Boundary::is2D = false;
 // 
 // ****************************************************************************
 
-Boundary::Boundary(const float *b, int n, Axis a)
+Boundary::Boundary(const double *b, int n, Axis a)
 {
     int  i;
 
@@ -1922,9 +1934,9 @@ Boundary::Boundary(const float *b, int n, Axis a)
         index = 2;
     else if (axis == Z_AXIS)
         index = 4;
-    float min = bounds[index];
-    float max = bounds[index+1];
-    float step = (max-min) / (npivots+1);
+    double min = bounds[index];
+    double max = bounds[index+1];
+    double step = (max-min) / (npivots+1);
     for (i = 0 ; i < npivots ; i++)
     {
         pivots[i] = min + (i+1)*step;
@@ -1987,9 +1999,9 @@ Boundary::PrepareSplitQuery(Boundary **b_list, int listSize)
 // ****************************************************************************
 
 void
-Boundary::AddPoint(const float *pt)
+Boundary::AddPoint(const double *pt)
 {
-    float p = (axis == X_AXIS ? pt[0] : axis == Y_AXIS ? pt[1] : pt[2]);
+    double p = (axis == X_AXIS ? pt[0] : axis == Y_AXIS ? pt[1] : pt[2]);
     for (int i = 0 ; i < npivots ; i++)
         if (p < pivots[i])
         {
@@ -2012,7 +2024,7 @@ Boundary::AddPoint(const float *pt)
 // ****************************************************************************
 
 void
-Boundary::AddRGrid(const float *x, const float *y, const float *z, int nX,
+Boundary::AddRGrid(const double *x, const double *y, const double *z, int nX,
                    int nY, int nZ)
 {
     //
@@ -2038,7 +2050,7 @@ Boundary::AddRGrid(const float *x, const float *y, const float *z, int nX,
     while (z[zEnd] > bounds[5] && zEnd > 0)
         zEnd--;
 
-    const float *arr  = NULL;
+    const double*arr  = NULL;
     int          arrStart = 0;
     int          arrEnd   = 0;
     int          slab     = 0;
@@ -2112,19 +2124,19 @@ Boundary::AttemptSplit(Boundary *&b1, Boundary *&b2)
     }
 
     int cellsSoFar = 0;
-    float amtSeen[npivots];
+    double amtSeen[npivots];
     for (i = 0 ; i < npivots ; i++)
     {
         cellsSoFar += numCells[i];
-        amtSeen[i] = cellsSoFar / ((float) totalCells);
+        amtSeen[i] = cellsSoFar / ((double) totalCells);
     }
 
-    float proportion = ((float) numProcs1) / ((float) numProcs);
-    float closest  = fabs(proportion - amtSeen[0]); // == proportion
-    int   closestI = 0;
+    double proportion = ((double) numProcs1) / ((double) numProcs);
+    double closest  = fabs(proportion - amtSeen[0]); // == proportion
+    int    closestI = 0;
     for (i = 1 ; i < npivots ; i++)
     {
-        float diff = fabs(proportion - amtSeen[i]);
+        double diff = fabs(proportion - amtSeen[i]);
         if (diff < closest)
         {
             closest  = diff;
@@ -2135,7 +2147,7 @@ Boundary::AttemptSplit(Boundary *&b1, Boundary *&b2)
     nAttempts++;
     if (closest < 0.02 || nAttempts > 3)
     {
-        float b_tmp[6];
+        double b_tmp[6];
         for (i = 0 ; i < 6 ; i++)
             b_tmp[i] = bounds[i];
         if (axis == X_AXIS)
@@ -2176,7 +2188,7 @@ Boundary::AttemptSplit(Boundary *&b1, Boundary *&b2)
         for (i = 0 ; i < npivots+1 ; i++)
         {
             amtSeen += numCells[i];
-            float soFar = ((float) amtSeen) / ((float) totalCells);
+            double soFar = ((double) amtSeen) / ((double) totalCells);
             if (soFar > proportion)
             {
                 firstBigger = i;
@@ -2184,7 +2196,7 @@ Boundary::AttemptSplit(Boundary *&b1, Boundary *&b2)
             }
         }
 
-        float min, max;
+        double min, max;
 
         int index = 0;
         if (axis == Y_AXIS)
@@ -2207,7 +2219,7 @@ Boundary::AttemptSplit(Boundary *&b1, Boundary *&b2)
             min = pivots[firstBigger-1];
             max = pivots[firstBigger];
         }
-        float step = (max-min) / (npivots+1);
+        double step = (max-min) / (npivots+1);
         for (i = 0 ; i < npivots ; i++)
             pivots[i] = min + (i+1)*step;
         for (i = 0 ; i < npivots+1 ; i++)
@@ -2254,7 +2266,6 @@ void
 avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
                                        FastLookupGrouping &flg, double *bounds)
 {
-    int   i, j, k;
     int t0 = visitTimer->StartTimer();
 
     if (itree != NULL)
@@ -2279,19 +2290,19 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
     Boundary::SetIs2D(is2D);
     int nProcs = PAR_Size();
     Boundary **b_list = new Boundary*[2*nProcs];
-    float fbounds[6];
-    fbounds[0] = bounds[0];
-    fbounds[1] = bounds[1];
-    fbounds[2] = bounds[2];
-    fbounds[3] = bounds[3];
-    fbounds[4] = bounds[4];
-    fbounds[5] = bounds[5];
+    double dbounds[6];
+    dbounds[0] = bounds[0];
+    dbounds[1] = bounds[1];
+    dbounds[2] = bounds[2];
+    dbounds[3] = bounds[3];
+    dbounds[4] = bounds[4];
+    dbounds[5] = bounds[5];
     if (is2D)
     {
-        fbounds[4] -= 1.;
-        fbounds[5] += 1.;
+        dbounds[4] -= 1.;
+        dbounds[5] += 1.;
     }
-    b_list[0] = new Boundary(fbounds, nProcs, X_AXIS);
+    b_list[0] = new Boundary(dbounds, nProcs, X_AXIS);
     int listSize = 1;
     int *bin_lookup = new int[2*nProcs];
     bool keepGoing = (nProcs > 1);
@@ -2299,7 +2310,7 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
     {
         // Figure out how many boundaries need to keep going.
         int nBins = 0;
-        for (i = 0 ; i < listSize ; i++)
+        for (int i = 0 ; i < listSize ; i++)
             if (!(b_list[i]->IsDone()))
             {
                 bin_lookup[nBins] = i;
@@ -2311,13 +2322,11 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         // a point falls in.
         avtIntervalTree it(nBins, 3);
         nBins = 0;
-        for (i = 0 ; i < listSize ; i++)
+        for (int i = 0 ; i < listSize ; i++)
         {
             if (b_list[i]->IsDone())
                 continue;
-            float *b = b_list[i]->GetBoundary();
-            double db[6] = {b[0], b[1], b[2], b[3], b[4], b[5]};
-            it.AddElement(nBins, db);
+            it.AddElement(nBins, b_list[i]->GetBoundary());
             nBins++;
         }
         it.Calculate(true);
@@ -2326,13 +2335,12 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         // the points that come from unstructured or structured meshes.
         const int nPoints = dp.GetRGridStart();
         vector<int> list;
-        float pt[3];
-        for (i = 0 ; i < nPoints ; i++)
+        double pt[3];
+        for (int i = 0 ; i < nPoints ; i++)
         {
             dp.GetPoint(i, pt);
-            double dpt[3] = {pt[0], pt[1], pt[2]};
-            it.GetElementsListFromRange(dpt, dpt, list);
-            for (j = 0 ; j < list.size() ; j++)
+            it.GetElementsListFromRange(pt, pt, list);
+            for (size_t j = 0 ; j < list.size() ; j++)
             {
                 Boundary *b = b_list[bin_lookup[list[j]]];
                 b->AddPoint(pt);
@@ -2341,10 +2349,10 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
 
         // Now do the points that come from rectlinear meshes.
         int num_rgrid = dp.GetNumberOfRGrids();
-        for (i = 0 ; i < num_rgrid ; i++)
+        for (int i = 0 ; i < num_rgrid ; i++)
         {
-            const float *x, *y, *z;
-            int          nX, nY, nZ;
+            const double *x, *y, *z;
+            int           nX, nY, nZ;
             dp.GetRGrid(i, x, y, z, nX, nY, nZ);
             double min[3];
             min[0] = x[0];
@@ -2355,7 +2363,7 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
             max[1] = y[nY-1];
             max[2] = z[nZ-1];
             it.GetElementsListFromRange(min, max, list);
-            for (j = 0 ; j < list.size() ; j++)
+            for (size_t j = 0 ; j < list.size() ; j++)
             {
                 Boundary *b = b_list[bin_lookup[list[j]]];
                 b->AddRGrid(x, y, z, nX, nY, nZ);
@@ -2365,12 +2373,12 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         // Now do the cells.  We are using the cell centers, which is a decent
         // approximation.
         vector<vtkDataSet *> meshes = flg.GetMeshes();
-        for (i = 0 ; i < meshes.size() ; i++)
+        for (size_t i = 0 ; i < meshes.size() ; i++)
         {
-            const int ncells = meshes[i]->GetNumberOfCells();
+            int ncells = meshes[i]->GetNumberOfCells();
             double bbox[6];
             double pt[3];
-            for (j = 0 ; j < ncells ; j++)
+            for (int j = 0 ; j < ncells ; j++)
             {
                 vtkCell *cell = meshes[i]->GetCell(j);
                 cell->GetBounds(bbox);
@@ -2378,11 +2386,10 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
                 pt[1] = (bbox[2] + bbox[3]) / 2.;
                 pt[2] = (bbox[4] + bbox[5]) / 2.;
                 it.GetElementsListFromRange(pt, pt, list);
-                float fpt[3] = {pt[0], pt[1], pt[2]};
-                for (k = 0 ; k < list.size() ; k++)
+                for (size_t k = 0 ; k < list.size() ; k++)
                 {
                     Boundary *b = b_list[bin_lookup[list[k]]];
-                    b->AddPoint(fpt);
+                    b->AddPoint(pt);
                 }
             }
         }
@@ -2390,7 +2397,7 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         // See which boundaries found a suitable pivot and can now split.
         Boundary::PrepareSplitQuery(b_list, listSize);
         int numAtStartOfLoop = listSize;
-        for (i = 0 ; i < numAtStartOfLoop ; i++)
+        for (int i = 0 ; i < numAtStartOfLoop ; i++)
         {
             if (b_list[i]->IsDone())
                 continue;
@@ -2406,7 +2413,7 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         // Obviously, all the boundaries that were just split need more 
         // processing, because they haven't done any yet.
         keepGoing = false;
-        for (i = 0 ; i < listSize ; i++)
+        for (int i = 0 ; i < listSize ; i++)
             if (!(b_list[i]->IsDone()))
                 keepGoing = true;
     }
@@ -2415,13 +2422,11 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
     // contains the actual spatial partitioning.
     itree = new avtIntervalTree(nProcs, 3);
     int count = 0;
-    for (i = 0 ; i < listSize ; i++)
+    for (int i = 0 ; i < listSize ; i++)
     {
         if (b_list[i]->IsLeaf())
         {
-            float *b = b_list[i]->GetBoundary();
-            double db[6] = {b[0], b[1], b[2], b[3], b[4], b[5]};
-            itree->AddElement(count++, db);
+            itree->AddElement(count++, b_list[i]->GetBoundary());
         }
     }
     itree->Calculate(true);
@@ -2430,11 +2435,11 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
     if (determineBalance)
     {
         count = 0;
-        for (i = 0 ; i < listSize ; i++)
+        for (int i = 0 ; i < listSize ; i++)
         {
             if (b_list[i]->IsLeaf())
             {
-                float *b = b_list[i]->GetBoundary();
+                const double *b = b_list[i]->GetBoundary();
                 if (DebugStream::Level1())
                     debug1 << "Boundary " << count++ << " = " << b[0] << "-" <<b[1]
                        << ", " << b[2] << "-" << b[3] << ", " << b[4] << "-"
@@ -2443,17 +2448,16 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         }
 
         int *cnts = new int[nProcs];
-        for (i = 0 ; i < nProcs ; i++)
+        for (int i = 0 ; i < nProcs ; i++)
             cnts[i] = 0;
         const int nPoints = dp.GetNumberOfPoints();
         vector<int> list;
-        float pt[3];
-        for (i = 0 ; i < nPoints ; i++)
+        double pt[3];
+        for (int i = 0 ; i < nPoints ; i++)
         {
             dp.GetPoint(i, pt);
-            double dpt[3] = {(double)pt[0], (double)pt[1], (double)pt[2]};
-            itree->GetElementsListFromRange(dpt, dpt, list);
-            for (j = 0 ; j < list.size() ; j++)
+            itree->GetElementsListFromRange(pt, pt, list);
+            for (size_t j = 0 ; j < list.size() ; j++)
             {
                 cnts[list[j]]++;
             }
@@ -2462,7 +2466,7 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
         SumIntArrayAcrossAllProcessors(cnts, cnts_out, nProcs);
         if (DebugStream::Level5())
         {
-            for (i = 0 ; i < nProcs ; i++)
+            for (int i = 0 ; i < nProcs ; i++)
                 debug5 << "Amount for processor " << i << " = " << cnts_out[i] 
                    << endl;
         }
@@ -2472,7 +2476,7 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
     }
 
     // Clean up.
-    for (i = 0 ; i < listSize ; i++)
+    for (int i = 0 ; i < listSize ; i++)
         delete b_list[i];
     delete [] b_list;
     delete [] bin_lookup;
@@ -2497,12 +2501,11 @@ avtPosCMFEAlgorithm::SpatialPartition::CreatePartition(DesiredPoints &dp,
 // ****************************************************************************
 
 int
-avtPosCMFEAlgorithm::SpatialPartition::GetProcessor(float *pt)
+avtPosCMFEAlgorithm::SpatialPartition::GetProcessor(const double *pt)
 {
     vector<int> list;
 
-    double dpt[3] = {(double)pt[0], (double)pt[1],(double) pt[2]};
-    itree->GetElementsListFromRange(dpt, dpt, list);
+    itree->GetElementsListFromRange(pt, pt, list);
     if (list.size() <= 0)
     {
         EXCEPTION0(ImproperUseException);
@@ -2610,8 +2613,8 @@ avtPosCMFEAlgorithm::SpatialPartition::GetProcessorList(vtkCell *cell,
 // ****************************************************************************
 
 void
-avtPosCMFEAlgorithm::SpatialPartition::GetProcessorBoundaries(float *bounds,
-                                std::vector<int> &list, std::vector<float> &db)
+avtPosCMFEAlgorithm::SpatialPartition::GetProcessorBoundaries(const double *bounds,
+                                std::vector<int> &list, std::vector<double> &db)
 {
     list.clear();
 

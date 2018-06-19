@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1269,8 +1269,8 @@ CreateText(int nstr, const char *const str[])
     double char_base_y = 0.;
     for (int k = 0 ; k < nstr ; k++)
     {
-        int nchars = strlen(str[k]);
-        for (int i = 0 ; i < nchars+1 ; i++)
+        size_t nchars = strlen(str[k]);
+        for (size_t i = 0 ; i < nchars+1 ; i++)
         {
             char ch = ' ';
             if (i < nchars)

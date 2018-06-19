@@ -22,16 +22,18 @@ ON_H5PART="off"
 
 function bv_h5part_depends_on
 {
-return ""
+echo "szip hdf5"
 }
 
 function bv_h5part_info
 {
-export H5PART_VERSION=${H5PART_VERSION:-"1.6.4"}
+export H5PART_VERSION=${H5PART_VERSION:-"1.6.6"}
 export H5PART_FILE=${H5PART_FILE:-"H5Part-${H5PART_VERSION}.tar.gz"}
 export H5PART_COMPATIBILITY_VERSION=${H5PART_COMPATIBILITY_VERSION:-"1.6"}
-export H5PART_URL=${H5PART_URL:-"https://codeforge.lbl.gov/frs/download.php/352"}
+export H5PART_URL=${H5PART_URL:-"https://codeforge.lbl.gov/frs/download.php/387"}
 export H5PART_BUILD_DIR=${H5PART_BUILD_DIR:-"H5Part-${H5PART_VERSION}"}
+export H5PART_MD5_CHECKSUM="327c63d198e38a12565b74cffdf1f9d7"
+export H5PART_SHA256_CHECKSUM="10347e7535d1afbb08d51be5feb0ae008f73caf889df08e3f7dde717a99c7571"
 }
 
 function bv_h5part_print
@@ -193,6 +195,23 @@ $LD_LIBRARY_PATH
     fi
     cd "$START_DIR"
     info "Done with H5Part"
+    return 0
+}
+
+function bv_h5part_is_enabled
+{
+    if [[ $DO_H5PART == "yes" ]]; then
+        return 1    
+    fi
+    return 0
+}
+
+function bv_h5part_is_installed
+{
+    check_if_installed "h5part" $H5PART_VERSION
+    if [[ $? == 0 ]] ; then
+        return 1
+    fi
     return 0
 }
 

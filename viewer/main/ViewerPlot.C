@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,6 +60,7 @@
 #include <GlobalAttributes.h>
 #include <OperatorPluginInfo.h>
 #include <OperatorPluginManager.h>
+#include <MapNode.h>
 #include <Plot.h>
 #include <PlotPluginInfo.h>
 #include <PlotQueryInfo.h>
@@ -2592,7 +2593,9 @@ ViewerPlot::RemoveAllOperators()
 // ****************************************************************************
 
 void
-ViewerPlot::SetOperatorAttsFromClient(const int type)
+ViewerPlot::SetOperatorAttsFromClient(const int type,
+                                      const bool actviePlot,
+                                      const bool applyToAll)
 {
     //
     // If there are no operators return.
@@ -2627,7 +2630,8 @@ ViewerPlot::SetOperatorAttsFromClient(const int type)
     {
         // The active operator was of the type that we're trying to
         // set so set the operator attributes for the active operator.
-        operators[activeOperatorIndex]->SetOperatorAttsFromClient();
+        operators[activeOperatorIndex]->
+          SetOperatorAttsFromClient(actviePlot, applyToAll);
         changed |= operators[activeOperatorIndex]->NeedsRecalculation();
     }
     else if(nInstances > 1)
@@ -2649,7 +2653,8 @@ ViewerPlot::SetOperatorAttsFromClient(const int type)
         // There's only 1 instance of the operator that we're trying
         // to set and it is not the active operator. Oh well. Just set
         // the operator attributes anyway.
-        operators[firstIndex]->SetOperatorAttsFromClient();
+        operators[firstIndex]->
+          SetOperatorAttsFromClient(actviePlot, applyToAll);
         changed |= operators[firstIndex]->NeedsRecalculation();
     }
 
@@ -5297,6 +5302,8 @@ ViewerPlot::GetEngineKey() const
 //  Creation:   April 2, 2004
 //
 //  Modifications:
+//    Kathleen Biagas, Wed Feb 29 14:08:13 MST 2012
+//    Wrapped in a Try-catch block.
 //
 // ****************************************************************************
 
@@ -5309,9 +5316,17 @@ ViewerPlot::GetVariableCentering() const
     {
         if(*(readerList[cacheIndex]) != NULL)
         {
-            avtDataAttributes &atts = readerList[cacheIndex]->
-                GetInfo().GetAttributes();
-            retval = atts.GetCentering(variableName.c_str());
+            TRY
+            {
+                avtDataAttributes &atts = readerList[cacheIndex]->
+                    GetInfo().GetAttributes();
+                retval = atts.GetCentering(variableName.c_str());
+            }
+            CATCHALL
+            {
+               ; // do nothing
+            }
+            ENDTRY
         }
     }
 
@@ -5872,4 +5887,27 @@ const std::string &
 ViewerPlot::GetNamedSelection() const
 {
     return namedSelection;
+}
+
+
+// ****************************************************************************
+// Method: ViewerPlot::GetExtraInfoForPick
+//
+// Purpose: 
+//   Return the name of the selection for the plot.
+//
+// Programmer: Kathleen Biagas 
+// Creation:   February 29, 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerPlot::GetExtraInfoForPick(MapNode &info)
+{
+    if (*plotList[cacheIndex] != NULL)
+    {
+         info = plotList[cacheIndex]->GetExtraInfoForPick();
+    }
 }

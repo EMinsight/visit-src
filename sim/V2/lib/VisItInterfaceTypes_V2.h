@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -129,6 +129,13 @@ typedef enum {
 #define VISIT_GHOSTCELL_ENHANCED_CONNECTIVITY 3
 #define VISIT_GHOSTCELL_REDUCED_CONNECTIVITY  4
 #define VISIT_GHOSTCELL_BLANK                 5
+
+/* Ghost node types */
+#define VISIT_GHOSTNODE_REAL                  0
+#define VISIT_GHOSTNODE_INTERIOR_BOUNDARY     1
+#define VISIT_GHOSTNODE_BLANK                 2
+#define VISIT_GHOSTNODE_COARSE_SIDE           3
+#define VISIT_GHOSTNODE_FINE_SIDE             4
 
 /* Definitions for CSG boundary types 
    Designed so low-order 16 bits are unused

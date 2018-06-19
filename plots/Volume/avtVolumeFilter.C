@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -427,6 +427,8 @@ avtVolumeFilter::RenderImage(avtImage_p opaque_image,
     const char *gradvar = atts.GetOpacityVariable().c_str();
     if (strcmp(gradvar, "default") == 0)
         gradvar = primaryVariable;
+    // This name is explicitly sent to the avtGradientExpression in
+    // the avtVolumePlot.
     SNPRINTF(gradName, 128, "_%s_gradient", gradvar);
     
     for (int i = 0 ; i < vl.nvars ; i++)
@@ -830,6 +832,16 @@ CreateViewInfoFromViewAttributes(avtViewInfo &vi, const View3DAttributes &view)
 //    If we want to create an expression with name 'X' and 'X' is already
 //    an expression in the list, then delete 'X' before adding the new one.
 //
+//    Hank Childs, Tue Apr 10 19:39:37 PDT 2012
+//    Remove request to EEF for gradient ... the avtVolumePlot explicitly
+//    generates the gradient right as part of the rendering transformation.
+//    This improves support for operator variables and also reduces
+//    computation when the data set is downsampled.
+//
+//    Hank Childs, Wed Apr 11 06:31:36 PDT 2012
+//    Simplify setup of log/skew variables for ease of reference in rest of
+//    volume plot.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -845,6 +857,10 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     avtDataRequest_p ds = contract->GetDataRequest();
     const char *var = ds->GetVariable();
 
+    bool setupExpr = false;
+    char exprDef[128];
+    std::string exprName = (std::string)"_expr_" + (std::string)var;
+
     if (atts.GetScaling() == VolumeAttributes::Linear)
     {
         newcontract = contract;
@@ -853,8 +869,7 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     }
     else if (atts.GetScaling() == VolumeAttributes::Log)
     {
-        std::string exprName = (std::string)"log_" + (std::string)var;
-        char exprDef[128];
+        setupExpr = true;
         if (atts.GetUseColorVarMin())
         {
             char m[16];
@@ -865,15 +880,7 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
         {
             SNPRINTF(exprDef, 128, "log10(%s)", var);
         }
-        ExpressionList *elist = ParsingExprList::Instance()->GetList();
-        Expression *e = new Expression();
-        e->SetName(exprName.c_str());
-        e->SetDefinition(exprDef); 
-        e->SetType(Expression::ScalarMeshVar);
-        elist->AddExpressions(*e);
-        delete e;
-        avtDataRequest_p nds = new 
-          avtDataRequest(exprName.c_str(),
+        avtDataRequest_p nds = new avtDataRequest(exprName.c_str(),
                                ds->GetTimestep(), ds->GetRestriction());
         nds->AddSecondaryVariable(var);
         newcontract = new avtContract(contract, nds);
@@ -882,76 +889,43 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     }
     else // VolumeAttributes::Skew)
     {
-        char exprName[128];
-        SNPRINTF(exprName, 128, "%s_skewedby_%f", var, 
-                 atts.GetSkewFactor()); 
-        char exprDef[128];
+        setupExpr = true;
         SNPRINTF(exprDef, 128, "var_skew(%s, %f)", var, 
                  atts.GetSkewFactor());
-        ExpressionList *elist = ParsingExprList::Instance()->GetList();
+        avtDataRequest_p nds = 
+            new avtDataRequest(exprName.c_str(),
+                               ds->GetTimestep(), ds->GetRestriction());
+        nds->AddSecondaryVariable(var);
+        newcontract = new avtContract(contract, nds);
+        primaryVariable = new char[strlen(exprName.c_str())+1];
+        strcpy(primaryVariable, exprName.c_str());
+    }
 
-        Expression *e = new Expression();
-        e->SetName(exprName);
+    if (setupExpr)
+    {
+        ExpressionList *elist = ParsingExprList::Instance()->GetList();
+        Expression *e = NULL;
+        for (int i = 0 ; i < elist->GetNumExpressions() ; i++)
+        {
+            if (elist->GetExpressions(i).GetName() == exprName)
+            {
+                e = &(elist->GetExpressions(i));
+                break;
+            }
+        }
+        bool shouldDelete = false;
+        if (e == NULL)
+        {
+            e = new Expression();
+            shouldDelete = true;
+        }
+
+        e->SetName(exprName.c_str());
         e->SetDefinition(exprDef); 
         e->SetType(Expression::ScalarMeshVar);
         elist->AddExpressions(*e);
-        delete e;
-        avtDataRequest_p nds = 
-            new avtDataRequest(exprName,
-                ds->GetTimestep(), ds->GetRestriction());
-        nds->AddSecondaryVariable(var);
-        newcontract = new avtContract(contract, nds);
-        primaryVariable = new char[strlen(exprName)+1];
-        strcpy(primaryVariable, exprName);
-    }
-
-    if (atts.GetLightingFlag())
-    {
-        char exprName[128];
-        const char *gradvar = atts.GetOpacityVariable().c_str();
-        if (strcmp(gradvar, "default") == 0)
-            gradvar = primaryVariable;
-
-        SNPRINTF(exprName, 128, "_%s_gradient", gradvar);
-        char exprDef[512];
-        ExpressionList *elist = ParsingExprList::Instance()->GetList();
-        if (atts.GetSmoothData())
-        {
-            SNPRINTF(exprDef, 512, "gradient(recenter(<%s>, \"nodal\"), \"fast\")", gradvar);
-            for (int i=0; i < elist->GetNumExpressions(); ++i)
-            {
-                if ((*elist)[i].GetName() == exprName)
-                {
-                    debug3 << "Removed expression '" << exprName << "' from expression list to recalculate gradient" << endl;
-                    elist->RemoveExpressions(i);
-                    break;
-                }
-            }
-        }
-        else
-        {
-            SNPRINTF(exprDef, 512, "gradient(<%s>, \"fast\")", gradvar);
-            for (int i=0; i < elist->GetNumExpressions(); ++i)
-            {
-                if ((*elist)[i].GetName() == exprName)
-                {
-                    debug3 << "Removed expression '" << exprName << "' from expression list to recalculate gradient" << endl;
-                    elist->RemoveExpressions(i);
-                    break;
-                }
-            }
-        }
-
-        Expression *e = new Expression();
-        e->SetName(exprName);
-        e->SetDefinition(exprDef); 
-        e->SetType(Expression::VectorMeshVar);
-        elist->AddExpressions(*e);
-        delete e;
-        ds = newcontract->GetDataRequest();
-        avtDataRequest_p nds = new avtDataRequest(ds);
-        nds->AddSecondaryVariable(exprName);
-        newcontract = new avtContract(newcontract, nds);
+        if (shouldDelete)
+            delete e;
     }
 
     newcontract->NoStreaming();

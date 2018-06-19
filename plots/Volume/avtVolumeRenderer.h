@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,6 +85,9 @@ class avtVolumeRendererImplementation;
 //    Jeremy Meredith, Tue Jan  5 15:52:32 EST 2010
 //    Added value for actual gradient magnitude maximum.
 //
+//    Allen Harvey, Thurs Nov 3 7:21:13 EST 2011
+//    Added value for holding a compact support variable
+//
 // ****************************************************************************
 
 class avtVolumeRenderer : public avtCustomRenderer
@@ -113,7 +116,7 @@ class avtVolumeRenderer : public avtCustomRenderer
 
     float                   vmin,vmax,vsize;
     float                   omin,omax,osize;
-    float                  *gx, *gy, *gz, *gm, *gmn, gm_max;
+    float                  *gx, *gy, *gz, *gm, *gmn, *hs, gm_max;
 
     bool                    reducedDetail;
 

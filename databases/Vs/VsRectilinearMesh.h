@@ -24,7 +24,7 @@ public:
   hid_t getDataType();
   std::string getAxisDatasetName(int axisNumber);
   VsH5Dataset* getAxisDataset(int axisNumber);
-  
+
   virtual bool isRectilinearMesh() { return true; }
   static VsRectilinearMesh* buildRectilinearMesh(VsH5Group* group);
   

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -398,6 +398,7 @@ private:
     void HandleClientMethod();
     void GetVirtualDatabaseDefinitions(StringStringVectorMap &defs);
 
+    void SetSessionNameInWindowTitle(const QString &filename);
     QString SaveSessionFile(const QString &s);
 
     // Internal callbacks
@@ -482,6 +483,7 @@ private slots:
     void showEngineWindow();
     void showAnimationWindow();
     void showAnnotationWindow();
+    void showCLI();
     void showCommandWindow();
     void showExpressionsWindow();
     void showSubsetWindow();

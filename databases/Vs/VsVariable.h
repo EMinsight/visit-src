@@ -38,6 +38,9 @@ public:
   std::string getMeshName();
   VsMesh* getMesh();
 
+  /** Does this variable have a transformed version? */
+  bool hasTransform();
+
   /** Get hdf5 type */
   hid_t getType();
 
@@ -54,9 +57,9 @@ public:
   std::string getFullName();
 
   /** Find attribute by name, or return NULL if not found */
-  VsH5Attribute* getAttribute(const std::string name);
+  VsH5Attribute* getAttribute(const std::string& name);
 
-  std::string getStringAttribute(const std::string name);
+  std::string getStringAttribute(const std::string& name);
 
   /** Supply debugging output. */
   virtual void write();
@@ -73,9 +76,26 @@ public:
   /** Public method to initialize object.
    * Returns NULL on error.*/
   static VsVariable* buildObject(VsH5Dataset* dataset);
+ 
+  /** Get the transformed name */
+  std::string getFullTransformedName();
+
+  void createTransformedVariable();
 
   void createComponents();
   size_t getNumComps();
+
+  /**
+   * Get the node offset 
+   * @return offset array
+   */
+  std::vector<double> getNodeOffset() const;
+
+  /**
+   * Inquire if field has node offsets
+   * @return true of field has node offsets
+   */
+  bool hasNodeOffset() const;
 
 protected:
   VsVariable(VsH5Dataset* data);
@@ -105,6 +125,12 @@ protected:
   
   /** Fully qualified path to this object */
   std::string path;
+
+  /** lower node offset array (optional) */
+  VsH5Attribute* nodeOffsetAtt;
+
+  /** node offsets with respect to base node */
+  std::vector<double> nodeOffset;
 
 };
 

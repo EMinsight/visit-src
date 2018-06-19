@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,6 +39,9 @@
 #   Update static linking for a newer Qt which has an additional framework
 #   dependency on Mac.
 #
+#   Brad Whitlock, Wed Nov 23 13:17:14 PST 2011
+#   Allow for no console windows apps.
+#
 #****************************************************************************/
 
 INCLUDE_DIRECTORIES(
@@ -71,7 +74,7 @@ ENDIF(VISIT_STATIC)
 
 #****************************** The gui executable ***************************
 IF(NOT APPLE)
-    ADD_EXECUTABLE(gui_exe main.C ${GUI_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+    ADD_EXECUTABLE(gui_exe ${VISIT_APPLICATION_STYLE} main.C ${GUI_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
 ELSE(NOT APPLE)
     SET(GUI_ICON_FILE VisItIcon.icns)
     SET_SOURCE_FILES_PROPERTIES(${VISIT_SOURCE_DIR}/common/icons/${GUI_ICON_FILE} PROPERTIES
@@ -92,7 +95,7 @@ ELSE(NOT APPLE)
     SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "VisIt version ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "VisIt ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
-    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC")
+    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC")
 ENDIF(NOT APPLE)
 
 SET_TARGET_PROPERTIES(gui_exe PROPERTIES OUTPUT_NAME gui)

@@ -148,7 +148,7 @@ bool VsRectilinearMesh::initialize() {
   VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
                     << "Mesh has num spatial dims = "
                     << numSpatialDims << std::endl;
-  
+
   return initializeRoot();
 }
 
@@ -199,7 +199,6 @@ std::string VsRectilinearMesh::getAxisDatasetName(int axisNumber) {
   return makeCanonicalName(getFullName(), axisName);
 }
 
-
 VsH5Dataset* VsRectilinearMesh::getAxisDataset(int axisNumber) {
   std::string axisDatasetName = getAxisDatasetName(axisNumber);
   if (axisDatasetName.empty()) {
@@ -211,11 +210,9 @@ VsH5Dataset* VsRectilinearMesh::getAxisDataset(int axisNumber) {
   return answer; //could be NULL
 }
 
-
 std::string VsRectilinearMesh::getKind() {
   return VsSchema::Rectilinear::key;
 }
-
 
 void VsRectilinearMesh::getMeshDataDims(std::vector<int>& dims)
 {

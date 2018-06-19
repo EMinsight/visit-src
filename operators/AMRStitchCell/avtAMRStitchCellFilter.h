@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,7 @@
 
 class vtkDataSet;
 class vtkRectilinearGrid;
+class avtStructuredDomainNesting;
 
 // ****************************************************************************
 //  Class: avtAMRStitchCellFilter
@@ -92,15 +93,23 @@ class avtAMRStitchCellFilter :  public virtual avtSIMODataTreeIterator,
     virtual void          UpdateDataObjectInfo(void);
     vtkDataSet           *CreateStitchCells(vtkRectilinearGrid*, int, int, int[3],
                               int[3], int[3], int[3], const std::vector<int>&,
-                              const vtkIdType*, int [6]);
-    vtkDataSet           *CreateDualGrid(vtkRectilinearGrid*, int, int, int[3],
                               const vtkIdType*);
+    vtkDataSet           *CreateDualGrid(vtkRectilinearGrid*, int, int, int[3],
+                              int [3], int [3], const vtkIdType*);
+#if 0
     vtkDataArray         *ContractDual(vtkDataArray *coords);
+#endif
 
   private:
     int                   topologicalDimension;
+    int                   spatialDimension;
+    avtStructuredDomainNesting
+                         *domainNesting;
     double                domainOrigin[3];
-    int                   logicalDomainBoundingBox[6];
+    std::vector< std::vector<int> >
+                          logicalDomainBoundingBox;
+    std::vector<std::vector<double> >
+                          cellSize;
 };
 
 #endif

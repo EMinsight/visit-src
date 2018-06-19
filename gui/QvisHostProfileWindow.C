@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -66,6 +66,9 @@
 #include <string>
 
 #define HOST_PROFILE_SPACING 5
+
+// The share batch job option has some issues presently.
+#define SHARE_BATCH_JOB_HOST_ISSUES
 
 // ****************************************************************************
 // Method: QvisHostProfileWindow::QvisHostProfileWindow
@@ -143,6 +146,10 @@ QvisHostProfileWindow::~QvisHostProfileWindow()
 //   Jeremy Meredith, Fri Feb 19 13:16:18 EST 2010
 //   Changed order of two main tabs.
 //
+//   Hank Childs, Thu Nov 17 18:49:08 PST 2011
+//   Rename New/Copy/Delete to New Host/Copy Host/Delete Host.
+//   This removes ambiguity with profile controls.
+//
 // ****************************************************************************
 
 void
@@ -159,15 +166,15 @@ QvisHostProfileWindow::CreateWindowContents()
     connect(hostList, SIGNAL(itemSelectionChanged()),
             this, SLOT(currentHostChanged()));
 
-    addHost = new QPushButton(tr("New"), central);
+    addHost = new QPushButton(tr("New Host"), central);
     mainLayout->addWidget(addHost, 2,0);
     connect(addHost, SIGNAL(clicked()), this, SLOT(addMachineProfile()));
 
-    delHost = new QPushButton(tr("Delete"), central);
+    delHost = new QPushButton(tr("Delete Host"), central);
     mainLayout->addWidget(delHost, 2,1);
     connect(delHost, SIGNAL(clicked()), this, SLOT(delMachineProfile()));
 
-    copyHost = new QPushButton(tr("Copy"), central);
+    copyHost = new QPushButton(tr("Copy Host"), central);
     mainLayout->addWidget(copyHost, 2,2);
     connect(copyHost, SIGNAL(clicked()), this, SLOT(copyMachineProfile()));
 
@@ -286,13 +293,6 @@ QvisHostProfileWindow::CreateMachineSettingsGroup()
     mLayout->addWidget(directory, mRow, 1);
     mRow++;
 
-    shareMDServerCheckBox = new QCheckBox(tr("Share batch job with Metadata Server"),
-                                          machineGroup);
-    mLayout->addWidget(shareMDServerCheckBox, mRow, 0, 1, 2);
-    connect(shareMDServerCheckBox, SIGNAL(toggled(bool)),
-            this, SLOT(toggleShareMDServer(bool)));
-    mRow++;
-
     //
     // Account group
     //
@@ -325,6 +325,13 @@ QvisHostProfileWindow::CreateMachineSettingsGroup()
     cLayout->setColumnStretch(1,0);
     cLayout->setColumnStretch(2,0);
     cLayout->setColumnStretch(3,100);
+
+    shareMDServerCheckBox = new QCheckBox(tr("Share batch job with Metadata Server"),
+                                          connectionGroup);
+    cLayout->addWidget(shareMDServerCheckBox, cRow, 0, 1, 4);
+    connect(shareMDServerCheckBox, SIGNAL(toggled(bool)),
+            this, SLOT(toggleShareMDServer(bool)));
+    cRow++;
 
     tunnelSSH = new QCheckBox(tr("Tunnel data connections through SSH"), connectionGroup);
     cLayout->addWidget(tunnelSSH, cRow,0, 1,4);
@@ -404,6 +411,10 @@ QvisHostProfileWindow::CreateMachineSettingsGroup()
 //   Brad Whitlock, Thu Oct  6 12:00:57 PDT 2011
 //   I combined a couple tabs into the parallel tab.
 //
+//   Hank Childs, Thu Nov 17 18:49:08 PST 2011
+//   Rename New/Copy/Delete to New Profile/Copy Profile/Delete Profile.
+//   This removes ambiguity with host controls.
+//
 // ****************************************************************************
 
 QWidget *
@@ -421,13 +432,13 @@ QvisHostProfileWindow::CreateLaunchProfilesGroup()
             this, SLOT(currentLaunchChanged()));
     row++;
 
-    addProfile = new QPushButton(tr("New"), currentGroup);
+    addProfile = new QPushButton(tr("New Profile"), currentGroup);
     layout->addWidget(addProfile, row,0);
     connect(addProfile, SIGNAL(clicked()), this, SLOT(addLaunchProfile()));
-    delProfile = new QPushButton(tr("Delete"), currentGroup);
+    delProfile = new QPushButton(tr("Delete Profile"), currentGroup);
     connect(delProfile, SIGNAL(clicked()), this, SLOT(delLaunchProfile()));
     layout->addWidget(delProfile, row,1);
-    copyProfile = new QPushButton(tr("Copy"), currentGroup);
+    copyProfile = new QPushButton(tr("Copy Profile"), currentGroup);
     connect(copyProfile, SIGNAL(clicked()), this, SLOT(copyLaunchProfile()));
     layout->addWidget(copyProfile, row,2);
     makeDefaultProfile = new QPushButton(tr("Make Default"),
@@ -579,6 +590,12 @@ QvisHostProfileWindow::CreateParallelSettingsGroup()
 //   Brad Whitlock, Thu Oct  6 11:56:32 PDT 2011
 //   Return the created widget.
 //
+//   Brad Whitlock, Wed Nov 30 09:15:35 PST 2011
+//   Add Windows HPC.
+//
+//   Brad Whitlock, Thu Mar 15 11:29:01 PDT 2012
+//   Add sbatch/aprun.
+//
 // ****************************************************************************
 
 QWidget *
@@ -601,6 +618,7 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     launchMethod->addItem("bsub");
     launchMethod->addItem("dmpirun");
     launchMethod->addItem("ibrun");
+    launchMethod->addItem("mpiexec");
     launchMethod->addItem("mpirun");
     launchMethod->addItem("msub");
     launchMethod->addItem("poe");
@@ -608,6 +626,7 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     launchMethod->addItem("psub");
     launchMethod->addItem("salloc");
     launchMethod->addItem("srun");
+    launchMethod->addItem("WindowsHPC");
     launchMethod->addItem("yod");
     launchMethod->addItem("msub/aprun");
     launchMethod->addItem("msub/srun");
@@ -619,6 +638,7 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     launchMethod->addItem("qsub/mpiexec");
     launchMethod->addItem("qsub/mpirun");
     launchMethod->addItem("qsub/srun");
+    launchMethod->addItem("sbatch/aprun");
     launchMethod->addItem("sbatch/mpiexec");
     connect(launchMethod, SIGNAL(activated(const QString &)),
             this, SLOT(launchMethodChanged(const QString &)));
@@ -1471,6 +1491,9 @@ QvisHostProfileWindow::ReplaceLocalHost()
 //    Brad Whitlock, Thu Oct  6 12:09:14 PDT 2011
 //    Set max node/processor enabled state.
 //
+//    Brad Whitlock, Thu Dec  1 11:46:54 PST 2011
+//    Update widget sensitivity based on whether we're sharing 1 batch job.
+//
 // ****************************************************************************
 
 void
@@ -1501,7 +1524,13 @@ QvisHostProfileWindow::UpdateWindowSensitivity()
     userNameLabel->setEnabled(hostEnabled);
     userName->setEnabled(hostEnabled);
     chnMachineName->setEnabled(hostEnabled && currentMachine->GetTunnelSSH() == false);
+#ifdef SHARE_BATCH_JOB_HOST_ISSUES
+    chnParseFromSSHClient->setEnabled(hostEnabled &&
+                                      currentMachine->GetTunnelSSH() == false &&
+                                      currentMachine->GetShareOneBatchJob() == false);
+#else
     chnParseFromSSHClient->setEnabled(hostEnabled && currentMachine->GetTunnelSSH() == false);
+#endif
     chnSpecifyManually->setEnabled(hostEnabled && currentMachine->GetTunnelSSH() == false);
     clientHostNameMethodLabel->setEnabled(hostEnabled && currentMachine->GetTunnelSSH() == false);
     clientHostName->setEnabled(hostEnabled &&
@@ -1510,8 +1539,15 @@ QvisHostProfileWindow::UpdateWindowSensitivity()
                                               MachineProfile::ManuallySpecified);
     sshPort->setEnabled(hostEnabled && currentMachine->GetSshPortSpecified());
     gatewayHost->setEnabled(hostEnabled && currentMachine->GetUseGateway());
+#ifdef SHARE_BATCH_JOB_HOST_ISSUES
+    tunnelSSH->setEnabled(hostEnabled &&
+                          !currentMachine->GetShareOneBatchJob());
+    shareMDServerCheckBox->setEnabled(hostEnabled &&
+                                      !currentMachine->GetTunnelSSH());
+#else
     tunnelSSH->setEnabled(hostEnabled);
     shareMDServerCheckBox->setEnabled(hostEnabled);
+#endif
     maxNodesCheckBox->setEnabled(hostEnabled);
     maxNodes->setEnabled(hostEnabled && currentMachine->GetMaximumNodesValid());
     maxProcessorsCheckBox->setEnabled(hostEnabled);
@@ -3007,6 +3043,10 @@ QvisHostProfileWindow::processEngineArgumentsText(const QString &tmp)
 //   Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile. Rewrote window.
 //
+//   Brad Whitlock, Thu Dec  1 11:41:23 PST 2011
+//   Indicate that sharing a batch job does not work with ssh tunneling 
+//   right now.
+//
 // ****************************************************************************
 
 void
@@ -3016,6 +3056,18 @@ QvisHostProfileWindow::toggleShareMDServer(bool state)
         return;
 
     currentMachine->SetShareOneBatchJob(state);
+
+#ifdef SHARE_BATCH_JOB_HOST_ISSUES
+    // Sharing a batch job is currently incompatible with some options.
+    // Set them now to make it clear to the user.
+    currentMachine->SetClientHostDetermination(MachineProfile::MachineName);
+    currentMachine->SetTunnelSSH(false);
+    clientHostNameMethod->blockSignals(true);
+    clientHostNameMethod->button(0)->setChecked(true);
+    clientHostNameMethod->blockSignals(false);
+    UpdateWindowSensitivity();
+#endif
+
     SetUpdate(false);
     Apply();
 }
@@ -3316,6 +3368,10 @@ QvisHostProfileWindow::clientHostNameChanged(const QString &h)
 //   Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile. Rewrote window.
 //
+//   Brad Whitlock, Thu Dec  1 11:41:23 PST 2011
+//   Indicate that sharing a batch job does not work with ssh tunneling 
+//   right now.
+//
 // ****************************************************************************
 
 void
@@ -3331,6 +3387,12 @@ QvisHostProfileWindow::toggleTunnelSSH(bool tunnel)
         // to make it clear to the user.
         currentMachine->SetClientHostDetermination(MachineProfile::MachineName);
         currentMachine->SetManualClientHostName("");
+#ifdef SHARE_BATCH_JOB_HOST_ISSUES
+        currentMachine->SetShareOneBatchJob(false);
+        shareMDServerCheckBox->blockSignals(true);
+        shareMDServerCheckBox->setChecked(false);
+        shareMDServerCheckBox->blockSignals(false);
+#endif
         clientHostNameMethod->blockSignals(true);
         clientHostName->blockSignals(true);
         clientHostNameMethod->button(0)->setChecked(true);

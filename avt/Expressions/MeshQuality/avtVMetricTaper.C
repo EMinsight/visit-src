@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,12 +43,8 @@
 #include "avtVMetricTaper.h"
 
 #include <vtkCellType.h>
-#include <vtkDataSet.h>
-#include <vtkFloatArray.h>
 
 #include <verdict.h>
-
-#include <DebugStream.h>
 
 // ****************************************************************************
 //  Method: avtVMetricTaper::Metric

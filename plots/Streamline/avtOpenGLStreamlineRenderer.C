@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -801,7 +801,9 @@ avtOpenGLStreamlineRenderer::DrawAsRibbons(vtkPolyData *data)
             double sinTheta = sin(theta);
             for (int j = 0; j < 3; j++)
                 normal[j] = cosTheta*normal[j] + sinTheta*biNormal[j];
-            
+            normal[0] = 1;
+            normal[1] = 0;
+            normal[2] = 0;
             normals->SetTuple(i,normal);
         }
         

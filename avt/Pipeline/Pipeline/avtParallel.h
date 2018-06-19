@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -65,12 +65,15 @@ PIPELINE_API int     PAR_Rank(void);
 PIPELINE_API int     PAR_Size(void);
 PIPELINE_API bool    PAR_UIProcess(void);
 PIPELINE_API void    PAR_WaitForDebugger(void);
+PIPELINE_API bool    PAR_SetComm(void *);     
 PIPELINE_API void    SumIntAcrossAllProcessors(int&);
 PIPELINE_API void    SumLongAcrossAllProcessors(long&);
 PIPELINE_API void    SumFloatAcrossAllProcessors(float&);
 PIPELINE_API void    SumFloatArrayAcrossAllProcessors(float *, float *, int);
+PIPELINE_API void    SumFloatArray(float *, float *, int);
 PIPELINE_API void    SumDoubleAcrossAllProcessors(double&);
 PIPELINE_API void    SumDoubleArrayAcrossAllProcessors(double *, double *,int);
+PIPELINE_API void    SumDoubleArray(double *, double *,int);
 PIPELINE_API void    SumIntArrayAcrossAllProcessors(int *, int *, int);
 PIPELINE_API void    SumLongLongArrayAcrossAllProcessors(VISIT_LONG_LONG*, VISIT_LONG_LONG*, int);
 PIPELINE_API bool    ThisProcessorHasMinimumValue(double);

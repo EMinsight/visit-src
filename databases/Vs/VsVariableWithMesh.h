@@ -35,7 +35,16 @@ public:
 
   /** Retrieve the entire list of spatial indices */
   std::vector<int> getSpatialIndices();
-
+  
+  /** Handles tranformation attributes for the "mesh" part of this object */
+  virtual bool hasTransform();
+  std::string getTransformName();
+  std::string getTransformedMeshName();
+  
+  /** Handles transformation attributes for the "variable" part of this object */
+  std::string getFullTransformedName();
+  void createTransformedVariableAndMesh();
+  
   /** Supply debugging output */
   void write();
   
@@ -67,10 +76,10 @@ public:
   std::string getFullName();
 
   /** Find attribute by name, or return NULL if not found. */
-  VsH5Attribute* getAttribute(const std::string name);
+  VsH5Attribute* getAttribute(const std::string& name);
 
   /** Retrieve the value of the attribute with the given name */
-  std::string getStringAttribute(const std::string name);
+  std::string getStringAttribute(const std::string& name);
 
   /** Retrieve the user-specified label for component number i */
   std::string getLabel(unsigned int i);

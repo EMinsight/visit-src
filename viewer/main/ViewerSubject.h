@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,7 +54,7 @@
 #include <VisWindowTypes.h>
 #include <avtTypes.h>
 #include <EngineKey.h>
-#include <vector>
+#include <vectortypes.h>
 #include <string>
 #include <map>
 
@@ -494,6 +494,9 @@ class avtDefaultPlotMetaData;
 //    Kathleen Biagas, Fri Jul 15 11:34:11 PDT 2011
 //    Added GetQueryParameters.
 //
+//    Marc Durant, Thu Jan 12 12:36:00 MST 2012
+//    Added ToggleAllowPopup.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerSubject : public ViewerBase
@@ -534,6 +537,10 @@ public:
                     const std::string &);
 
     void PostponeAction(ViewerActionBase *);
+
+    // Callback function for opening processes via engine.
+    static void OpenWithEngine(const std::string &remoteHost, 
+                               const stringVector &args, void *data);
 public slots:
     void ProcessFromParent();
 private:
@@ -737,6 +744,7 @@ private slots:
     void ToggleMaintainViewMode(int windowIndex = -1);
     void ToggleCameraViewMode(int windowIndex = -1);
     void ToggleLockTools(int windowIndex = -1);
+    void ToggleAllowPopup(int windowIndex = -1);
 
     void CopyViewToWindow(int from, int to);
     void CopyLightingToWindow(int from, int to);

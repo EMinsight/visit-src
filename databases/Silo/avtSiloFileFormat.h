@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -302,7 +302,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     enum AANTriState {Always=0, Auto, Never};
     DBfile              **dbfiles;
     int                   tocIndex;
-    int                   dontForceSingle; // used primarily for testing
+    int                   forceSingle;
     int                   siloDriver;
     AANTriState           ignoreSpatialExtentsAAN;
     AANTriState           ignoreDataExtentsAAN;
@@ -346,9 +346,8 @@ class avtSiloFileFormat : public avtSTMDFileFormat
 
     // to support block structured nodelist convention
     std::map<int, std::vector<int> > nlBlockToWindowsMap;
-    std::vector<std::vector<int> >   pascalsTriangleMap;
     int                             numNodeLists;
-    int                             maxAnnotIntLists;
+    int                             numAnnotIntLists;
 
     DBfile               *GetFile(int);
     DBfile               *OpenFile(int, bool skipGlobalInfo = false);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,6 +74,10 @@ class     vtkDataSet;
 //    subsequent searches can use this as a guess rather than traversing
 //    the interval tree.
 //
+//    Hank Childs, Wed Mar 14 08:47:56 PDT 2012
+//    Add argument to PerformCMFE to enable a mode where the algorithm runs
+//    in serial only.
+//
 // ****************************************************************************
 
 class EXPRESSION_API avtPosCMFEAlgorithm
@@ -82,7 +86,7 @@ class EXPRESSION_API avtPosCMFEAlgorithm
     static avtDataTree_p     PerformCMFE(avtDataTree_p, avtDataTree_p,
                                          const std::string &,
                                          const std::string &,
-                                         const std::string &);
+                                         const std::string &, bool);
     class SpatialPartition;
 
     class DesiredPoints
@@ -117,12 +121,12 @@ class EXPRESSION_API avtPosCMFEAlgorithm
         int                   GetNumberOfPoints() { return total_nvals; };
         int                   GetRGridStart()     { return rgrid_start; };
         int                   GetNumberOfRGrids() { return num_rgrids; };
-        void                  GetPoint(int, float *) const;
-        void                  GetRGrid(int, const float *&, const float *&,
-                                       const float *&, int &, int &, int &);
-        void                  SetValue(int, float *);
+        void                  GetPoint(int, double *) const;
+        void                  GetRGrid(int, const double *&, const double *&,
+                                       const double *&, int &, int &, int &);
+        void                  SetValue(int, const double *);
 
-        const float          *GetValue(int, int) const;
+        const double         *GetValue(int, int) const;
     
         void                  RelocatePointsUsingPartition(SpatialPartition &);
         void                  UnRelocatePoints(SpatialPartition &);
@@ -134,25 +138,25 @@ class EXPRESSION_API avtPosCMFEAlgorithm
         int                   num_datasets;
         int                   num_rgrids;
         int                   rgrid_start;
-        std::vector<float *>  pt_list;
+        std::vector<double *> pt_list;
         std::vector<int>      pt_list_size;
-        std::vector<float *>  rgrid_pts;
+        std::vector<double *> rgrid_pts;
         std::vector<int>      rgrid_pts_size;
         int                  *map_to_ds;
         int                  *ds_start;
-        float                *vals;
+        double               *vals;
 
-        std::vector<float *>  orig_pt_list;
+        std::vector<double *> orig_pt_list;
         std::vector<int>      orig_pt_list_size;
-        std::vector<float *>  orig_rgrid_pts;
+        std::vector<double *> orig_rgrid_pts;
         std::vector<int>      orig_rgrid_pts_size;
         std::vector<int>      pt_list_came_from;
         std::vector<int>      rgrid_came_from;
 
         void                  GetProcessorsForGrid(int, std::vector<int> &,
-                                                   std::vector<float> &,
+                                                   std::vector<double> &,
                                                    SpatialPartition &);
-        bool                  GetSubgridForBoundary(int, float *, int *);
+        bool                  GetSubgridForBoundary(int, const double *, int *);
     };
 
     class FastLookupGrouping
@@ -167,9 +171,9 @@ class EXPRESSION_API avtPosCMFEAlgorithm
         void          Finalize();
         void          RelocateDataUsingPartition(SpatialPartition &);
 
-        bool          GetValue(const float *, float *);
-        bool          GetValueUsingList(std::vector<int> &, const float *, 
-                                        float *);
+        bool          GetValue(const double *, double *);
+        bool          GetValueUsingList(std::vector<int> &, const double *, 
+                                        double *);
 
       protected:
         std::string            varname;
@@ -191,11 +195,11 @@ class EXPRESSION_API avtPosCMFEAlgorithm
                                               FastLookupGrouping &,
                                               double *);
 
-        int                   GetProcessor(float *);
+        int                   GetProcessor(const double *);
         int                   GetProcessor(vtkCell *);
         void                  GetProcessorList(vtkCell *, std::vector<int> &);
-        void                  GetProcessorBoundaries(float *,
-                                    std::vector<int> &, std::vector<float> &);
+        void                  GetProcessorBoundaries(const double *,
+                                    std::vector<int> &, std::vector<double> &);
 
       protected:
         avtIntervalTree      *itree;

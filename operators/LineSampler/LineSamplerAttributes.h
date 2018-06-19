@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -177,6 +177,7 @@ public:
     void SetMeshGeometry(MeshGeometry meshGeometry_);
     void SetArrayConfiguration(ArrayConfiguration arrayConfiguration_);
     void SetBoundary(Boundary boundary_);
+    void SetInstanceId(int instanceId_);
     void SetNArrays(int nArrays_);
     void SetToroidalArrayAngle(double toroidalArrayAngle_);
     void SetNChannels(int nChannels_);
@@ -197,6 +198,7 @@ public:
     void SetFlipToroidalAngle(bool flipToroidalAngle_);
     void SetViewGeometry(ViewGeometry viewGeometry_);
     void SetViewDimension(ViewDimension viewDimension_);
+    void SetDonotApplyToAll(bool donotApplyToAll_);
     void SetHeightPlotScale(double heightPlotScale_);
     void SetChannelPlotOffset(double channelPlotOffset_);
     void SetArrayPlotOffset(double arrayPlotOffset_);
@@ -229,6 +231,7 @@ public:
     MeshGeometry       GetMeshGeometry() const;
     ArrayConfiguration GetArrayConfiguration() const;
     Boundary           GetBoundary() const;
+    int                GetInstanceId() const;
     int                GetNArrays() const;
     double             GetToroidalArrayAngle() const;
     int                GetNChannels() const;
@@ -250,6 +253,7 @@ public:
     bool               GetFlipToroidalAngle() const;
     ViewGeometry       GetViewGeometry() const;
     ViewDimension      GetViewDimension() const;
+    bool               GetDonotApplyToAll() const;
     double             GetHeightPlotScale() const;
     double             GetChannelPlotOffset() const;
     double             GetArrayPlotOffset() const;
@@ -373,6 +377,7 @@ public:
         ID_meshGeometry = 0,
         ID_arrayConfiguration,
         ID_boundary,
+        ID_instanceId,
         ID_nArrays,
         ID_toroidalArrayAngle,
         ID_nChannels,
@@ -393,6 +398,7 @@ public:
         ID_flipToroidalAngle,
         ID_viewGeometry,
         ID_viewDimension,
+        ID_donotApplyToAll,
         ID_heightPlotScale,
         ID_channelPlotOffset,
         ID_arrayPlotOffset,
@@ -427,6 +433,7 @@ private:
     int          meshGeometry;
     int          arrayConfiguration;
     int          boundary;
+    int          instanceId;
     int          nArrays;
     double       toroidalArrayAngle;
     int          nChannels;
@@ -447,6 +454,7 @@ private:
     bool         flipToroidalAngle;
     int          viewGeometry;
     int          viewDimension;
+    bool         donotApplyToAll;
     double       heightPlotScale;
     double       channelPlotOffset;
     double       arrayPlotOffset;
@@ -479,6 +487,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define LINESAMPLERATTRIBUTES_TMFS "iiiidiiiddidDiddddddbiidddiiddiddddiiidddiiiid*d*idd"
+#define LINESAMPLERATTRIBUTES_TMFS "iiiiidiiiddidDiddddddbiibdddiiddiddddiiidddiiiid*d*idd"
 
 #endif

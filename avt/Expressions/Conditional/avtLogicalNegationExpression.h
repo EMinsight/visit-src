@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                          avtLogicalNegationExpression.h                       //
+//                      avtLogicalNegationExpression.h                       //
 // ************************************************************************* //
 
 #ifndef AVT_LOGICAL_NEGATION_FILTER_H
@@ -79,7 +79,7 @@ class EXPRESSION_API avtLogicalNegationExpression : public avtUnaryMathExpressio
   protected:
     virtual void           DoOperation(vtkDataArray *in, vtkDataArray *out,
                                        int ncomps, int ntuples);
-    virtual int            GetNumberOfComponentsInOutput() { return 1; };
+    virtual int            GetNumberOfComponentsInOutput(int) { return 1; };
     virtual vtkDataArray  *CreateArray(vtkDataArray *)
                                 { return vtkUnsignedCharArray::New(); };
 };

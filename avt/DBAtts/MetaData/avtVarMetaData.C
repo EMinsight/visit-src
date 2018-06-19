@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -608,7 +608,7 @@ avtVarMetaData::Print(ostream &out, int indent) const
 
       case AVT_UNKNOWN_CENT:
       default:
-        out << "unknowing centering.";
+        out << "unknown centering.";
         break;
     }
     out << endl;

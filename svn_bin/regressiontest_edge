@@ -19,6 +19,11 @@
 #   Eric Brugger, Thu Aug 25 14:11:16 PDT 2011
 #   Modified the script to send out the e-mail only after the results
 #   were posted.
+#
+#   Eric Brugger, Wed Jan 25 13:26:36 PST 2012
+#   Modified the command that submits the batch job to run the test suite
+#   to specify that it isn't using any of the Lustre file systems so that
+#   the job will run even if one of the Lustre file systems is down.
 
 #
 # Determine the users name and e-mail address.
@@ -137,18 +142,17 @@ else
 fi
 
 skipList_for_Edge="\
-    $testHost,serial:tests/plots/streamline_geom.py:streamline_geom_07,streamline_geom_08,streamline_geom_09 \
-    $testHost,parallel:tests/plots/streamline_geom.py:streamline_geom_07,streamline_geom_08,streamline_geom_09 \
-    $testHost,scalable,parallel,icet:tests/plots/streamline_geom.py:streamline_geom_07,streamline_geom_08,streamline_geom_09 \
+    $testHost,parallel:tests/hybrid/missingdata.py:missingdata_0_04 \
+    $testHost,scalable,parallel,icet:tests/hybrid/missingdata.py:missingdata_0_04 \
+    $testHost,serial:tests/plots/streamline_geom.py:streamline_geom_08,streamline_geom_09 \
+    $testHost,parallel:tests/plots/streamline_geom.py:streamline_geom_08,streamline_geom_09 \
+    $testHost,scalable,parallel,icet:tests/plots/streamline_geom.py:streamline_geom_08,streamline_geom_09 \
     $testHost,serial:tests/operators/persistent_particles.py \
     $testHost,parallel:tests/operators/persistent_particles.py \
     $testHost,scalable,parallel,icet:tests/operators/persistent_particles.py \
     $testHost,serial:tests/databases/itaps.py:itaps_14,itaps_15 \
     $testHost,parallel:tests/databases/itaps.py:itaps_14,itaps_15 \
     $testHost,scalable,parallel,icet:tests/databases/itaps.py:itaps_14,itaps_15 \
-    $testHost,serial:tests/rendering/tuvok.py:tuvok_1,tuvok_2,tuvok_3,tuvok_4,tuvok_6 \
-    $testHost,parallel:tests/rendering/tuvok.py:tuvok_1,tuvok_2,tuvok_3,tuvok_4,tuvok_6 \
-    $testHost,scalable,parallel,icet:tests/rendering/tuvok.py:tuvok_1,tuvok_2,tuvok_3,tuvok_4,tuvok_6 \
     $testHost,scalable,parallel,icet:tests/operators/transform.py:ops_transform05 \
     $testHost,parallel:tests/rendering/compositing.py \
     $testHost,scalable,parallel,icet:tests/rendering/compositing.py \
@@ -304,5 +308,5 @@ chmod 750 $testHost
 if test "$testHost" = "edge" ; then
     scp edge edge:edge_testit
 
-    ssh edge "msub -l nodes=1:ppn=12 -l walltime=12:00:00 -q pbatch -A bdivp -z ./edge_testit"
+    ssh edge "msub -l nodes=1:ppn=12 -l gres=ignore -l walltime=12:00:00 -q pbatch -A bdivp -z ./edge_testit"
 fi

@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,6 +50,12 @@
 #
 #  Cyrus Harrison, Thu Sep 29 15:57:46 PDT 2011
 #  Added PySide.
+#
+#  Cyrus Harrison, Tue Apr 24 23:12:25 MDT 2012
+#  Added visit_utils
+#
+#  Kathleen Biagas, Fri May 4 14:05:27 PDT 2012
+#  Don't change LIBRARY_OUTPUT_DIRECTORY for visitmodule if on windows. 
 #
 #****************************************************************************/
 
@@ -241,12 +247,12 @@ IF(VISIT_STATIC)
 
     VISIT_INSTALL_TARGETS(cli)
 ELSE(VISIT_STATIC)
+
+
     # Create the visitmodule
     PYTHON_ADD_MODULE(visitmodule
-        ${COMMON_SOURCES}
-    )
-    SET_TARGET_PROPERTIES(visitmodule PROPERTIES PREFIX "")
-    TARGET_LINK_LIBRARIES(visitmodule 
+                      ${COMMON_SOURCES})
+    TARGET_LINK_LIBRARIES(visitmodule
         viewerproxy
         viewerrpc
         avtdbatts
@@ -254,23 +260,28 @@ ELSE(VISIT_STATIC)
         visitpy
         ${PYTHON_LIBRARIES}
     )
+
+    IF(NOT WIN32)
+        SET_TARGET_PROPERTIES(visitmodule PROPERTIES
+                                          LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/visit)
+    ENDIF(NOT WIN32)
+
+
     IF(NOT APPLE)
         SET_TARGET_PROPERTIES(visitmodule PROPERTIES INSTALL_RPATH "$ORIGIN")
     ENDIF(NOT APPLE)
 
-    # Create the front end visit module
-    PYTHON_ADD_MODULE(visitfrontend
-        visitmodule/visitfrontend.c
-    )
-    SET_TARGET_PROPERTIES(visitfrontend PROPERTIES PREFIX "" OUTPUT_NAME visit)
-    TARGET_LINK_LIBRARIES(visitfrontend
-        ${PYTHON_LIBRARIES}
-    )
-    IF(NOT APPLE)
-        SET_TARGET_PROPERTIES(visitfrontend PROPERTIES INSTALL_RPATH "$ORIGIN")
-    ENDIF(NOT APPLE)
-    VISIT_INSTALL_TARGETS(visitfrontend visitpy cli visitmodule)
+
+    VISIT_INSTALL_TARGETS(visitpy cli)
+    VISIT_INSTALL_TARGETS_RELATIVE(site-packages/visit visitmodule)
 ENDIF(VISIT_STATIC)
+
+#
+# For distutils setup of the pure python parts of the visit module
+#
+ADD_SUBDIRECTORY(visitmodule)
+ADD_SUBDIRECTORY(visit_utils)
+
 
 IF(VISIT_PYTHON_FILTERS)
     ADD_SUBDIRECTORY(pyavt)
@@ -281,4 +292,6 @@ IF(HAVE_PYSIDE)
     ADD_SUBDIRECTORY(pyside)
 ENDIF(HAVE_PYSIDE)
 
-
+IF(HAVE_PYQT AND VISIT_SIP_DIR)
+    ADD_SUBDIRECTORY(pyqt)
+ENDIF(HAVE_PYQT AND VISIT_SIP_DIR)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                            avtDivergenceExpression.h                          //
+//                        avtDivergenceExpression.C                          //
 // ************************************************************************* //
 
 #include <avtDivergenceExpression.h>
@@ -94,8 +94,8 @@ avtDivergenceExpression::~avtDivergenceExpression()
 // ****************************************************************************
 
 void
-avtDivergenceExpression::GetMacro(std::vector<std::string> &args, std::string &ne,
-                              Expression::ExprType &type)
+avtDivergenceExpression::GetMacro(std::vector<std::string> &args, 
+    std::string &ne, Expression::ExprType &type)
 {
     bool do3D = true;
 
@@ -128,7 +128,8 @@ avtDivergenceExpression::GetMacro(std::vector<std::string> &args, std::string &n
         }
         else
         {
-            EXCEPTION2(ExpressionException, outputVariableName, " invalid divergence syntax. "
+            EXCEPTION2(ExpressionException, outputVariableName, 
+                        " invalid divergence syntax. "
                         "Expected arguments: "
                         " vector_var, gradient_algorithm\n"
                         " gradient_algorithm is optional");
@@ -151,7 +152,8 @@ avtDivergenceExpression::GetMacro(std::vector<std::string> &args, std::string &n
         }
         else
         {
-            EXCEPTION2(ExpressionException, outputVariableName, " invalid divergence syntax. "
+            EXCEPTION2(ExpressionException, outputVariableName, 
+                        " invalid divergence syntax. "
                         "Expected arguments: "
                         " vector_var, gradient_algorithm\n"
                         " gradient_algorithm is optional");

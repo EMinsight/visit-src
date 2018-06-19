@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -270,6 +270,10 @@ class     avtWebpage;
 //    Add GetMultiresExtents and GetMultiresCellSize to support adding
 //    a multi resolution display capability for AMR data.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDataAttributes
@@ -385,6 +389,14 @@ class PIPELINE_API avtDataAttributes
                                    { return containsGhostZones; };
     void                     SetContainsGhostZones(avtGhostType v)
                                    { containsGhostZones = v; };
+
+    int                      GetGhostZoneTypesPresent(void) const
+                                   { return presentGhostZoneTypes; };
+    void                     SetGhostZoneTypesPresent(int v)
+                                   {presentGhostZoneTypes = v; };
+    void                     ClearGhostTypesPresent();
+    void                     AddGhostZoneTypePresent(avtGhostsZonesPresent v);
+
 
     bool                     GetContainsExteriorBoundaryGhosts(void) const
                                    { return containsExteriorBoundaryGhosts; };
@@ -588,6 +600,7 @@ class PIPELINE_API avtDataAttributes
     int                      timeIndex;
     bool                     dynamicDomainDecomposition;
     avtGhostType             containsGhostZones;
+    int                      presentGhostZoneTypes;
     bool                     containsExteriorBoundaryGhosts;
     bool                     containsOriginalCells;
     bool                     containsOriginalNodes;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              avtArccosExpression.C                            //
+//                              avtArccosExpression.C                        //
 // ************************************************************************* //
 
 #include <avtArccosExpression.h>
@@ -107,13 +107,13 @@ avtArccosExpression::~avtArccosExpression()
 
 void
 avtArccosExpression::DoOperation(vtkDataArray *in, vtkDataArray *out,
-                             int ncomponents, int ntuples)
+                                 int ncomponents, int ntuples)
 {
     for (int i = 0 ; i < ntuples ; i++)
     {
         for (int j = 0 ; j < ncomponents ; j++)
         {
-            float val = in->GetComponent(i, j);
+            double val = in->GetComponent(i, j);
             out->SetComponent(i, j, acos(val));
         }
     }

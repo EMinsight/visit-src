@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -144,7 +144,9 @@ ColorTableManager::Export(const std::string &ctName,
 // Creation:   Thu Jul 3 18:24:52 PST 2003
 //
 // Modifications:
-//   
+//   Brad Whitlock, Fri Apr 27 17:36:00 PDT 2012
+//   Look in a system place too.
+//
 // ****************************************************************************
 
 bool
@@ -154,8 +156,12 @@ ColorTableManager::ImportColorTables(ColorTableAttributes *cta)
     // Read the user's home VisIt directory and import all of the color tables.
     //
     ctAtts = cta;
-    return ReadAndProcessDirectory(GetUserVisItDirectory(), ImportHelper,
-                                   (void*)this, false);
+    std::string ctdir(GetVisItResourcesDirectory(VISIT_RESOURCES_COLORTABLES));
+    bool r1 = ReadAndProcessDirectory(ctdir, ImportHelper,
+                                      (void*)this, false);
+    bool r2 = ReadAndProcessDirectory(GetUserVisItDirectory(), ImportHelper,
+                                      (void*)this, false);
+    return r1 || r2;
 }
 
 // ****************************************************************************

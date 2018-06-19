@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkShortArray.h>
 #include <vtkUnsignedShortArray.h>
+#include <vtkInformation.h>
 #include <vtkIntArray.h>
 #include <vtkUnsignedIntArray.h>
 #include <vtkLongArray.h>
@@ -71,6 +72,7 @@
 #include <avtDatabaseMetaData.h>
 #include <avtDatasetCollection.h>
 #include <avtParallel.h>
+#include <avtScalarMetaData.h>
 #include <avtSourceFromDatabase.h>
 #include <avtTransformManager.h>
 
@@ -353,7 +355,14 @@ ConvertDataArrayToFloat(vtkDataArray *oldArr)
 
     if (newArr)
         newArr->SetName(oldArr->GetName());
-
+  
+    vtkInformation* info = oldArr->GetInformation();
+    if (info && info->Has(avtVariableCache::OFFSET_3())) {
+        double* vals = info->Get(avtVariableCache::OFFSET_3());
+        vtkInformation* newInfo = newArr->GetInformation();
+        newInfo->Set(avtVariableCache::OFFSET_3(), vals[0], vals[1], vals[2]);
+    }
+  
     return newArr;
 }
 
@@ -510,12 +519,12 @@ template <class iT>
 static iT *
 BuildMappedArray(const iT *const ibuf, int ncomps, const vector<int> &valsToMap)
 {
-    const int nvals = valsToMap.size();
+    size_t nvals = valsToMap.size();
 
     // we use malloc here because we'll assign the data to vtkDataArray using
     // SetVoidArray and, upon deletion, that assumes malloc was used
     iT *rbuf = (iT *) malloc(nvals * ncomps * sizeof(iT));
-    for (int i = 0; i < nvals; i++)
+    for (size_t i = 0; i < nvals; i++)
     {
         for (int j = 0; j < ncomps; j++)
             rbuf[i*ncomps+j] = ibuf[valsToMap[i]*ncomps+j];
@@ -540,7 +549,7 @@ BuildMappedArray(const iT *const ibuf, int ncomps, const vector<int> &valsToMap)
 static vtkDataArray *
 BuildMappedArray(vtkDataArray *da, const vector<int> &valsToMap)
 {
-    const int nvals = valsToMap.size();
+    const int nvals = static_cast<int>(valsToMap.size());
     const int ncomps = da->GetNumberOfComponents();
     const void *buf = da->GetVoidPointer(0);
     vtkDataArray *rv;
@@ -618,7 +627,7 @@ BuildMappedArray(vtkDataArray *da, const vector<int> &valsToMap)
 }
 
 // ****************************************************************************
-//  Function: IsInternalAVTArray 
+//  Function: ShouldIgnoreVariableForConversions
 //
 //  Purpose: Filter certain internal AVT arrays that should not undergo
 //  conversion 
@@ -626,13 +635,32 @@ BuildMappedArray(vtkDataArray *da, const vector<int> &valsToMap)
 //  Programmer: Mark C. Miller 
 //  Creation:   December 5, 2006 
 //
+//    Mark C. Miller, Fri Apr 13 10:32:47 PDT 2012
+//    Renamed to serve as a more generalized filter for ignoring variables
+//    for various reasons.
 // ****************************************************************************
 static bool
-IsInternalAVTArray(vtkDataArray *da)
+ShouldIgnoreVariableForConversions(vtkDataArray *da,
+    const avtDatabaseMetaData *const md,
+    const avtDataRequest_p &dataRequest)
 {
-    if (strncmp(da->GetName(), "avt", 3) == 0)
-        return true;
-    return false;
+    bool ignoreIt = false;
+
+    if (!ignoreIt && strncmp(da->GetName(), "avt", 3) == 0)
+        ignoreIt = true;
+
+    if (!ignoreIt && da->GetDataType() == VTK_BIT)
+    {
+        const avtScalarMetaData *smd = md->GetScalar(da->GetName());
+        if (smd && smd->GetEnumerationType() == avtScalarMetaData::ByBitMask)
+            ignoreIt = true;
+    }
+
+    if (ignoreIt)
+        debug4 << "Ignoring variable/array \"" << da->GetName()
+               << "\" for type conversions" << endl;
+
+    return ignoreIt;
 }
 
 // ****************************************************************************
@@ -671,6 +699,98 @@ avtTransformManager::FreeUpResources(int lastts)
 }
 
 // ****************************************************************************
+// Method: avtTransformManager::CoordinatesHaveExcessPrecision
+//
+// Purpose: 
+//   Determines whether the input dataset's coordinates have excess precision
+//   that we can forfeit in the interest of using float for lower memory usage.
+//
+// Arguments:
+//   ds                  : The input dataset.
+//   needNativePrecision : Whether the contract says we need native precision.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Sat Apr 21 23:53:45 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+avtTransformManager::CoordinatesHaveExcessPrecision(vtkDataSet *ds, 
+    bool needNativePrecision) const
+{
+    // This needs to be a knob available to the user. Rather, we need to expose
+    // the choice to the user and set the contract's needNativePrecision 
+    // accordingly.
+    bool userWantsFullPrecision = true;
+
+    bool excessPrecision;
+    if(userWantsFullPrecision)
+        excessPrecision = false;
+    else
+    {
+        // The transform manager makes a decision here that since we don't
+        // need native precision (according to the contract) that it's okay
+        // to lose some precision.
+        excessPrecision = !needNativePrecision && 
+            (PrecisionInBytes(GetCoordDataType(ds)) > sizeof(float));
+    }
+
+    return excessPrecision;
+}
+
+// ****************************************************************************
+// Method: avtTransformManager::DataHasExcessPrecision
+//
+// Purpose: 
+//   Determines whether the input data array has excess precision that we can 
+//   forfeit in the interest of using float for lower memory usage.
+//
+// Arguments:
+//   da                  : The input data array.
+//   needNativePrecision : Whether the contract says we need native precision.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Sat Apr 21 23:53:45 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+avtTransformManager::DataHasExcessPrecision(vtkDataArray *da,
+    bool needNativePrecision) const
+{
+     // This needs to be a knob available to the user. Rather, we need to expose
+    // the choice to the user and set the contract's needNativePrecision 
+    // accordingly.
+    bool userWantsFullPrecision = true;
+
+    bool excessPrecision;
+    if(userWantsFullPrecision)
+        excessPrecision = false;
+    else
+    {
+        // The transform manager makes a decision here that since we don't
+        // need native precision (according to the contract) that it's okay
+        // to lose some precision.
+        excessPrecision = !needNativePrecision && 
+            (PrecisionInBytes(da) > sizeof(float));
+    }
+
+    return excessPrecision;
+}
+
+// ****************************************************************************
 //  Method: NativeToFloat transformation
 //
 //  Purpose: Convert dataset and/or data arrays defined on it to from their
@@ -701,11 +821,18 @@ avtTransformManager::FreeUpResources(int lastts)
 //    Hank Childs, Mon Aug 25 16:19:57 PDT 2008
 //    Make delete logic squeaky clean.
 //
+//    Brad Whitlock, Sun Apr 22 00:02:42 PDT 2012
+//    Call some helper functions to help determine whether there is 
+//    excess precision. Print the reason for conversion to the logs.
+//
 // ****************************************************************************
+
 vtkDataSet *
 avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
     const avtDataRequest_p &dataRequest, vtkDataSet *ds, int dom)
 {
+    const char *mName = "avtTransformManager::NativeToFloat: ";
+
     if (!ds)
         return 0;
 
@@ -724,6 +851,30 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
         needNativePrecision = false;
         admissibleDataTypes.push_back(VTK_FLOAT);
     }
+    debug4 << mName << "needNativePrecision=" << (needNativePrecision?"true":"false")
+           << ", admissibleDataTypes={";
+    for(size_t q = 0; q < admissibleDataTypes.size(); ++q)
+    {
+        switch (admissibleDataTypes[q])
+        {
+        case VTK_CHAR:               debug4 << "VTK_CHAR"; break;
+        case VTK_UNSIGNED_CHAR:      debug4 << "VTK_UNSIGNED_CHAR"; break;
+        case VTK_SHORT:              debug4 << "VTK_SHORT"; break;
+        case VTK_UNSIGNED_SHORT:     debug4 << "VTK_UNSIGNED_SHORT"; break;
+        case VTK_INT:                debug4 << "VTK_INT"; break;
+        case VTK_UNSIGNED_INT:       debug4 << "VTK_UNSIGNED_INT"; break;
+        case VTK_LONG:               debug4 << "VTK_LONG"; break;
+        case VTK_LONG_LONG:          debug4 << "VTK_LONG_LONG"; break;
+        case VTK_UNSIGNED_LONG:      debug4 << "VTK_UNSIGNED_LONG"; break;
+        case VTK_UNSIGNED_LONG_LONG: debug4 << "VTK_UNSIGNED_LONG_LONG"; break;
+        case VTK_FLOAT:              debug4 << "VTK_FLOAT"; break;
+        case VTK_DOUBLE:             debug4 << "VTK_DOUBLE"; break;
+        case VTK_ID_TYPE:            debug4 << "VTK_ID_TYPE"; break;
+        default:                     debug4 << admissibleDataTypes[q]; break;                
+        }
+        debug4 << ",";
+    }
+    debug4 << "}" << endl;
 
     //
     // We make two passes here, the first to simply decide if any
@@ -737,18 +888,24 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
     {
         if (pass == 1)
         {
-            debug1 << "avtTransformManager: Applying NativeToFloat transform" << endl;
+            debug1 << mName << "Applying NativeToFloat transform" << endl;
         }
 
         //
         // Deal with mesh first 
         //
-        if (!IsAdmissibleDataType(admissibleDataTypes, GetCoordDataType(ds)) ||
-            (!needNativePrecision && PrecisionInBytes(GetCoordDataType(ds)) > sizeof(float)))
+        bool disallowedType = !IsAdmissibleDataType(admissibleDataTypes, GetCoordDataType(ds));
+        bool excessPrecision = CoordinatesHaveExcessPrecision(ds, needNativePrecision);
+        if(disallowedType || excessPrecision)
         {
             anyConversionNeeded = true;
             if (pass == 1)
             {
+                if(disallowedType)
+                    debug1 << mName << "Convert coordinates due to disallowed type." << endl;
+                if(excessPrecision)
+                    debug1 << mName << "Convert coordinates due to excess precision." << endl;
+
                 // look up this vtk object's "key" in GenericDb's cache
                 objectWasCachedInGenericDB[ds] =
                     gdbCache->GetVTKObjectKey(&vname, &type, &ts, dom, &mat, ds);
@@ -760,14 +917,14 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
                 }
                 else
                 {
-                    debug1 << "avtTransformManager: dataset is not in generic db's cache" << endl;
+                    debug1 << mName << "dataset is not in generic db's cache" << endl;
                     rv = 0;
                 }
 
                 bool needDelete = false;
                 if (!rv)
                 {
-                    debug1 << "avtTransformManager: Converting data set from native to float" << endl;
+                    debug1 << mName << "Converting data set from native to float" << endl;
                     rv = ConvertDataSetToFloat(ds);
                     needDelete = true;
                     if (objectWasCachedInGenericDB[ds])
@@ -800,13 +957,19 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
         for (i = 0; i < cd->GetNumberOfArrays(); i++)
         {
             vtkDataArray *da = cd->GetArray(i);
-            if (!IsInternalAVTArray(da) && 
-                (!IsAdmissibleDataType(admissibleDataTypes, da->GetDataType()) ||
-                 (!needNativePrecision && PrecisionInBytes(da) > sizeof(float))))
+            bool eligible = !ShouldIgnoreVariableForConversions(da, md, dataRequest);
+            disallowedType = eligible && !IsAdmissibleDataType(admissibleDataTypes, da->GetDataType());
+            excessPrecision = eligible && DataHasExcessPrecision(da, needNativePrecision);
+            if(disallowedType || excessPrecision)
             {
                 anyConversionNeeded = true;
                 if (pass == 1)
                 {
+                    if(disallowedType)
+                        debug1 << mName << "Convert \"" << da->GetName() << "\" array due to disallowed type." << endl;
+                    if(excessPrecision)
+                        debug1 << mName << "Convert \"" << da->GetName() << "\" array due to excess precision." << endl;
+
                     // look up this vtk object's "key" in GenericDb's cache
                     objectWasCachedInGenericDB[da] =
                         gdbCache->GetVTKObjectKey(&vname, &type, &ts, dom, &mat, da);
@@ -815,12 +978,12 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
                     if (objectWasCachedInGenericDB[da])
                         newda = (vtkDataArray *) cache.GetVTKObject(vname, type, ts, dom, mat);
                     else
-                        debug1 << "avtTransformManager: Array \"" << da->GetName() << "\" was not in generic db's cache" << endl;
+                        debug1 << mName << "Array \"" << da->GetName() << "\" was not in generic db's cache" << endl;
 
                     bool needDelete = false;
                     if (!newda)
                     {
-                        debug1 << "avtTransformManager: Array \"" << da->GetName() << "\" was not in tmngr's cache" << endl;
+                        debug1 << mName << "Array \"" << da->GetName() << "\" was not in tmngr's cache" << endl;
                         newda = ConvertDataArrayToFloat(da);
                         needDelete = true;
                         if (objectWasCachedInGenericDB[da])
@@ -842,8 +1005,8 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
             }
             else if (pass == 1)
             {
-                debug1 << "avtTransformManager: Passing along array \"" << da->GetName() << "\"" << endl;
-                if (IsInternalAVTArray(da))
+                debug1 << mName << "Passing along array \"" << da->GetName() << "\"" << endl;
+                if (ShouldIgnoreVariableForConversions(da, md, dataRequest))
                     rv->GetCellData()->AddArray(da);
                 else
                 {
@@ -866,13 +1029,19 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
         for (i = 0; i < pd->GetNumberOfArrays(); i++)
         {
             vtkDataArray *da = pd->GetArray(i);
-            if (!IsInternalAVTArray(da) &&
-                (!IsAdmissibleDataType(admissibleDataTypes, da->GetDataType()) ||
-                 (!needNativePrecision && PrecisionInBytes(da) > sizeof(float))))
+            bool eligible = !ShouldIgnoreVariableForConversions(da, md, dataRequest);
+            disallowedType = eligible && !IsAdmissibleDataType(admissibleDataTypes, da->GetDataType());
+            excessPrecision = eligible && DataHasExcessPrecision(da, needNativePrecision);
+            if(disallowedType || excessPrecision)
             {
                 anyConversionNeeded = true;
                 if (pass == 1)
                 {
+                    if(disallowedType)
+                        debug1 << mName << "Convert \"" << da->GetName() << "\" array due to disallowed type." << endl;
+                    if(excessPrecision)
+                        debug1 << mName << "Convert \"" << da->GetName() << "\" array due to excess precision." << endl;
+
                     // look up this vtk object's "key" in GenericDb's cache
                     objectWasCachedInGenericDB[da] = 
                         gdbCache->GetVTKObjectKey(&vname, &type, &ts, dom, &mat, da);
@@ -881,12 +1050,12 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
                     if (objectWasCachedInGenericDB[da])
                         newda = (vtkDataArray *) cache.GetVTKObject(vname, type, ts, dom, mat);
                     else
-                        debug1 << "avtTransformManager: Array \"" << da->GetName() << "\" was not in generic db's cache" << endl;
+                        debug1 << mName << "Array \"" << da->GetName() << "\" was not in generic db's cache" << endl;
 
                     bool needDelete = false;
                     if (!newda)
                     {
-                        debug1 << "avtTransformManager: Array \"" << da->GetName() << "\" was not in tmngr's cache" << endl;
+                        debug1 << mName << "Array \"" << da->GetName() << "\" was not in tmngr's cache" << endl;
                         newda = ConvertDataArrayToFloat(da);
                         needDelete = true;
                         if (objectWasCachedInGenericDB[da])
@@ -895,7 +1064,7 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
                         }
                         else
                         {
-                            debug1 << "Not caching this array" << endl;
+                            debug1 << mName << "Not caching this array" << endl;
                         }
                     }
                     if (pd->GetScalars() == da)
@@ -913,8 +1082,8 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
             }
             else if (pass == 1)
             {
-                debug1 << "avtTransformManager: Passing along array \"" << da->GetName() << "\"" << endl;
-                if (IsInternalAVTArray(da))
+                debug1 << mName << "Passing along array \"" << da->GetName() << "\"" << endl;
+                if (ShouldIgnoreVariableForConversions(da, md, dataRequest))
                     rv->GetPointData()->AddArray(da);
                 else
                 {

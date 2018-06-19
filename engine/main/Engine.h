@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,6 +68,7 @@ class UseNetworkRPC;
 class ProcInfoRPC;
 class SimulationCommandRPC;
 class SetEFileOpenOptionsRPC;
+class LaunchRPC;
 
 // Other classes
 class avtDatabaseMetaData;
@@ -219,6 +220,12 @@ class Xfer;
 //    Kathleen Biagas, Fri Jul 15 11:08:14 PDT 2011
 //    Added QueryPrametersRPC.
 //
+//    Brad Whitlock, Mon Nov 28 16:27:21 PST 2011
+//    I added LaunchRPC.
+//
+//   Dave Pugmire, Wed Apr 18 09:05:40 EDT 2012
+//   Add alarmEnabled flag. Setting alarm(0) is not disabling the alarm.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API Engine
@@ -278,6 +285,9 @@ class ENGINE_MAIN_API Engine
 
     // Method to get engine properties.
     EngineProperties GetEngineProperties();
+
+    // Method to launch other programs.
+    void LaunchProcess(const stringVector &args);
 
     // Various callbacks
     static bool     EngineAbortCallback(void *);
@@ -381,6 +391,7 @@ class ENGINE_MAIN_API Engine
     NamedSelectionRPC        *namedSelectionRPC;
     SetEFileOpenOptionsRPC   *setEFileOpenOptionsRPC;
     EnginePropertiesRPC      *enginePropertiesRPC;
+    LaunchRPC                *launchRPC;
 
 #ifdef DEBUG_MEMORY_LEAKS
     ParsingExprList          *parsingExprList;
@@ -407,6 +418,7 @@ class ENGINE_MAIN_API Engine
     size_t                    nDisplays;
     VisItDisplay             *renderingDisplay;
     bool                      launchXServers;
+    bool                      alarmEnabled;
 };
 
 #endif

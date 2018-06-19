@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -421,6 +421,46 @@ GetSystemVisItHostsDirectory()
     std::string retVal(defConfig);
     delete [] defConfig;
     return retVal;
+}
+
+// ****************************************************************************
+// Method: GetVisItResourcesDirectory
+//
+// Purpose: 
+//   Get the installation directory's resources subdirectory.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Apr 27 17:31:12 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+std::string
+GetVisItResourcesDirectory(VisItResourceDirectoryType t)
+{
+    std::string retval(GetVisItArchitectureDirectory());
+    retval += VISIT_SLASH_STRING;
+    retval += "resources";
+
+    if(t != VISIT_RESOURCES)
+    {
+        retval += VISIT_SLASH_STRING;
+        if(t == VISIT_RESOURCES_COLORTABLES)
+            retval += "colortables";
+        else if(t == VISIT_RESOURCES_TRANSLATIONS)
+            retval += "translations";
+        else if(t == VISIT_RESOURCES_MOVIETEMPLATES)
+            retval += "movietemplates";
+    }
+
+    return retval;
 }
 
 #if defined(_WIN32)
@@ -944,7 +984,7 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
             if(lastSlash != -1)
             {
                 arch = arch.substr(lastSlash+1, arch.length() - lastSlash - 1);
-                for(int i = 0; i < NARCH; ++i)
+                for(size_t i = 0; i < NARCH; ++i)
                 {
                     if(arch == archNames[i])
                     {
@@ -1222,3 +1262,49 @@ VersionGreaterThan(const std::string &v1, const std::string &v2)
 {
     return VersionToInt(v1) > VersionToInt(v2);
 }
+
+
+// ****************************************************************************
+// Method: GetVisItLibraryDirectory
+//
+// Purpose: 
+//   Gets the name of the directory where VisIt's current library is installed.
+//
+// Arguments:
+//   version : The version number for which we want the library dir.
+//
+// Returns:    The library dir.
+//
+// Programmer: Kathleen Biagas 
+// Creation:   May 4, 2012
+//
+// Modifications:
+//
+// ****************************************************************************
+
+std::string
+GetVisItLibraryDirectory()
+{
+    return GetVisItLibraryDirectory(VISIT_VERSION);
+}
+
+std::string
+GetVisItLibraryDirectory(const char *version)
+{
+    std::string varchdir(GetVisItArchitectureDirectory(version));
+
+#if defined(_WIN32)
+    if (isDevelopmentVersion)
+    {
+        size_t pos = varchdir.find_last_of("\\");
+        std::string config = varchdir.substr(pos+1);
+        pos = varchdir.find_last_of("\\", pos-1);
+        std::string libdir = varchdir.substr(0, pos) + VISIT_SLASH_CHAR + 
+                             "lib" + VISIT_SLASH_CHAR + config;
+        return libdir;
+    }
+#endif
+    std::string libdir = varchdir + VISIT_SLASH_CHAR + "lib";
+    return libdir;
+}
+

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -77,6 +77,9 @@ class     avtLookupTable;
 //    Turn on NeedZBufferToCompositeEvenIn2D, as tensor glyphs can bleed
 //    into other processor's portion of image space.
 //
+//    Kathleen Biagas, Wed Feb 29 13:10:11 MST 2012
+//    Add GetExtraInfoForPick.
+//
 // ****************************************************************************
 
 class avtTensorPlot : public avtPointDataPlot
@@ -94,6 +97,7 @@ class avtTensorPlot : public avtPointDataPlot
     virtual bool                NeedZBufferToCompositeEvenIn2D(void)
                                                           { return true; };
 
+    virtual const MapNode      &GetExtraInfoForPick(void);
 
   protected:
     TensorAttributes              atts;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -309,6 +309,9 @@ avtSurfaceAndWireframeRenderer::Draw()
 //    Kathleen Bonnell, Mon Oct 29 21:53:14 PDT 2007 
 //    Added drawEdgeVerts.
 //
+//    Kathleen Biagas, Fri Mar  9 13:33:47 PST 2012 
+//    Delete the geometry filter when we are done with it.
+//
 // ****************************************************************************
 
 void
@@ -354,6 +357,7 @@ avtSurfaceAndWireframeRenderer::Render(vtkDataSet *ds)
         input = vtkPolyData::New();
         gf->SetOutput(input);
         gf->Update();
+        gf->Delete();
     }
     else 
     {

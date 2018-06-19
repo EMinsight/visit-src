@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                               avtMatvfExpression.C                            //
+//                           avtMatvfExpression.C                            //
 // ************************************************************************* //
 
 #include <avtMatvfExpression.h>
@@ -46,7 +46,7 @@
 
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
-#include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
 #include <vtkUnsignedIntArray.h>
 
 #include <avtExprNode.h>
@@ -162,6 +162,10 @@ avtMatvfExpression::PreExecute(void)
 //    Cyrus Harrison, Wed Apr  9 10:57:19 PDT 2008
 //    Only use post ghost material info if VisIt created the ghost zones.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -170,7 +174,7 @@ avtMatvfExpression::DeriveVariable(vtkDataSet *in_ds)
     int    i, j;
 
     int ncells = in_ds->GetNumberOfCells();
-              
+
     //
     // The 'currentDomainsIndex' is a data member of the base class that is
     // set to be the id of the current domain right before DeriveVariable is
@@ -186,23 +190,33 @@ avtMatvfExpression::DeriveVariable(vtkDataSet *in_ds)
 
     // only ask for post ghost Material info if the dataset actually
     // has ghost zones and VisIt created them. 
-    
-    avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
-    bool created_ghosts = datts.GetContainsGhostZones() != AVT_CREATED_GHOSTS;
-    if(!in_ds->GetCellData()->GetArray("avtGhostZones") || created_ghosts)
-        doPostGhost = false;
 
-    debug5 << "avtMatvfExpression: Using post ghost material object ?  " 
-           << doPostGhost <<endl;
-    
+    avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
+    bool created_ghosts = datts.GetContainsGhostZones() == AVT_CREATED_GHOSTS;
+    // check bitmask to make sure we actually have bondary ghost zones
+    // (in some cases we may only have nesting ghosts zones, and post ghost
+    // is not the proper path)
+    if(created_ghosts)
+        created_ghosts = datts.GetGhostZoneTypesPresent() & AVT_BOUNDARY_GHOST_ZONES;
+
+    doPostGhost = doPostGhost  &&
+                  in_ds->GetCellData()->GetArray("avtGhostZones") &&
+                  created_ghosts;
+    debug5 << "avtMatvfExpression: GetGhostZoneTypesPresent() = "
+           << datts.GetGhostZoneTypesPresent() <<  endl;
+
+
+    debug5 << "avtMatvfExpression: Using post ghost material object ?  "
+           << doPostGhost <<  endl;
+
     avtMaterial *mat = GetMetaData()->GetMaterial(currentDomainsIndex,
                                                   currentTimeState,
                                                   doPostGhost);
-    
+
     if (mat == NULL)
     {
         debug1 << "Could not find a material object." << endl;
-        vtkFloatArray *dummy = vtkFloatArray::New();
+        vtkDoubleArray *dummy = vtkDoubleArray::New();
         dummy->SetNumberOfTuples(ncells);
         for (i = 0 ; i < ncells ; i++)
             dummy->SetTuple1(i, 0.);
@@ -214,7 +228,7 @@ avtMatvfExpression::DeriveVariable(vtkDataSet *in_ds)
     // zones in the original dataset -- this may or may not be the number
     // of cells in the input, depending on whether or not we did MIR.
     //
-    vtkFloatArray *vf_for_orig_cells = vtkFloatArray::New();
+    vtkDoubleArray *vf_for_orig_cells = vtkDoubleArray::New();
     int norigcells = mat->GetNZones();
     vf_for_orig_cells->SetNumberOfTuples(norigcells);
 
@@ -350,7 +364,7 @@ avtMatvfExpression::DeriveVariable(vtkDataSet *in_ds)
     const int *mix_next = mat->GetMixNext();
     for (i = 0 ; i < norigcells ; i++)
     {
-        float vf = 0.;
+        double vf = 0.;
         if (matlist[i] >= 0)
         {
             vf = (useMat[matlist[i]] ? 1. : 0.);
@@ -382,7 +396,7 @@ avtMatvfExpression::DeriveVariable(vtkDataSet *in_ds)
 
     bool zonesMatchMaterialObject = GetInput()->GetInfo().GetValidity().
                                             GetZonesPreserved();
-    vtkFloatArray *rv = NULL;
+    vtkDoubleArray *rv = NULL;
     if (zonesMatchMaterialObject)
     {
         //
@@ -403,7 +417,7 @@ avtMatvfExpression::DeriveVariable(vtkDataSet *in_ds)
         // original cells have been modified -- most likely by MIR.  Use
         // their original indexing to determine the volume fractions.
         //
-        rv = vtkFloatArray::New();
+        rv = vtkDoubleArray::New();
         rv->SetNumberOfTuples(ncells);
 
         vtkUnsignedIntArray *ids = (vtkUnsignedIntArray *)
@@ -643,7 +657,7 @@ avtMatvfExpression::ModifyContract(avtContract_p spec)
     {
         doPostGhost = false;
     }
-    
+
     return spec;
 }
 

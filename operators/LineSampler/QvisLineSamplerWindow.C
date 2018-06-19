@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,7 @@
 #include <QTabWidget>
 #include <QGroupBox>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
@@ -231,6 +232,26 @@ QvisLineSamplerWindow::CreateWindowContents()
             this, SLOT(wallListTextChanged(QString)));
 
 
+    mainLayout->addWidget( new QLabel(tr("Set the instance when applying to multiple \nplots in a single window. I.e. if you want to\ncompare different samplings, set the instance\nto A for the first, and B for the second. These\nsettings will allow the attributes to be\npropagated to plots in other windows when\nusing the \"Apply to all windows\" option."), central), 4, 0, 2, 2);
+
+    QWidget *instance = new QWidget(central);
+    QHBoxLayout *instanceLayout = new QHBoxLayout(instance);
+    instanceLayout->setMargin(0);
+    instanceLayout->setSpacing(10);
+    mainLayout->addWidget(instance, 6,0);
+
+    instanceLayout->addWidget( new QLabel(tr("Instance"), central));
+    instanceId = new QComboBox(central);
+    instanceId->setMaximumWidth(50);
+    instanceId->addItem(tr("A"));
+    instanceId->addItem(tr("B"));
+    instanceId->addItem(tr("C"));
+    instanceId->addItem(tr("D"));
+    instanceId->addItem(tr("E"));
+    connect(instanceId, SIGNAL(activated(int)),
+            this, SLOT(instanceIdChanged(int)));
+    instanceLayout->addWidget(instanceId);
+  
     // ----------------------------------------------------------------------
     // Geometry tab
     // ----------------------------------------------------------------------
@@ -755,7 +776,7 @@ QvisLineSamplerWindow::CreateWindowContents()
     toroidalIntegrationLabel = new QLabel(tr("Toroidal"), central);
     integrationLayout->addWidget(toroidalIntegrationLabel,1,0);
     toroidalIntegration = new QWidget(central);
-    toroidalIntegrationButtonGroup= new QButtonGroup(toroidalIntegration);
+    toroidalIntegrationButtonGroup = new QButtonGroup(toroidalIntegration);
 
     toroidalIntegrationNone =
       new QRadioButton(tr("None"), toroidalIntegration);
@@ -767,9 +788,10 @@ QvisLineSamplerWindow::CreateWindowContents()
     toroidalIntegrationButtonGroup->addButton(toroidalIntegrationTime,1);
     integrationLayout->addWidget(toroidalIntegrationTime,1,2);
 
-//     toroidalIntegrationSummation = new QRadioButton(tr("Integrate toroidally"), toroidalIntegration);
-//     toroidalIntegrationButtonGroup->addButton(toroidalIntegrationSummation,1);
-//     integrationLayout->addWidget(toroidalIntegrationSummation,1,2);
+    toroidalIntegrationSummation =
+      new QRadioButton(tr("Integrate toroidally"), toroidalIntegration);
+    toroidalIntegrationButtonGroup->addButton(toroidalIntegrationSummation,2);
+    integrationLayout->addWidget(toroidalIntegrationSummation,1,3);
 
     connect(toroidalIntegrationButtonGroup, SIGNAL(buttonClicked(int)),
             this, SLOT(toroidalIntegrationChanged(int)));
@@ -920,6 +942,12 @@ QvisLineSamplerWindow::CreateWindowContents()
             this, SLOT(viewDimensionChanged(int)));
 
     mainLayout->addWidget(viewDimension,0,1);
+
+
+    donotApplyToAll = new QCheckBox(tr("Do not apply to all"), central);
+    connect(donotApplyToAll, SIGNAL(toggled(bool)),
+            this, SLOT(donotApplyToAllChanged(bool)));
+    mainLayout->addWidget(donotApplyToAll, 0,3);
 
 
     // Create the oneDPlot group box.
@@ -1083,6 +1111,13 @@ QvisLineSamplerWindow::UpdateWindow(bool doAll)
             wallList->setEnabled((int)atts->GetBoundary()==1);
 
             break;
+
+        case LineSamplerAttributes::ID_instanceId:
+            instanceId->blockSignals(true);
+            instanceId->setCurrentIndex(atts->GetInstanceId());
+            instanceId->blockSignals(false);
+            break;
+
           case LineSamplerAttributes::ID_nArrays:
             nArrays->setText(IntToQString(atts->GetNArrays()));
             break;
@@ -1185,7 +1220,7 @@ QvisLineSamplerWindow::UpdateWindow(bool doAll)
             channelListFlipToroidalAngle->blockSignals(true);
             channelListFlipToroidalAngle->setChecked(atts->GetFlipToroidalAngle());
             channelListFlipToroidalAngle->blockSignals(false);
-            break;            break;
+            break;
           case LineSamplerAttributes::ID_viewGeometry:
             viewGeometryButtonGroup->blockSignals(true);
             if(viewGeometryButtonGroup->button((int)atts->GetViewGeometry()) != 0)
@@ -1205,6 +1240,12 @@ QvisLineSamplerWindow::UpdateWindow(bool doAll)
             viewDimensionButtonGroup->blockSignals(false);
 
             oneDPlotGroup->setEnabled( (int)atts->GetViewDimension() == 0 );
+            break;
+          case LineSamplerAttributes::ID_donotApplyToAll:
+            donotApplyToAll->blockSignals(true);
+            donotApplyToAll->setChecked(atts->GetDonotApplyToAll());
+            donotApplyToAll->blockSignals(false);
+
             break;
           case LineSamplerAttributes::ID_heightPlotScale:
             heightPlotScale->setText(DoubleToQString(atts->GetHeightPlotScale()));
@@ -1270,13 +1311,15 @@ QvisLineSamplerWindow::UpdateWindow(bool doAll)
             if(toroidalIntegrationButtonGroup->button((int)atts->GetToroidalIntegration()) != 0)
                 toroidalIntegrationButtonGroup->button((int)atts->GetToroidalIntegration())->setChecked(true);
             toroidalIntegrationButtonGroup->blockSignals(false);
-            toroidalGroup->setEnabled( (int)atts->GetToroidalIntegration() == 1 );
+            toroidalGroup->setEnabled( (int)atts->GetToroidalIntegration() == 1 ||
+                                       (int)atts->GetToroidalIntegration() == 2 );
 
-            displayTimeLabel->setEnabled( (int)atts->GetTimeSampling()==1 &&
-                                          (int)atts->GetToroidalIntegration()==0);
+            displayTimeLabel->
+              setEnabled( (int)atts->GetTimeSampling()==1 &&
+                          (int)atts->GetToroidalIntegration()!=1);
 
             displayTime->setEnabled( (int)atts->GetTimeSampling()==1 &&
-                                     (int)atts->GetToroidalIntegration()==0);
+                                     (int)atts->GetToroidalIntegration()!=1);
             break;
           case LineSamplerAttributes::ID_toroidalAngleSampling:
             toroidalAngleSamplingButtonGroup->blockSignals(true);
@@ -1906,6 +1949,17 @@ QvisLineSamplerWindow::boundaryChanged(int val)
 
 
 void
+QvisLineSamplerWindow::instanceIdChanged(int val)
+ {
+    if(val != atts->GetInstanceId())
+    {
+        atts->SetInstanceId(val);
+        Apply();
+    }
+}   
+
+
+void
 QvisLineSamplerWindow::nArraysProcessText()
 {
     GetCurrentValues(LineSamplerAttributes::ID_nArrays);
@@ -2093,6 +2147,14 @@ QvisLineSamplerWindow::viewDimensionChanged(int val)
         atts->SetViewDimension(LineSamplerAttributes::ViewDimension(val));
         Apply();
     }
+}
+
+
+void
+QvisLineSamplerWindow::donotApplyToAllChanged(bool val)
+{
+    atts->SetDonotApplyToAll(val);
+    Apply();
 }
 
 

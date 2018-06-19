@@ -20,8 +20,10 @@ void getDims(hid_t id, bool isDataset, std::vector<int>& dims) {
 */
 std::string makeCanonicalName(std::string name) {
   std::string answer = name;
-  if ((name.length() > 0) && (name[0] == '/')) {
-    answer = name.substr(1, name.length() - 1);
+
+  //remove the leading slash(es) if it(they) exist(s)
+  while ((answer.length() > 0) && (answer[0] == '/')) {
+    answer = answer.substr(1, answer.length() - 1);
   }
 
   return answer;
@@ -33,8 +35,9 @@ std::string makeCanonicalName(std::string path, std::string name) {
   if ((path.length() > 0) && (name.length() > 0) && (name[0] != '/')) {
     answer = path + "/" + name;
   }
-  //remove the leading slash if it exists
-  if ((answer.length() > 0) && (answer[0] == '/')) {
+
+  //remove the leading slash(es) if it(they) exist(s)
+  while ((answer.length() > 0) && (answer[0] == '/')) {
     answer = answer.substr(1, answer.length());
   }
 
@@ -65,13 +68,49 @@ bool isFloatType(hid_t dataType) {
   return answer;
 }
 
-bool isIntegerType(hid_t dataType) {
+bool isIntType(hid_t dataType) {
   if (H5Tequal(dataType, H5T_NATIVE_INT)) {
     return true;
   }
       
   hid_t nativeType = H5Tget_native_type(dataType, H5T_DIR_ASCEND);
   bool answer = H5Tequal(nativeType, H5T_NATIVE_INT);
+  
+  H5Tclose(nativeType);
+  return answer;
+}
+
+bool isShortType(hid_t dataType) {
+  if (H5Tequal(dataType, H5T_NATIVE_SHORT)) {
+    return true;
+  }
+      
+  hid_t nativeType = H5Tget_native_type(dataType, H5T_DIR_ASCEND);
+  bool answer = H5Tequal(nativeType, H5T_NATIVE_SHORT);
+  
+  H5Tclose(nativeType);
+  return answer;
+}
+
+bool isCharType(hid_t dataType) {
+  if (H5Tequal(dataType, H5T_NATIVE_CHAR)) {
+    return true;
+  }
+      
+  hid_t nativeType = H5Tget_native_type(dataType, H5T_DIR_ASCEND);
+  bool answer = H5Tequal(nativeType, H5T_NATIVE_CHAR);
+  
+  H5Tclose(nativeType);
+  return answer;
+}
+
+bool isUnsignedCharType(hid_t dataType) {
+  if (H5Tequal(dataType, H5T_NATIVE_UCHAR)) {
+    return true;
+  }
+      
+  hid_t nativeType = H5Tget_native_type(dataType, H5T_DIR_ASCEND);
+  bool answer = H5Tequal(nativeType, H5T_NATIVE_UCHAR);
   
   H5Tclose(nativeType);
   return answer;

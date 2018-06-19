@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -261,7 +261,7 @@ avtMasterSlaveICAlgorithm::Initialize(std::vector<avtIntegralCurve *> &seedPts)
 }
 
 void
-avtMasterSlaveICAlgorithm::ResetIntegralCurvesForContinueExecute()
+avtMasterSlaveICAlgorithm::ResetIntegralCurvesForContinueExecute(int curTimeSlice)
 {
     EXCEPTION0(ImproperUseException);
 }
@@ -2394,7 +2394,7 @@ avtSlaveICAlgorithm::RunAlgorithm()
             activeICs.pop_front();
             debug1<<"Integrate "<<s->domain<<".....";
             AdvectParticle(s);
-            if (s->status == avtIntegralCurve::STATUS_FINISHED)
+            if (s->status != avtIntegralCurve::STATUS_OK)
             {
                 terminatedICs.push_back(s);
                 numTerminated++;

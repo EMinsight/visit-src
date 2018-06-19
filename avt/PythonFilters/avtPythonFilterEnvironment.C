@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -115,6 +115,9 @@ avtPythonFilterEnvironment::~avtPythonFilterEnvironment()
 //    Retrieve VISITARCHHOME via GetVisItArchitectureDirectory.
 //    Remove slash from end of paths passed to AddSystemPath.
 //
+//    Kathleen Biagas, Fri May 4 14:08:12 PDT 2012 
+//    Call GetVisItLibraryDirectory instead of GetVisItArchitectureDirectory.
+//
 // ****************************************************************************
 
 bool
@@ -125,8 +128,7 @@ avtPythonFilterEnvironment::Initialize()
         return false;
     // setup pyavt env:
     // add system paths: $VISITARCHOME/lib & $VISITARCHOME/lib/site-packages
-    string varchdir = GetVisItArchitectureDirectory();
-    string vlibdir = varchdir + VISIT_SLASH_CHAR + "lib";
+    string vlibdir = GetVisItLibraryDirectory();
     string vlibsp  = vlibdir  + VISIT_SLASH_CHAR + "site-packages";
 
     if(!pyi->AddSystemPath(vlibdir))
@@ -151,7 +153,7 @@ avtPythonFilterEnvironment::Initialize()
         return false;
 #else
     // import pyavt.mpistub as mpicom
-    if(!pyi->RunScript("import mpistub as mpicom\n"))
+    if(!pyi->RunScript("import mpicom.mpistub as mpicom\n"))
         return false;
 #endif
     return true;

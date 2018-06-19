@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,6 +87,10 @@ class vtkDataArray;
 //   Dave Pugmire, Mon Feb  7 13:46:56 EST 2011
 //   Fix ghost mask for ghost cell integration.
 //
+//   Christoph Garth, Tue Mar 6 16:38:00 PDT 2012
+//   Moved ghost data handling into cell locator and changed IsInside()
+//   to only consider non-ghost cells.
+//
 // ****************************************************************************
 
 class IVP_API avtIVPVTKField: public avtIVPField
@@ -96,15 +100,17 @@ class IVP_API avtIVPVTKField: public avtIVPField
     ~avtIVPVTKField();
 
     // avtIVPField interface
-    virtual avtVector operator()(const double& t,
-                                 const avtVector &pt) const;
-
-    virtual avtVector operator()(const double& t,
+    virtual Result    operator()(const double& t,
                                  const avtVector &pt,
-                                 const avtVector &vel) const
-    { return avtVector(0,0,0); };
+                                       avtVector &retV) const;
 
-    virtual avtVector FindValue( vtkDataArray* vectorData ) const;
+    virtual Result    operator()(const double& t,
+                                 const avtVector &pt,
+                                 const avtVector &vel,
+                                       avtVector &retV) const
+    { return( avtIVPSolverResult::TERMINATE ); };
+
+    virtual Result    FindValue(vtkDataArray* vectorData, avtVector &vel) const;
 
     virtual avtVector ConvertToCartesian(const avtVector& pt) const;
     virtual avtVector ConvertToCylindrical(const avtVector& pt) const;
@@ -122,7 +128,6 @@ class IVP_API avtIVPVTKField: public avtIVPField
     unsigned int   GetDimension() const;
     void           SetNormalized( bool v );
 
-    virtual bool   HasGhostZones() const;
     virtual void   GetExtents( double extents[6] ) const;
     virtual void   GetTimeRange( double range[2] ) const;
 
@@ -138,7 +143,6 @@ class IVP_API avtIVPVTKField: public avtIVPField
     bool                   velCellBased;
     vtkDataArray*          sclData[256];
     bool                   sclCellBased[256];
-    unsigned char*         ghostPtr;
 
     mutable avtVector               lastPos;
     mutable vtkIdType               lastCell;

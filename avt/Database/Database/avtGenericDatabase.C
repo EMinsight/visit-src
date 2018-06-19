@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -663,6 +663,11 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
         spec->TurnZoneNumbersOn();
         spec->TurnNodeNumbersOn();
     }
+
+    // clear the present ghost zone types state in the db metadata
+    // (this is the current path to get things set in the data atts...)
+    string meshname = md->MeshForVar(spec->GetVariable());
+    md->ClearGhostTypesPresent(meshname);
 
     bool alreadyDidNesting    = false;
     bool alreadyDidGhosts     = false;
@@ -3608,6 +3613,10 @@ avtGenericDatabase::AddOriginalNodesArray(vtkDataSet *ds, const int domain)
 //    Eric Brugger, Tue May 17 10:56:46 PDT 2011
 //    I had the routine return NULL if the dataset didn't have any cells.
 //
+//    Hank Childs, Mon Mar 26 11:31:46 PDT 2012
+//    Fix problem with subset plot with a material removed (labels weren't
+//    being passed back correctly).
+//
 // ****************************************************************************
 
 avtDataTree_p
@@ -3875,28 +3884,42 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
         avtSubsetType sT = GetMetaData(ts)->DetermineSubsetType(var);
         if (sT == AVT_DOMAIN_SUBSET || sT == AVT_UNKNOWN_SUBSET)
         {
-            //
-            // Create a new label which is the domain number.
-            // We are doing a material-selected domain-subset plot,
-            // or a material-selected non-subset plot. 
-            //
-            int domOrigin  =  GetMetaData(ts)->GetMesh(meshname)->blockOrigin;
-            sprintf(label, "%d", dom + domOrigin);
             for (int d = 0; d < numOutput; d++)
             {
-                labelStrings.push_back(label);
+                // If labels were sent in, they are all identical ... use the first one
+                // Otherwise, make one up with our best guess.
+                if (labels.size() > 0)
+                    labelStrings.push_back(labels[0]);
+                else
+                {
+                    //
+                    // Create a new label which is the domain number.
+                    // We are doing a material-selected domain-subset plot,
+                    // or a material-selected non-subset plot. 
+                    //
+                    int domOrigin  =  GetMetaData(ts)->GetMesh(meshname)->blockOrigin;
+                    sprintf(label, "%d", dom + domOrigin);
+                    labelStrings.push_back(label);
+                }
             }
         }
         else if (sT == AVT_GROUP_SUBSET)
         {
-            //
-            // Create a new label which is the group number.
-            //
-            int gID  =  GetMetaData(ts)->GetMesh(meshname)->groupIds[dom];
-            sprintf(label, "%d", gID);
             for (int d = 0; d < numOutput; d++)
             {
-                labelStrings.push_back(label);
+                // If labels were sent in, they are all identical ... use the first one
+                // Otherwise, make one up with our best guess.
+                if (labels.size() > 0)
+                    labelStrings.push_back(labels[0]);
+                else
+                {
+                    //
+                    // Create a new label which is the group number.
+                    //
+                    int gID  =  GetMetaData(ts)->GetMesh(meshname)->groupIds[dom];
+                    sprintf(label, "%d", gID);
+                    labelStrings.push_back(label);
+                }
             }
         }
     }
@@ -4307,7 +4330,6 @@ avtGenericDatabase::EnumScalarSelect(avtDatasetCollection &dsc,
     }
 }
 
-
 // ****************************************************************************
 //  Method: avtGenericDatabase::SpeciesSelect
 //
@@ -4372,8 +4394,8 @@ avtGenericDatabase::SpeciesSelect(avtDatasetCollection &dsc,
             continue;
 
         int n_cell_vars = ds->GetCellData()->GetNumberOfArrays();
-        // If we don't make a copy of the cell data and then go mucking with
-        // the order of the arrays, we may process some twice and not others.
+        // We make a copy of the cell data so that we can manipulate
+        // the order of the arrays without processing some twice
         vtkCellData *inCD = vtkCellData::New();
         inCD->ShallowCopy(ds->GetCellData());
         for (int j = 0 ; j < n_cell_vars ; j++)
@@ -5459,7 +5481,11 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
 //
 //    Cyrus Harrison, Fri Feb 15 09:35:20 PST 2008
 //    Changed MustMaintainOriginalConnectivity warning to only mention
-//    specmf, since the matvf + ghost zones restriction was resolved. 
+//    specmf, since the matvf + ghost zones restriction was resolved.
+//
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
 //
 // ****************************************************************************
 
@@ -5638,6 +5664,9 @@ avtGenericDatabase::CommunicateGhosts(avtGhostDataType ghostType,
     }
 
     bool madeNewZones = madeGhosts && (ghostType == GHOST_ZONE_DATA);
+    // if we have created ghost zones, add to present ghost types 
+    if(madeNewZones)
+        md->AddGhostZoneTypePresent(meshname, AVT_BOUNDARY_GHOST_ZONES);
     return madeNewZones;
 }
 
@@ -7407,6 +7436,10 @@ avtGenericDatabase::CommunicateGhostNodesFromGlobalNodeIds(
 //    Fixed bug preventing domain nesting from being applied if we have
 //    more MPI tasks than domains.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 bool
@@ -7482,6 +7515,7 @@ avtGenericDatabase::ApplyGhostForDomainNesting(avtDatasetCollection &ds,
         {
             GetMetaData(ts)->SetContainsGhostZones(meshname, 
                                                    AVT_CREATED_GHOSTS);
+            GetMetaData(ts)->AddGhostZoneTypePresent(meshname, AVT_NESTING_GHOST_ZONES);
         }
     }
 
@@ -7745,6 +7779,11 @@ avtGenericDatabase::CreateGlobalNodes(avtDatasetCollection &ds,
 //  Programmer:   Hank Childs
 //  Creation:     July 26, 2007
 //
+//  Modifications:
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 bool
@@ -7810,7 +7849,10 @@ avtGenericDatabase::CreateSimplifiedNestingRepresentation(
     }
 
     if (spec->GetDesiredGhostDataType() != NO_GHOST_DATA)
+    {
         md->SetContainsGhostZones(meshname, AVT_CREATED_GHOSTS);
+        md->AddGhostZoneTypePresent(meshname, AVT_NESTING_GHOST_ZONES);
+    }
 
     src->DatabaseProgress(1, 0, progressString);
 

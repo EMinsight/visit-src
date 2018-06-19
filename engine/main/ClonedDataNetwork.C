@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,6 +52,9 @@
 //    Kathleen Bonnell, Tue Mar 15 17:41:26 PST 2005
 //    Initialize clone.
 //
+//    Brad Whitlock, Thu Jan 19 15:19:16 PST 2012
+//    Initialize expressionNode.
+//
 // ****************************************************************************
 ClonedDataNetwork::ClonedDataNetwork(DataNetwork *base) : DataNetwork()
 {
@@ -61,6 +64,7 @@ ClonedDataNetwork::ClonedDataNetwork(DataNetwork *base) : DataNetwork()
     SetContract(base->GetContract());
     SetDataSpec(base->GetDataSpec());
     nodeList = base->GetNodeList();
+    expressionNode = base->GetExpressionNode();
     clone = true;
 }
 

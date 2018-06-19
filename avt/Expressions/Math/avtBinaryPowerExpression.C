@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -128,12 +128,12 @@ avtBinaryPowerExpression::DoOperation(vtkDataArray *in1, vtkDataArray *in2,
     {
         for (int i = 0 ; i < ntuples ; i++)
         {
+            vtkIdType tup1 = (var1IsSingleton ? 0 : i);
+            vtkIdType tup2 = (var2IsSingleton ? 0 : i);
             for (int j = 0 ; j < in1ncomps ; j++)
             {
-                int tup1 = (var1IsSingleton ? 0 : i);
-                int tup2 = (var2IsSingleton ? 0 : i);
-                float val1 = in1->GetComponent(tup1, j);
-                float val2 = in2->GetComponent(tup2, j);
+                double val1 = in1->GetComponent(tup1, j);
+                double val2 = in2->GetComponent(tup2, j);
                 out->SetComponent(i, j, pow(val1, val2));
             }
         }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -83,6 +83,9 @@ class avtMaterial;
 //    Add data member for multiple blocks.  This is for the case where multiple
 //    domains have been put in the same VTK data set.
 //
+//    Brad Whitlock, Sun Apr 22 10:29:43 PDT 2012
+//    Double support.
+//
 // ****************************************************************************
 
 class DATABASE_API avtNekDomainBoundaries : public avtDomainBoundaries
@@ -102,6 +105,10 @@ class DATABASE_API avtNekDomainBoundaries : public avtDomainBoundaries
                                                std::vector<vtkDataArray*> scalars);
 
     virtual std::vector<vtkDataArray*>     ExchangeFloatVector(std::vector<int> domainNum,
+                                               bool                   isPointData,
+                                               std::vector<vtkDataArray*>  vectors);
+
+    virtual std::vector<vtkDataArray*>     ExchangeDoubleVector(std::vector<int> domainNum,
                                                bool                   isPointData,
                                                std::vector<vtkDataArray*>  vectors);
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -315,7 +315,7 @@ avtIntervalTree::GetExtents(double *extents) const
 // ****************************************************************************
 
 void
-avtIntervalTree::AddElement(int element, double *d)
+avtIntervalTree::AddElement(int element, const double *d)
 {
     //
     // Sanity Check

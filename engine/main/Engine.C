@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,6 +76,7 @@
 #include <InstallationFunctions.h>
 #include <InitVTK.h>
 #include <InitVTKRendering.h>
+#include <LaunchService.h>
 #include <LoadBalancer.h>
 #include <LostConnectionException.h>
 #include <Netnodes.h>
@@ -89,6 +90,7 @@
 #include <SocketConnection.h>
 #include <StringHelpers.h>
 #include <StackTimer.h>
+#include <Utility.h>
 #include <VisItDisplay.h>
 #ifndef _WIN32
 # include <XDisplay.h>
@@ -338,6 +340,9 @@ protected:
 //    Brad Whitlock, Mon Oct 10 11:22:45 PDT 2011
 //    Added enginePropertiesRPC.
 //
+//   Dave Pugmire, Wed Apr 18 09:05:40 EDT 2012
+//   Add alarmEnabled flag. Setting alarm(0) is not disabling the alarm.
+//
 // ****************************************************************************
 
 Engine::Engine() : viewerArgs()
@@ -391,6 +396,7 @@ Engine::Engine() : viewerArgs()
     simulationCommandRPC = NULL;
     setEFileOpenOptionsRPC = NULL;
     enginePropertiesRPC = NULL;
+    launchRPC = NULL;
 
 #if defined(PARALLEL) && defined(HAVE_ICET)
     useIceT = true;
@@ -400,6 +406,7 @@ Engine::Engine() : viewerArgs()
     nDisplays = 0;
     renderingDisplay = NULL;
     launchXServers = false;
+    alarmEnabled = true;
 }
 
 // ****************************************************************************
@@ -479,6 +486,7 @@ Engine::~Engine()
     delete namedSelectionRPC;
     delete setEFileOpenOptionsRPC;
     delete enginePropertiesRPC;
+    delete launchRPC;
 
     delete viewer;
     delete viewerP;
@@ -1042,6 +1050,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     namedSelectionRPC               = new NamedSelectionRPC;
     setEFileOpenOptionsRPC          = new SetEFileOpenOptionsRPC;
     enginePropertiesRPC             = new EnginePropertiesRPC;
+    launchRPC                       = new LaunchRPC;
 
     xfer->Add(quitRPC);
     xfer->Add(keepAliveRPC);
@@ -1070,6 +1079,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     xfer->Add(namedSelectionRPC);
     xfer->Add(setEFileOpenOptionsRPC);
     xfer->Add(enginePropertiesRPC);
+    xfer->Add(launchRPC);
 
     // Create an object to implement the RPCs
     rpcExecutors.push_back(new RPCExecutor<QuitRPC>(quitRPC));
@@ -1102,7 +1112,8 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(namedSelectionRPC));
     rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(setEFileOpenOptionsRPC));
     rpcExecutors.push_back(new RPCExecutor<EnginePropertiesRPC>(enginePropertiesRPC));
-
+    rpcExecutors.push_back(new RPCExecutor<LaunchRPC>(launchRPC));
+  
     // Hook up the expression list as an observed object.
     Parser *p = new ExprParser(new avtExprNodeFactory());
     ParsingExprList *l = new ParsingExprList(p);
@@ -2240,39 +2251,39 @@ Engine::ProcessCommandLine(int argc, char **argv)
 //    Hank Childs, Fri Apr 24 07:30:48 CDT 2009
 //    Also print out timeout statement to cerr if in parallel.
 //
+//    Hank Childs, Thu Mar 29 08:54:08 PDT 2012
+//    Print out alarm handler output whether we are in parallel or serial.
+//
+//   Dave Pugmire, Wed Apr 18 09:05:40 EDT 2012
+//   Add alarmEnabled flag. Setting alarm(0) is not disabling the alarm.
+//
 // ****************************************************************************
 
 void
 Engine::AlarmHandler(int signal)
 {
     Engine *e = Engine::Instance();
+    if (!e->alarmEnabled)
+        return;
+    
     if (e->overrideTimeoutEnabled == true)
     {
-        if (PAR_Size() > 1)
-        {
-            cerr << PAR_Rank() << ": ENGINE exited due to an inactivity timeout of "
-                << e->overrideTimeoutMins << " minutes.  Timeout was set through a callback. (Alarm received)" << endl;
-        }
+        cerr << PAR_Rank() << ": ENGINE exited due to an inactivity timeout of "
+             << e->overrideTimeoutMins << " minutes.  Timeout was set through a callback. (Alarm received)" << endl;
         debug1 << "ENGINE exited due to an inactivity timeout of "
             << e->overrideTimeoutMins << " minutes.  Timeout was set through a callback. (Alarm received)" << endl;
     } else
     {
         if (e->idleTimeoutEnabled == true)
         {
-            if (PAR_Size() > 1)
-            {
-                cerr << PAR_Rank() << ": ENGINE exited due to an idle inactivity timeout of "
-                    << e->idleTimeoutMins << " minutes. (Alarm received)" << endl;
-            }
+            cerr << PAR_Rank() << ": ENGINE exited due to an idle inactivity timeout of "
+                 << e->idleTimeoutMins << " minutes. (Alarm received)" << endl;
             debug1 << "ENGINE exited due to an idle inactivity timeout of "
                 << e->idleTimeoutMins << " minutes. (Alarm received)" << endl;
         } else
         {
-            if (PAR_Size() > 1)
-            {
-                cerr << PAR_Rank() << ": ENGINE exited due to an execution timeout of "
-                    << e->executionTimeoutMins << " minutes. (Alarm received)" << endl;
-            }
+            cerr << PAR_Rank() << ": ENGINE exited due to an execution timeout of "
+                 << e->executionTimeoutMins << " minutes. (Alarm received)" << endl;
             debug1 << "ENGINE exited due to an execution timeout of "
                 << e->executionTimeoutMins << " minutes. (Alarm received)" << endl;
         }
@@ -3452,6 +3463,7 @@ Engine::EngineWarningCallback(void *data, const char *msg)
 void
 Engine::ResetTimeout(int timeout)
 {
+    alarmEnabled = (timeout > 0);
 #if !defined(_WIN32)
     alarm(timeout);
 #endif    
@@ -4052,4 +4064,34 @@ Engine::SaveWindow(const std::string &filename, int imageWidth, int imageHeight,
     SaveWindowAttributes::FileFormat fmt)
 {
     return netmgr->SaveWindow(filename, imageWidth, imageHeight, fmt);
+}
+
+// ****************************************************************************
+// Method: Engine::LaunchProcess
+//
+// Purpose: 
+//   Launch a process on rank 0.
+//
+// Arguments:
+//   args : The program arguments.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Nov 29 11:37:35 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+Engine::LaunchProcess(const stringVector &args)
+{
+    if(!args.empty() && PAR_Rank() == 0)
+    {
+        LaunchService launch;
+        launch.Launch(args);
+    }
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,6 +41,9 @@
 // ************************************************************************* //
 
 #include <vtkDataSet.h>
+#include <vtkDataObject.h>
+#include <vtkInformation.h>
+#include <vtkInformationDoubleVectorKey.h>
 
 #include <avtFacelist.h>
 #include <avtMaterial.h>
@@ -64,6 +67,11 @@ const char *avtVariableCache::ARRAYS_NAME = "ARRAYS";
 const char *avtVariableCache::DATASET_NAME = "DATASET";
 const char *avtVariableCache::DATA_SPECIFICATION = "DATA_SPECIFICATION";
 bool        avtVariableCache::vtkDebugMode = false;
+
+vtkInformationKeyRestrictedMacro(avtVariableCache, OFFSET_3, DoubleVector, 3);
+vtkInformationKeyRestrictedMacro(avtVariableCache, OFFSET_3_COMPONENT_0, DoubleVector, 3);
+vtkInformationKeyRestrictedMacro(avtVariableCache, OFFSET_3_COMPONENT_1, DoubleVector, 3);
+vtkInformationKeyRestrictedMacro(avtVariableCache, OFFSET_3_COMPONENT_2, DoubleVector, 3);
 
 // ****************************************************************************
 //  Method: avtVariableCache::DestructVTKObject 

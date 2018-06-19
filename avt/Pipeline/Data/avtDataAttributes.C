@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -181,6 +181,10 @@ using     std::sort;
 //    Add GetMultiresExtents and GetMultiresCellSize to support adding
 //    a multi resolution display capability for AMR data.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 avtDataAttributes::avtDataAttributes() : plotInfoAtts()
@@ -218,6 +222,7 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
     filename               = "<unknown>";
     fullDBName             = "<unknown>";
     containsGhostZones     = AVT_MAYBE_GHOSTS;
+    presentGhostZoneTypes  = AVT_NO_GHOST_ZONES;
     containsExteriorBoundaryGhosts = false;
     containsOriginalCells  = false;
     containsOriginalNodes  = false;
@@ -249,7 +254,7 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
     {
         for (int j=0; j<3; j++)
         {
-            unitCellVectors[i*3+j] = (i==j) ? 1.0 : 0.0;
+            unitCellVectors[i*3+j] = (i==j) ? 1.f : 0.f;
         }
     }
     unitCellOrigin[0] = unitCellOrigin[1] = unitCellOrigin[2] = 0.0;
@@ -515,6 +520,9 @@ avtDataAttributes::DestructSelf(void)
 //    Add GetMultiresExtents and GetMultiresCellSize to support adding
 //    a multi resolution display capability for AMR data.
 //
+//    Cyrus Harrison, Tue Feb  7 11:15:20 PST 2012
+//    Add print for presentGhostZoneTypes.
+//
 // ****************************************************************************
 
 void
@@ -569,6 +577,19 @@ avtDataAttributes::Print(ostream &out)
         out << "There maybe ghost zones in this dataset." << endl;
         break;
     }
+
+    if(presentGhostZoneTypes == AVT_NO_GHOST_ZONES)
+    {
+        out << "There are present ghost zone types set." << endl;
+    }
+    else
+    {
+        if(presentGhostZoneTypes & AVT_BOUNDARY_GHOST_ZONES)
+            out << "Ghost zones for domain boundaries are present." << endl;
+        if(presentGhostZoneTypes & AVT_NESTING_GHOST_ZONES)
+            out << "Ghost zones for domain nesting are present." << endl;
+    }
+
     if (containsExteriorBoundaryGhosts)
         out << "There are ghost zones on the exterior of the boundary." <<endl;
 
@@ -1034,6 +1055,10 @@ avtDataAttributes::Print(ostream &out)
 //    Add GetMultiresExtents and GetMultiresCellSize to support adding
 //    a multi resolution display capability for AMR data.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 void
@@ -1109,6 +1134,7 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
 
     labels = di.labels;
     SetContainsGhostZones(di.GetContainsGhostZones());
+    SetGhostZoneTypesPresent(di.GetGhostZoneTypesPresent());
     SetContainsExteriorBoundaryGhosts(di.GetContainsExteriorBoundaryGhosts());
     SetContainsOriginalCells(di.GetContainsOriginalCells());
     SetContainsOriginalNodes(di.GetContainsOriginalNodes());
@@ -1286,6 +1312,10 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
 //    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
 //    Add GetMultiresExtents and GetMultiresCellSize to support adding
 //    a multi resolution display capability for AMR data.
+//
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
 //
 // ****************************************************************************
 
@@ -1489,6 +1519,11 @@ avtDataAttributes::Merge(const avtDataAttributes &da,
     else if (GetContainsGhostZones() == AVT_NO_GHOSTS)
     {
         SetContainsGhostZones(da.GetContainsGhostZones());
+    }
+
+    if(!GetGhostZoneTypesPresent())
+    {
+        SetGhostZoneTypesPresent(da.GetGhostZoneTypesPresent());
     }
 
     if (!GetContainsExteriorBoundaryGhosts())
@@ -2546,6 +2581,43 @@ avtDataAttributes::SetGroupOrigin(int origin)
     groupOrigin = origin;
 }
 
+// ****************************************************************************
+//  Method: avtDataAttributes::ClearGhostTypesPresent
+//
+//  Purpose:
+//      Resets presentGhostTypes to AVT_NO_GHOST_ZONES.
+//
+//
+//  Programmer:    Cyrus Harrison
+//  Creation:      Tue Feb  7 09:19:29 PST 2012
+//
+// ****************************************************************************
+void
+avtDataAttributes::ClearGhostTypesPresent()
+{
+    presentGhostZoneTypes = AVT_NO_GHOST_ZONES;
+}
+
+
+// ****************************************************************************
+//  Method: avtDataAttributes::AddGhostZoneTypePresent
+//
+//  Purpose:
+//      Adds to the types of ghost zones that are present.
+//
+//  Arguments:
+//      v     The ghost zone type value.
+//
+//  Programmer:    Cyrus Harrison
+//  Creation:      Tue Feb  7 09:19:29 PST 2012
+//
+// ****************************************************************************
+void
+avtDataAttributes::AddGhostZoneTypePresent(avtGhostsZonesPresent v)
+{
+    // or the bit mask
+    presentGhostZoneTypes = presentGhostZoneTypes | v;
+}
 
 // ****************************************************************************
 //  Method: avtDataAttributes::SetCycle
@@ -2788,7 +2860,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     int   i, j;
 
     int varSize = 7;
-    int numVals = 35 + varSize*variables.size();
+    int numVals = 35 + static_cast<int>(varSize*variables.size());
     int *vals = new int[numVals];
     i = 0;
     vals[i++] = topologicalDimension;
@@ -2825,7 +2897,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     vals[i++] = (rectilinearGridHasTransform ? 1 : 0);
     vals[i++] = (constructMultipleCurves ? 1 : 0);
     vals[i++] = activeVariable;
-    vals[i++] = variables.size();
+    vals[i++] = static_cast<int>(variables.size());
     int basei = i;
     for (i = 0 ; i < variables.size() ; i++)
     {
@@ -2833,8 +2905,8 @@ avtDataAttributes::Write(avtDataObjectString &str,
         vals[basei+varSize*i+1] = variables[i]->centering;
         vals[basei+varSize*i+2] = (variables[i]->treatAsASCII ? 1 : 0);
         vals[basei+varSize*i+3] = variables[i]->vartype;
-        vals[basei+varSize*i+4] = variables[i]->subnames.size();
-        vals[basei+varSize*i+5] = variables[i]->binRange.size();
+        vals[basei+varSize*i+4] = static_cast<int>(variables[i]->subnames.size());
+        vals[basei+varSize*i+5] = static_cast<int>(variables[i]->binRange.size());
         vals[basei+varSize*i+6] = variables[i]->useForAxis;
     }
     wrtr->WriteInt(str, vals, numVals);
@@ -2849,13 +2921,13 @@ avtDataAttributes::Write(avtDataObjectString &str,
     for (i = 0 ; i < variables.size() ; i++)
     {
         // Write the variable name
-        wrtr->WriteInt(str, variables[i]->varname.size());
+        wrtr->WriteInt(str, static_cast<int>(variables[i]->varname.size()));
         str.Append((char *) variables[i]->varname.c_str(),
-                   variables[i]->varname.size(),
+                   static_cast<int>(variables[i]->varname.size()),
                    avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
 
         // Write the units name.
-        int unitlen = variables[i]->varunits.size();
+        int unitlen = static_cast<int>(variables[i]->varunits.size());
         wrtr->WriteInt(str, unitlen);
         if(unitlen > 0)
         {
@@ -2867,9 +2939,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
         // communicated in mass "int" writing phase.
         for (j = 0 ; j < variables[i]->subnames.size() ; j++)
         {
-            wrtr->WriteInt(str, variables[i]->subnames[j].size());
+            wrtr->WriteInt(str, static_cast<int>(variables[i]->subnames[j].size()));
             str.Append((char *) variables[i]->subnames[j].c_str(),
-                     variables[i]->subnames[j].size(),
+                     static_cast<int>(variables[i]->subnames[j].size()),
                      avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
         }
         // Write the binRanges (if any).  Number of binRanges already
@@ -2877,7 +2949,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
         if (variables[i]->binRange.size() > 0)
         {
             wrtr->WriteDouble(str, &(variables[i]->binRange[0]), 
-                              variables[i]->binRange.size());
+                              static_cast<int>(variables[i]->binRange.size()));
         }
         variables[i]->originalData->Write(str, wrtr);
         variables[i]->thisProcsOriginalData->Write(str, wrtr);
@@ -4932,6 +5004,10 @@ avtDataAttributes::AddPlotInformation(const std::string &key,
 //    Add GetMultiresExtents and GetMultiresCellSize to support adding
 //    a multi resolution display capability for AMR data.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 static const char *
@@ -5007,6 +5083,20 @@ avtDataAttributes::DebugDump(avtWebpage *webpage)
         break;
     }
     webpage->AddTableEntry2("Ghosts", str);
+
+    if(presentGhostZoneTypes == AVT_NO_GHOST_ZONES)
+    {
+        webpage->AddTableEntry2("Ghost Zones Present:", "None");
+    }
+    else
+    {
+        webpage->AddTableEntry2("Ghost Zones Present:", "");
+        if(presentGhostZoneTypes & AVT_BOUNDARY_GHOST_ZONES)
+            webpage->AddTableEntry2("", "Ghost zones for domain boundaries.");
+        if(presentGhostZoneTypes & AVT_NESTING_GHOST_ZONES)
+            webpage->AddTableEntry2("", "Ghost zones for domain nesting.");
+    }
+
     webpage->AddTableEntry2("Contains exterior boundary ghosts?",
                             YesOrNo(containsExteriorBoundaryGhosts));
     webpage->EndTable();

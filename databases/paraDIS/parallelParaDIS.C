@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2006, The Regents of the University of California
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -76,6 +76,7 @@
 #endif
 
 using namespace std; 
+
 // ************************************************************************* //
 //                            parallelParDIS.C                          //
 // ************************************************************************* //
@@ -315,7 +316,7 @@ void ElementFetcher::IterateOverFiles(void *output) {
 */ 
 void ElementFetcher::GetElemsFromBinaryFile(std::string filename, long fileOffset, long elementsToRead){
   debug2 << "ElementFetcher::GetElemsFromBinaryFile(" << filename << ", "<< fileOffset<<", "<< elementsToRead << ")" << endl; 
-  FILE *fp = fopen(filename.c_str(), "r"); 
+  FILE *fp = fopen(filename.c_str(), "rb"); 
   if (!fp) {
     string msg = string("Error, cannot open file: ")+filename;
     EXCEPTION1(VisItException, msg.c_str()); 

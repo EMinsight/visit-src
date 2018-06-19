@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -740,13 +740,13 @@ AddSpeciesMetaData(avtDatabaseMetaData *md, visit_handle h)
                             stringVector onelist;
                             NameListToStringVector(s, onelist);
 
-                            numSpecies.push_back(onelist.size());
+                            numSpecies.push_back(static_cast<int>(onelist.size()));
                             speciesNames.push_back(onelist);
                         }
                     }
 
                     avtSpeciesMetaData *species = new avtSpeciesMetaData(name,
-                        meshName, matName, numSpecies.size(), numSpecies, 
+                        meshName, matName, static_cast<int>(numSpecies.size()), numSpecies, 
                         speciesNames);
 
                     md->Add(species);

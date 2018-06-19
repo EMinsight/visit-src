@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -214,6 +214,9 @@ class VisWindowColleagueProxy;
 //    Brad Whitlock, Fri Oct 14 16:30:34 PDT 2011
 //    Add mapper creation methods.
 //
+//    Brad Whitlock, Fri Apr  6 11:44:27 PDT 2012
+//    Add GetStereoEnabled method.
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinRendering : public VisWinColleague
@@ -327,6 +330,8 @@ class VISWINDOW_API VisWinRendering : public VisWinColleague
 
     static void              SetStereoEnabled()
                                  { stereoEnabled = true; };
+    static bool              GetStereoEnabled()
+                                 { return stereoEnabled; }
 
     int                      GetScalableThreshold() const;
     bool                     SetScalableRendering(bool mode);

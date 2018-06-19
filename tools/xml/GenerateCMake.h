@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -130,6 +130,9 @@
 //    Kathleen Biagas, Fri Nov 18 10:09:26 MST 2011
 //    Add plugin name to VISIT_PLUGIN_TARGET_FOLDER args. Eases building/
 //    debugging individual plugins with Visual Studio when grouped by name.
+//
+//    Kathleen Biagas, Tue Nov 22 14:39:51 PST 2011
+//    Remove VISIT_PLUGIN_TARGET_PREFIX in favor of VISIT_PLUGIN_TARGET_RUNTIME.
 //
 // ****************************************************************************
 
@@ -535,7 +538,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "ENDIF(VISIT_PARALLEL)" << endl;
         out << endl;
         out << "VISIT_INSTALL_PLOT_PLUGINS(${INSTALLTARGETS})" << endl;
-        out << "VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})" << endl;
+        out << "VISIT_PLUGIN_TARGET_RTOD(plots ${INSTALLTARGETS})" << endl;
         if (using_dev)
           out << "VISIT_PLUGIN_TARGET_FOLDER(plots " << name  
               << " ${INSTALLTARGETS})" << endl;
@@ -731,7 +734,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "ENDIF(VISIT_PARALLEL)" << endl;
         out << endl;
         out << "VISIT_INSTALL_OPERATOR_PLUGINS(${INSTALLTARGETS})" << endl;
-        out << "VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})" << endl;
+        out << "VISIT_PLUGIN_TARGET_RTOD(operators ${INSTALLTARGETS})" << endl;
         if (using_dev)
           out << "VISIT_PLUGIN_TARGET_FOLDER(operators " << name 
               << " ${INSTALLTARGETS})" << endl;
@@ -969,7 +972,7 @@ class CMakeGeneratorPlugin : public Plugin
             out << endl;
         }
         out << "VISIT_INSTALL_DATABASE_PLUGINS(${INSTALLTARGETS})" << endl;
-        out << "VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})" << endl;
+        out << "VISIT_PLUGIN_TARGET_RTOD(databases ${INSTALLTARGETS})" << endl;
         if (using_dev)
           out << "VISIT_PLUGIN_TARGET_FOLDER(databases " << name 
               << " ${INSTALLTARGETS})" << endl;

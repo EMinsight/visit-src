@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -491,6 +491,11 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     poincareFilter->SetOPointMaxIterations( atts.GetOPointMaxIterations() );
     poincareFilter->SetShowXPoints( atts.GetShowXPoints() );
     poincareFilter->SetXPointMaxIterations( atts.GetXPointMaxIterations() );
+
+    poincareFilter->SetPerformOLineAnalysis( atts.GetPerformOLineAnalysis() );
+    poincareFilter->SetOLineToroidalWinding( atts.GetOLineToroidalWinding() );
+    poincareFilter->SetOLineAxisFileName( atts.GetOLineAxisFileName() );
+
     poincareFilter->SetShowChaotic( atts.GetShowChaotic() );
     poincareFilter->SetShowIslands( atts.GetShowIslands() );
     poincareFilter->SetShowLines(atts.GetShowLines());
@@ -834,7 +839,7 @@ avtPoincarePlot::SetLegendRanges()
     double min, max;
 
     // set and get the range for the legend's color bar labels 
-    bool validRange = validRange = glyphMapper->GetRange(min, max);
+    bool validRange = glyphMapper->GetRange(min, max);
 
     varLegend->SetRange(min, max);
 

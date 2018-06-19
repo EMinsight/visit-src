@@ -20,7 +20,7 @@ ON_HDF4="off"
 
 function bv_hdf4_depends_on
 {
-return ""
+echo "szip"
 }
 
 function bv_hdf4_info
@@ -30,6 +30,8 @@ export HDF4_VERSION=${HDF4_VERSION:-"4.2.5"}
 export HDF4_COMPATIBILITY_VERSION=${HDF4_COMPATIBILITY_VERSION:-"4.2"}
 export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"hdf-4.2.5"}
 export HDF4_URL=${HDF4_URL:-"http://www.hdfgroup.org/ftp/HDF/HDF_Current/src"}
+export HDF4_MD5_CHECKSUM="7241a34b722d29d8561da0947c06069f"
+export HDF4_SHA256_CHECKSUM=""
 }
 
 function bv_hdf4_print
@@ -63,11 +65,11 @@ function bv_hdf4_host_profile
         >> $HOSTCONF
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
             >> $HOSTCONF
           else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
             >> $HOSTCONF
         fi
         >> $HOSTCONF
@@ -1327,11 +1329,11 @@ function build_hdf4
         # configure, we wrap the invokation in 'sh -c "..."' syntax
         sh -c "./configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" \
-        CPPFLAGS=\"-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/ \
-        -I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtkjpeg\" \
+        CPPFLAGS=\"-I$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/include/ \
+        -I$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/include/vtkjpeg\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH\" \
-        --with-jpeg=\"$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH\" \
+        --with-jpeg=\"$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH\" \
         --with-szlib=\"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH\" \
         --disable-dependency-tracking"
         if [[ $? != 0 ]] ; then
@@ -1341,16 +1343,16 @@ function build_hdf4
         fi
         MAKEOPS="-i"
     else
-        export LD_LIBRARY_PATH="$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/lib":"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH="$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/lib":"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
         # In order to ensure $FORTRANARGS is expanded to build the arguments to
         # configure, we wrap the invokation in 'sh -c "..."' syntax
         sh -c "./configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" LIBS=\"-lm\" \
-        CPPFLAGS=\"-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/ \
-        -I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtkjpeg\" \
+        CPPFLAGS=\"-I$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/include/ \
+        -I$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/include/vtkjpeg\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH\" \
-        --with-jpeg=\"$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH\" \
+        --with-jpeg=\"$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH\" \
         --with-szlib=\"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH\""
         if [[ $? != 0 ]] ; then
            warn "HDF4 configure failed.  Giving up.\n"\
@@ -1392,7 +1394,7 @@ function build_hdf4
            -Wl,-install_name,$INSTALLNAMEPATH/libdf.${SO_EXT} \
            -Wl,-compatibility_version,$HDF4_COMPATIBILITY_VERSION \
            -Wl,-current_version,$HDF4_VERSION \
-           -L"$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/lib" \
+           -L"$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/lib" \
            -L"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib" \
            -lvtkjpeg -lsz -lz
         if [[ $? != 0 ]] ; then
@@ -1408,7 +1410,7 @@ function build_hdf4
            -Wl,-install_name,$INSTALLNAMEPATH/libmfhdf.${SO_EXT} \
            -Wl,-compatibility_version,$HDF4_COMPATIBILITY_VERSION \
            -Wl,-current_version,$HDF4_VERSION \
-           -L"$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/lib" \
+           -L"$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/lib" \
            -L"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib" \
            -L"$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH/lib" \
            -lvtkjpeg -ldf -lsz -lz
@@ -1426,6 +1428,23 @@ function build_hdf4
     fi
     cd "$START_DIR"
     info "Done with HDF4"
+    return 0
+}
+
+function bv_hdf4_is_enabled
+{
+    if [[ $DO_HDF4 == "yes" ]]; then
+        return 1    
+    fi
+    return 0
+}
+
+function bv_hdf4_is_installed
+{
+    check_if_installed "hdf4" $HDF4_VERSION
+    if [[ $? == 0 ]] ; then
+        return 1
+    fi
     return 0
 }
 

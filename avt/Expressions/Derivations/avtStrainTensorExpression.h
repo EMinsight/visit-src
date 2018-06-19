@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,13 +37,12 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                           avtStrainTensorExpression.h                         //
+//                       avtStrainTensorExpression.h                         //
 // ************************************************************************* //
 
 #ifndef AVT_STRAIN_TENSOR_FILTER_H
 #define AVT_STRAIN_TENSOR_FILTER_H
 
-#include <vtkDoubleArray.h>
 #include <avtMultipleInputExpressionFilter.h>
 
 

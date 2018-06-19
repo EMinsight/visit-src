@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -120,6 +120,12 @@
 #    Record that the H5Part plugin can also be dependent on FASTBIT being set
 #    so we can statically link.
 #
+#    Hank Childs, Sun Feb  5 18:52:04 PST 2012
+#    Add CarpetHDF5 reader from Christian Reisswig and Erik Schnetter.
+#
+#    Brad Whitlock, Fri Mar  2 12:04:25 PST 2012
+#    Remove BOW reader.
+#
 #****************************************************************************/
 
 IF(NOT WIN32)
@@ -185,6 +191,7 @@ ENDIF(NOT XDMF_FOUND)
 THIRDPARTY_DEPENDENT_PLUGINS(HDF5     
 AMR
 CaleHDF5
+CarpetHDF5
 Chombo
 CosmosPP
 Enzo
@@ -208,6 +215,7 @@ THIRDPARTY_DEPENDENT_PLUGINS(FASTBIT  H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(H5PART   H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(MILI     Mili)
 THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF S3D)
+THIRDPARTY_DEPENDENT_PLUGINS(NETCDF_CXX  MFIXCDF)
 IF (NOT WIN32)
     THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI Vista)
 ELSE (NOT WIN32)
@@ -249,7 +257,6 @@ ANSYS
 AUXFile
 AugDecomp
 BOV
-BOW
 CEAucd
 CMAT
 CTRL
@@ -317,6 +324,7 @@ IF (NOT WIN32)
     SET(OPTIONAL_DATABASE_PLUGINS
         Hex
         Rect
+        PICS_Tester
         VLI
     )
 ENDIF (NOT WIN32)

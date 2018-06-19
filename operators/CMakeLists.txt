@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -54,6 +54,9 @@
 #   Hank Childs, Mon Oct 31 09:38:27 PDT 2011
 #   Add ToroidalPoloidalProjection on behalf of Hari Krishnan.
 #
+#   Cyrus Harrison, Fri Apr  6 10:03:51 PDT 2012
+#   Renamed Ftle to FTLE.
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/operators)
@@ -85,13 +88,16 @@ Extrude
 FFT
 FiveFoldTetSubdivision
 Flux
+FTLE
 IndexSelect
 InverseGhostZone
 Isosurface
 Isovolume
+Lagrangian
 Lineout
 LineSampler
 Merge
+ModelFit
 MultiresControl
 OnionPeel
 PDF
@@ -104,6 +110,7 @@ Revolve
 Slice
 Smooth
 SphereSlice
+Stagger
 SurfaceNormal
 ThreeSlice
 Threshold
@@ -139,6 +146,10 @@ ELSE(VISIT_BUILD_ALL_PLUGINS)
         SET(BUILD_PLUGINS ${REQUIRED_OPERATOR_PLUGINS})
     ENDIF(VISIT_BUILD_MINIMAL_PLUGINS)
 ENDIF(VISIT_BUILD_ALL_PLUGINS)
+
+IF(HAVE_LIB_R)
+  LIST(APPEND BUILD_PLUGINS ExtremeValueAnalysis)
+ENDIF(HAVE_LIB_R)
 
 # Add the plugin directories
 FOREACH(operator ${BUILD_PLUGINS})

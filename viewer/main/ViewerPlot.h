@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -302,6 +302,9 @@ class avtToolInterface;
 //    Brad Whitlock, Mon Aug 22 10:59:48 PDT 2011
 //    I moved some selection method bodies into the C file.
 //
+//    Kathleen Biagas, Wed Feb 29 07:46:10 MST 2012
+//    Added GetExtraInfoForPick.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerPlot : public ViewerBase
@@ -412,7 +415,9 @@ class VIEWER_API ViewerPlot : public ViewerBase
     bool RemoveOperator(const int operatorIndex);
     void RemoveLastOperator();
     void RemoveAllOperators();
-    void SetOperatorAttsFromClient(const int type);
+     void SetOperatorAttsFromClient(const int type,
+                                   const bool activePlot,
+                                   const bool applyToAll);
     int  GetNOperators() const;
     ViewerOperator *GetOperator(const int i) const;
     void SetActiveOperatorIndex(int index);
@@ -509,6 +514,8 @@ class VIEWER_API ViewerPlot : public ViewerBase
     bool PermitsLogViewScaling(WINDOW_MODE wm);
 
     static void SetNumPlotsCreated(int);
+
+    void GetExtraInfoForPick(MapNode &);
 
   protected:
     void CopyHelper(const ViewerPlot &);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,7 +49,6 @@
 #include <ViewerEngineManager.h>
 #include <ViewerOperator.h>
 #include <ViewerPlot.h>
-#include <avtPluginFilter.h>
 #include <VisItException.h>
 
 // ****************************************************************************
@@ -84,12 +83,11 @@ ViewerOperator::ViewerOperator(const int type_,
     ViewerOperatorPluginInfo *viewerPluginInfo_,
     ViewerPlot *plot_, const bool fromDefault) : ViewerBase(0)
 {
-    type              = type_;
-    viewerPluginInfo  = viewerPluginInfo_;
-    operatorAtts      = viewerPluginInfo->AllocAttributes();
-    avtfilter         = NULL;
-    needsRecalculation= true;
-    plot              = plot_;
+    type               = type_;
+    viewerPluginInfo   = viewerPluginInfo_;
+    operatorAtts       = viewerPluginInfo->AllocAttributes();
+    needsRecalculation = true;
+    plot               = plot_;
 
     viewerPluginInfo->InitializeOperatorAtts(operatorAtts, plot, fromDefault);
 }
@@ -115,7 +113,6 @@ ViewerOperator::ViewerOperator(const ViewerOperator &obj)
     type               = obj.type;
     viewerPluginInfo   = obj.viewerPluginInfo;
     operatorAtts       = obj.operatorAtts->NewInstance(true);
-    avtfilter          = NULL;
     needsRecalculation = true;
     plot               = obj.plot;
 }
@@ -133,9 +130,6 @@ ViewerOperator::ViewerOperator(const ViewerOperator &obj)
 ViewerOperator::~ViewerOperator()
 {
     delete operatorAtts;
-
-    if (avtfilter)
-        delete avtfilter;
 }
 
 // ****************************************************************************
@@ -253,24 +247,23 @@ ViewerOperator::SetClientAttsFromOperator()
 // ****************************************************************************
 
 void
-ViewerOperator::SetOperatorAttsFromClient()
+ViewerOperator::SetOperatorAttsFromClient(const bool activePlot,
+                                          const bool applyToAll)
 {
     //
     // Check to see if we need to recalculate when we're done
     //
-    needsRecalculation = (!operatorAtts->EqualTo(
-                                           viewerPluginInfo->GetClientAtts()));
+    needsRecalculation =
+      (!operatorAtts->EqualTo( viewerPluginInfo->GetClientAtts() ));
 
     //
     // Copy the operator attributes to the client attributes and notify the
     // client.
     //
-    viewerPluginInfo->GetClientAtts(operatorAtts);
+    viewerPluginInfo->GetClientAtts(operatorAtts, activePlot, applyToAll);
 
-    if (avtfilter != 0)
-    {
-        avtfilter->SetAtts(operatorAtts);
-    }
+    if( activePlot )
+      viewerPluginInfo->SetClientAtts(operatorAtts);      
 }
 
 // ****************************************************************************
@@ -313,9 +306,6 @@ ViewerOperator::SetOperatorAtts(const AttributeSubject *atts)
     bool retval = false;
     if (operatorAtts->CopyAttributes(atts))
     {
-        if (avtfilter != 0)
-            avtfilter->SetAtts(operatorAtts);
-
         if (mightNeedRecalculation)
         {
             plot->ClearActors();

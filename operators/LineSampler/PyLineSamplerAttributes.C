@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,6 +125,8 @@ PyLineSamplerAttributes_ToString(const LineSamplerAttributes *atts, const char *
           break;
     }
 
+    SNPRINTF(tmpStr, 1000, "%sinstanceId = %d\n", prefix, atts->GetInstanceId());
+    str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%snArrays = %d\n", prefix, atts->GetNArrays());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%storoidalArrayAngle = %g\n", prefix, atts->GetToroidalArrayAngle());
@@ -259,6 +261,11 @@ PyLineSamplerAttributes_ToString(const LineSamplerAttributes *atts, const char *
           break;
     }
 
+    if(atts->GetDonotApplyToAll())
+        SNPRINTF(tmpStr, 1000, "%sdonotApplyToAll = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sdonotApplyToAll = 0\n", prefix);
+    str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sheightPlotScale = %g\n", prefix, atts->GetHeightPlotScale());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%schannelPlotOffset = %g\n", prefix, atts->GetChannelPlotOffset());
@@ -556,6 +563,30 @@ LineSamplerAttributes_GetBoundary(PyObject *self, PyObject *args)
 {
     LineSamplerAttributesObject *obj = (LineSamplerAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(long(obj->data->GetBoundary()));
+    return retval;
+}
+
+/*static*/ PyObject *
+LineSamplerAttributes_SetInstanceId(PyObject *self, PyObject *args)
+{
+    LineSamplerAttributesObject *obj = (LineSamplerAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the instanceId in the object.
+    obj->data->SetInstanceId((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+LineSamplerAttributes_GetInstanceId(PyObject *self, PyObject *args)
+{
+    LineSamplerAttributesObject *obj = (LineSamplerAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetInstanceId()));
     return retval;
 }
 
@@ -1111,6 +1142,30 @@ LineSamplerAttributes_GetViewDimension(PyObject *self, PyObject *args)
 {
     LineSamplerAttributesObject *obj = (LineSamplerAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(long(obj->data->GetViewDimension()));
+    return retval;
+}
+
+/*static*/ PyObject *
+LineSamplerAttributes_SetDonotApplyToAll(PyObject *self, PyObject *args)
+{
+    LineSamplerAttributesObject *obj = (LineSamplerAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the donotApplyToAll in the object.
+    obj->data->SetDonotApplyToAll(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+LineSamplerAttributes_GetDonotApplyToAll(PyObject *self, PyObject *args)
+{
+    LineSamplerAttributesObject *obj = (LineSamplerAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetDonotApplyToAll()?1L:0L);
     return retval;
 }
 
@@ -1913,6 +1968,8 @@ PyMethodDef PyLineSamplerAttributes_methods[LINESAMPLERATTRIBUTES_NMETH] = {
     {"GetArrayConfiguration", LineSamplerAttributes_GetArrayConfiguration, METH_VARARGS},
     {"SetBoundary", LineSamplerAttributes_SetBoundary, METH_VARARGS},
     {"GetBoundary", LineSamplerAttributes_GetBoundary, METH_VARARGS},
+    {"SetInstanceId", LineSamplerAttributes_SetInstanceId, METH_VARARGS},
+    {"GetInstanceId", LineSamplerAttributes_GetInstanceId, METH_VARARGS},
     {"SetNArrays", LineSamplerAttributes_SetNArrays, METH_VARARGS},
     {"GetNArrays", LineSamplerAttributes_GetNArrays, METH_VARARGS},
     {"SetToroidalArrayAngle", LineSamplerAttributes_SetToroidalArrayAngle, METH_VARARGS},
@@ -1953,6 +2010,8 @@ PyMethodDef PyLineSamplerAttributes_methods[LINESAMPLERATTRIBUTES_NMETH] = {
     {"GetViewGeometry", LineSamplerAttributes_GetViewGeometry, METH_VARARGS},
     {"SetViewDimension", LineSamplerAttributes_SetViewDimension, METH_VARARGS},
     {"GetViewDimension", LineSamplerAttributes_GetViewDimension, METH_VARARGS},
+    {"SetDonotApplyToAll", LineSamplerAttributes_SetDonotApplyToAll, METH_VARARGS},
+    {"GetDonotApplyToAll", LineSamplerAttributes_GetDonotApplyToAll, METH_VARARGS},
     {"SetHeightPlotScale", LineSamplerAttributes_SetHeightPlotScale, METH_VARARGS},
     {"GetHeightPlotScale", LineSamplerAttributes_GetHeightPlotScale, METH_VARARGS},
     {"SetChannelPlotOffset", LineSamplerAttributes_SetChannelPlotOffset, METH_VARARGS},
@@ -2058,6 +2117,8 @@ PyLineSamplerAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "Wall") == 0)
         return PyInt_FromLong(long(LineSamplerAttributes::Wall));
 
+    if(strcmp(name, "instanceId") == 0)
+        return LineSamplerAttributes_GetInstanceId(self, NULL);
     if(strcmp(name, "nArrays") == 0)
         return LineSamplerAttributes_GetNArrays(self, NULL);
     if(strcmp(name, "toroidalArrayAngle") == 0)
@@ -2129,6 +2190,8 @@ PyLineSamplerAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "Three") == 0)
         return PyInt_FromLong(long(LineSamplerAttributes::Three));
 
+    if(strcmp(name, "donotApplyToAll") == 0)
+        return LineSamplerAttributes_GetDonotApplyToAll(self, NULL);
     if(strcmp(name, "heightPlotScale") == 0)
         return LineSamplerAttributes_GetHeightPlotScale(self, NULL);
     if(strcmp(name, "channelPlotOffset") == 0)
@@ -2246,6 +2309,8 @@ PyLineSamplerAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = LineSamplerAttributes_SetArrayConfiguration(self, tuple);
     else if(strcmp(name, "boundary") == 0)
         obj = LineSamplerAttributes_SetBoundary(self, tuple);
+    else if(strcmp(name, "instanceId") == 0)
+        obj = LineSamplerAttributes_SetInstanceId(self, tuple);
     else if(strcmp(name, "nArrays") == 0)
         obj = LineSamplerAttributes_SetNArrays(self, tuple);
     else if(strcmp(name, "toroidalArrayAngle") == 0)
@@ -2286,6 +2351,8 @@ PyLineSamplerAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = LineSamplerAttributes_SetViewGeometry(self, tuple);
     else if(strcmp(name, "viewDimension") == 0)
         obj = LineSamplerAttributes_SetViewDimension(self, tuple);
+    else if(strcmp(name, "donotApplyToAll") == 0)
+        obj = LineSamplerAttributes_SetDonotApplyToAll(self, tuple);
     else if(strcmp(name, "heightPlotScale") == 0)
         obj = LineSamplerAttributes_SetHeightPlotScale(self, tuple);
     else if(strcmp(name, "channelPlotOffset") == 0)

@@ -18,7 +18,7 @@ ON_HDF5="off"
 
 function bv_hdf5_depends_on
 {
-return ""
+echo "szip"
 }
 
 function bv_hdf5_info
@@ -29,6 +29,8 @@ export HDF5_COMPATIBILITY_VERSION=${HDF5_COMPATIBILITY_VERSION:-"1.8"}
 export HDF5_BUILD_DIR=${HDF5_BUILD_DIR:-"hdf5-${HDF5_VERSION}"}
 # Note: Versions of HDF5 1.6.5 and earlier DO NOT have last path component
 export HDF5_URL=${HDF5_URL:-"http://www.hdfgroup.org/ftp/HDF5/prev-releases/hdf5-${HDF5_VERSION}/src"}
+export HDF5_MD5_CHECKSUM="37711d4bcb72997e93d495f97c76c33a"
+export HDF5_SHA256_CHECKSUM=""
 }
 
 function bv_hdf5_print
@@ -113,13 +115,13 @@ function build_hdf5
     cf_darwin=""
     if [[ "$OPSYS" == "Darwin" ]]; then
         export DYLD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$DYLD_LIBRARY_PATH
-        if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
-            cf_darwin="--disable-shared --enable-static"
-        else
-            cf_darwin="--enable-shared --disable-static"
-        fi
     else
         export LD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
+    fi
+    if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
+            cf_build_type="--disable-shared --enable-static"
+        else
+            cf_build_type="--enable-shared --disable-static"
     fi
     cf_szip=""
     if test "x${DO_SZIP}" = "xyes"; then
@@ -146,7 +148,7 @@ function build_hdf5
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH\" \
-        ${cf_szip} ${cf_darwin}"
+        ${cf_szip} ${cf_build_type}"
     if [[ $? != 0 ]] ; then
        warn "HDF5 configure failed.  Giving up"
        return 1
@@ -186,6 +188,23 @@ function build_hdf5
     fi
     cd "$START_DIR"
     info "Done with HDF5"
+    return 0
+}
+
+function bv_hdf5_is_enabled
+{
+    if [[ $DO_HDF5 == "yes" ]]; then
+        return 1    
+    fi
+    return 0
+}
+
+function bv_hdf5_is_installed
+{
+    check_if_installed "hdf5" $HDF5_VERSION
+    if [[ $? == 0 ]] ; then
+        return 1
+    fi
     return 0
 }
 

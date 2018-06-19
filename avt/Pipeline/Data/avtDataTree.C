@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1041,7 +1041,7 @@ avtDataTree::PruneTree(const vector<int> &list)
     }
     else
     {
-        rv = new avtDataTree(pmap.new_nodes.size(), &(pmap.new_nodes[0]));
+        rv = new avtDataTree(static_cast<int>(pmap.new_nodes.size()), &(pmap.new_nodes[0]));
     }
 
     visitTimer->StopTimer(t0, "Prune tree (vector<int>)");

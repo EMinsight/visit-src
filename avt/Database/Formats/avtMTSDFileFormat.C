@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,10 +76,14 @@ const int avtMTSDFileFormat::MAX_FILES = 1000;
 //    Hank Childs, Sun May  9 18:47:06 CDT 2010
 //    Initialize time slice offset.
 //
+//    Hank Childs, Tue Apr 10 15:12:58 PDT 2012
+//    Initialize read all cycles and times.
+//
 // ****************************************************************************
 
 avtMTSDFileFormat::avtMTSDFileFormat(const char * const *names, int nNames)
 {
+    readAllCyclesAndTimes = false;
     nFiles = nNames;
     filenames = new char*[MAX_FILES];
     int  i;

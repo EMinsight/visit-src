@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -51,7 +51,7 @@ ${VISIT_SOURCE_DIR}/third_party_builtin/glew/glew/include
 IF(WIN32)
     ADD_DEFINITIONS("/DGLEW_BUILD")
 ENDIF(WIN32)
-ADD_LIBRARY(GLEW ${GLEW_SOURCES})
+ADD_LIBRARY(visitGLEW ${GLEW_SOURCES})
 
-VISIT_INSTALL_TARGETS(GLEW)
-SET_TARGET_PROPERTIES(GLEW PROPERTIES FOLDER thirdparty_builtin/glew)
+VISIT_INSTALL_TARGETS(visitGLEW)
+SET_TARGET_PROPERTIES(visitGLEW PROPERTIES FOLDER thirdparty_builtin/glew)

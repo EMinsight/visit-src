@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,17 +35,19 @@
 # DAMAGE.
 #
 # Modifications:
-#     Gunther H. Weber, Thu Jan 14 11:36:21 PST 2010
-#     Added conditional target for separate socket bridge executable.
+#   Gunther H. Weber, Thu Jan 14 11:36:21 PST 2010
+#   Added conditional target for separate socket bridge executable.
 #
-#     Kathleen Bonnell, Thu Feb 25 11:00:43 MST 2010 
-#     Exclude testvcl on windows.
+#   Kathleen Bonnell, Thu Feb 25 11:00:43 MST 2010 
+#   Exclude testvcl on windows.
+#
+#   Brad Whitlock, Tue Nov 29 11:15:24 PST 2011
+#   I moved SocketBridge to common.
 #
 #****************************************************************************/
 
 SET(VCL_SOURCES
 LauncherApplication.C
-SocketBridge.C
 main.C
 )
 
@@ -63,11 +65,11 @@ ${VISIT_SOURCE_DIR}/launcher/proxy
 
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
 
-ADD_EXECUTABLE(vcl ${VCL_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+ADD_EXECUTABLE(vcl ${VISIT_APPLICATION_STYLE} ${VCL_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
 TARGET_LINK_LIBRARIES(vcl vclrpc visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
 
 IF (VISIT_CREATE_SOCKET_RELAY_EXECUTABLE)
-    ADD_EXECUTABLE(visit_socket_relay SocketRelayMain.C SocketBridge.C)
+    ADD_EXECUTABLE(visit_socket_relay SocketRelayMain.C)
     TARGET_LINK_LIBRARIES(visit_socket_relay visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
     VISIT_INSTALL_TARGETS(visit_socket_relay)
 ENDIF (VISIT_CREATE_SOCKET_RELAY_EXECUTABLE)

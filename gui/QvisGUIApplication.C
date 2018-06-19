@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -616,6 +616,9 @@ GUI_LogQtMessages(QtMsgType type, const char *msg)
 //   Brad Whitlock, Fri Aug  6 16:54:29 PDT 2010
 //   Added Selections to windowNames.
 //
+//   Brad Whitlock, Tue May  1 10:06:12 PDT 2012
+//   Call GetVisItResourcesDirectory to get the translations directory.
+//
 // ****************************************************************************
 
 QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
@@ -762,13 +765,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
 
     // Make VisIt translation aware.
     QTranslator *translator = new QTranslator(0);
-#if defined(_WIN32)
-    QString transPath(GetVisItArchitectureDirectory().c_str());
-    transPath += "\\translations\\";
-#else
-    QString transPath(GetVisItArchitectureDirectory().c_str());
-    transPath += "/bin/translations/";
-#endif
+    QString transPath(GetVisItResourcesDirectory(VISIT_RESOURCES_TRANSLATIONS).c_str());
     if(applicationLocale == "default")
         applicationLocale = QLocale::system().name();
     QString transFile(QString("visit_") + applicationLocale);
@@ -3233,6 +3230,8 @@ QvisGUIApplication::SetupWindows()
              this, SLOT(showSimulationWindow()));
      connect(mainWin, SIGNAL(activateExportDBWindow()),
              this, SLOT(showExportDBWindow()));
+    connect(mainWin, SIGNAL(activateCLI()),
+             this, SLOT(showCLI()));
      connect(mainWin, SIGNAL(activateCommandWindow()),
              this, SLOT(showCommandWindow()));
      connect(mainWin, SIGNAL(activateMeshManagementWindow()),
@@ -4315,6 +4314,33 @@ QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 }
 
 // ****************************************************************************
+// Method: QvisGUIApplication::SetSessionNameInWindowTitle
+//
+// Purpose: 
+//   Set the name of the session file into the window title.
+//
+// Arguments:
+//   filename : The name of the session file.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Mar  2 15:38:05 PST 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisGUIApplication::SetSessionNameInWindowTitle(const QString &filename)
+{
+    // Set the name of the session file that we loaded.
+    if(!filename.isEmpty() && mainWin != NULL)
+    {
+        std::string fileOnly(QualifiedFilename(sessionFile.toStdString()).filename);
+        mainWin->setWindowTitle(tr("VisIt %1 [%2]").arg(VISIT_VERSION).arg(fileOnly.c_str()));
+    }
+}
+
+// ****************************************************************************
 // Method: QvisGUIApplication::SaveSession
 //
 // Purpose: 
@@ -4323,6 +4349,10 @@ QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Jul 14 11:52:52 PDT 2003
+//
+// Modifications:
+//   Brad Whitlock, Fri Mar  2 15:35:51 PST 2012
+//   Set the session name in the window title.
 //
 // ****************************************************************************
 
@@ -4336,6 +4366,9 @@ QvisGUIApplication::SaveSession()
         ++sessionCount;
         SaveSessionFile(sessionFile);
         UpdateSessionDir(sessionFile.toStdString());
+
+        // Set the name of the session file that we saved.
+        SetSessionNameInWindowTitle(sessionFile);
     }
 }
 
@@ -4369,6 +4402,9 @@ QvisGUIApplication::SaveSession()
 //   Use '.session' on windows, too. Send sessionDir to getSaveFileName 
 //   instead of '.'
 //
+//   Brad Whitlock, Fri Mar  2 15:35:51 PST 2012
+//   Set the session name in the window title.
+//
 // ****************************************************************************
 
 void
@@ -4395,6 +4431,9 @@ QvisGUIApplication::SaveSessionAs()
         ++sessionCount;
         SaveSessionFile(fileName);
         UpdateSessionDir(fileName.toStdString());
+
+        // Set the name of the session file that we saved.
+        SetSessionNameInWindowTitle(sessionFile);
     }
 }
 
@@ -4817,6 +4856,9 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
 //   Kathleen Bonnell, Tue Nov 1 14:28:57 PDT 2010
 //   Don't prepend 'VisItUserDir' to guifilename on Windows.
 //
+//   Brad Whitlock, Fri Mar  2 15:31:41 PST 2012
+//   Add the name of the open session file in the main window's caption.
+//
 // ****************************************************************************
 
 void
@@ -4953,6 +4995,10 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
             // already part of the filename.
             GetViewerMethods()->ImportEntireState(filename, false);
         }
+
+        // Set the name of the session file that we loaded.
+        SetSessionNameInWindowTitle(sessionFile);
+
     restoringSession = false;
     }
 }
@@ -8625,6 +8671,23 @@ QvisGUIApplication::restorePickAttributesAfterRepick()
 {
     Synchronize(RESTORE_PICK_ATTS_TAG);
 }
+// ****************************************************************************
+// Method: QvisGUIApplication::showCLI
+//
+// Purpose:
+//   Launch a CLI if one is not actively connected.
+//
+// Programmer: Cyrus Harrison
+// Creation:   Tue Mar 20 12:33:11 PDT 2012
+//
+// ****************************************************************************
+void
+QvisGUIApplication::showCLI()
+{
+
+    Interpret("");
+}
+
 
 //
 // Qt slot functions to show windows that are created later on demand.

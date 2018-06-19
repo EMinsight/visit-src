@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -163,6 +163,9 @@ class ViewerState;
 //   Kathleen Biagas, Fri Jul 15 11:35:27 PDT 2011
 //   Add GetQueryParameters.
 //
+//   Marc Durant, Thu Jan 12 12:35:00 MST 2012
+//   Added ToggleAllowPopup.
+//
 // ****************************************************************************
 
 class VIEWER_RPC_API ViewerMethods
@@ -229,7 +232,9 @@ public:
 
     void ApplyNamedSelection(const std::string &selName);
     void CreateNamedSelection(const std::string &selName);
-    void CreateNamedSelection(const std::string &selName, const SelectionProperties &props);
+    void CreateNamedSelection(const std::string &selName, 
+                              const SelectionProperties &props, 
+                              bool useCurrentPlot = false);
     void DeleteNamedSelection(const std::string &selName);
     void LoadNamedSelection(const std::string &selName,
                             const std::string &hostName,
@@ -312,6 +317,7 @@ public:
     void ToggleMaintainViewMode();
     void UndoView();
     void RedoView();
+    void ToggleAllowPopup();
     void ToggleLockViewMode();
     void ToggleLockTime();
     void ToggleLockTools();

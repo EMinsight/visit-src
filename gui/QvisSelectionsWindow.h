@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -118,6 +118,9 @@ protected:
     void    NewEnabled(QString &, QString &);
 
 private slots:
+    void    idVariableTypeChanged(int);
+    void    idVariableChanged(const QString &);
+
     void    automaticallyApplyChanged(bool val);
     void    UpdateWindowSingleItem();
     void    addSelection();
@@ -165,6 +168,8 @@ private:
     QTabWidget         *editorTabs;
 
     QLabel             *plotNameLabel;
+    QButtonGroup       *idVariableType;
+    QvisVariableButton *idVariableButton;
 
     QGroupBox               *cqControls;
     QTabWidget              *cqTabs;

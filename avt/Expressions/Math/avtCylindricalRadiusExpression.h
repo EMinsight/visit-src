@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,13 +47,6 @@
 #include <avtSingleInputExpressionFilter.h>
 
 
-class     vtkCell;
-class     vtkCellDataToPointData;
-class     vtkDataArray;
-class     vtkDataSet;
-class     vtkIdList;
-class     vtkScalarData;
-class     ExprNode;
 
 // ****************************************************************************
 //  Class: avtCylindricalRadiusExpression
@@ -91,7 +84,7 @@ class EXPRESSION_API avtCylindricalRadiusExpression
     virtual int               GetVariableDimension() { return 1; }
 
   private:
-            double            axisVector[3];
+    double                    axisVector[3];
     
 };
 

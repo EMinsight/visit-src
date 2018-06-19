@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -319,6 +319,9 @@ bool
 avtDatasetExaminer::GetDataExtents(avtDataset_p &ds, double *de,
                                    const char *varname)
 {
+    if (*ds == NULL || *(ds->GetDataTree()) == NULL)
+        return false;
+
     if (varname == NULL)
     {
         varname = ds->GetInfo().GetAttributes().GetVariableName().c_str();
@@ -780,7 +783,7 @@ avtDatasetExaminer::CalculateHistogram(avtDataset_p &ds,
     
     // Sum the vector element-wise, placing results in numvals.
     SumLongLongArrayAcrossAllProcessors(&input[0], &(numvals[0]),
-                                        numvals.size());
+                                        static_cast<int>(numvals.size()));
     visitTimer->StopTimer(t2, "Parallel processing of histogram");
     
     return somebodyFailed;

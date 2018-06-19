@@ -22,7 +22,7 @@ ON_XDMF="off"
 
 function bv_xdmf_depends_on
 {
-return ""
+echo "cmake vtk hdf5"
 }
 
 function bv_xdmf_info
@@ -31,6 +31,8 @@ export XDMF_FILE=${XDMF_FILE:-"Xdmf-2.1.1.tar.gz"}
 export XDMF_VERSION=${XDMF_VERSION:-"2.1.1"}
 export XDMF_COMPATIBILITY_VERSION=${XDMF_COMPATIBILITY_VERSION:-"2.1.1"}
 export XDMF_BUILD_DIR=${XDMF_BUILD_DIR:-"Xdmf"}
+export XDMF_MD5_CHECKSUM="09e2afd3a1b7b3e7d650b860212a95d1"
+export XDMF_SHA256_CHECKSUM=""
 }
 
 function bv_xdmf_print
@@ -64,7 +66,7 @@ function bv_xdmf_host_profile
         "VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR \${VISITHOME}/Xdmf/$XDMF_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
+        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP}  VTK_LIBRARY_DIRS vtklibxml2 ${VISIT_VTK_LIBDEP} TYPE STRING)"\
         >> $HOSTCONF
     fi
 }
@@ -150,11 +152,11 @@ function build_xdmf
         -DHDF5_INCLUDE_PATH:PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/include" \
         -DHDF5_LIBRARY:PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib/libhdf5.${SO_EXT}" \
         -DXDMF_SYSTEM_ZLIB:BOOL=ON \
-        -DZLIB_INCLUDE_PATH:PATH="$VISITDIR/vtk/$VTK_VERSION/$VISITARCH/include/vtklibz" \
-        -DZLIB_LIBRARY:PATH="$VISITDIR/vtk/$VTK_VERSION/$VISITARCH/lib/libvtkzlib.${SO_EXT}" \
+        -DZLIB_INCLUDE_PATH:PATH="$VISITDIR/${VTK_INSTALL_DIR}/$VTK_VERSION/$VISITARCH/include/vtklibz" \
+        -DZLIB_LIBRARY:PATH="$VISITDIR/${VTK_INSTALL_DIR}/$VTK_VERSION/$VISITARCH/lib/libvtkzlib.${SO_EXT}" \
         -DXDMF_SYSTEM_LIBXML2:BOOL=ON \
-        -DLIBXML2_INCLUDE_PATH:PATH="$VISITDIR/vtk/$VTK_VERSION/$VISITARCH/include/vtklibxml2" \
-        -DLIBXML2_LIBRARY="$VISITDIR/vtk/$VTK_VERSION/$VISITARCH/lib/libvtklibxml2.${SO_EXT}" \
+        -DLIBXML2_INCLUDE_PATH:PATH="$VISITDIR/${VTK_INSTALL_DIR}/$VTK_VERSION/$VISITARCH/include/vtklibxml2" \
+        -DLIBXML2_LIBRARY="$VISITDIR/${VTK_INSTALL_DIR}/$VTK_VERSION/$VISITARCH/lib/libvtklibxml2.${SO_EXT}" \
         .
 
     if [[ $? != 0 ]] ; then
@@ -194,6 +196,23 @@ function build_xdmf
 
     cd "$START_DIR"
     info "Done with Xdmf"
+    return 0
+}
+
+function bv_xdmf_is_enabled
+{
+    if [[ $DO_XDMF == "yes" ]]; then
+        return 1    
+    fi
+    return 0
+}
+
+function bv_xdmf_is_installed
+{
+    check_if_installed "Xdmf" $XDMF_VERSION
+    if [[ $? == 0 ]] ; then
+        return 1
+    fi
     return 0
 }
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -551,6 +551,9 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     ctrls->addAction(rainbowIcon, tr("Color &table . . ."),
                      this, SIGNAL(activateColorTableWindow()),
                      QKeySequence(Qt::CTRL + Qt::Key_T));
+    ctrls->addAction(commandIcon, tr("Launch CLI . . ."),
+                     this, SIGNAL(activateCLI()),
+                     QKeySequence(Qt::CTRL + Qt::ALT + Qt::Key_C));
     ctrls->addAction(commandIcon, tr("Command . . ."),
                      this, SIGNAL(activateCommandWindow()), 
                      QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C));

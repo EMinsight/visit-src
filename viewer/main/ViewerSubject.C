@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -472,6 +472,9 @@ ViewerSubject::Connect(int *argc, char ***argv)
 //   Brad Whitlock, Thu Apr 22 16:53:34 PST 2010
 //   Use a signal to schedule HeavyInitialization.
 //
+//   Brad Whitlock, Tue May  1 10:06:12 PDT 2012
+//   Call GetVisItResourcesDirectory to get the translations directory.
+//
 // ****************************************************************************
 
 void
@@ -481,13 +484,7 @@ ViewerSubject::Initialize()
 
     // Make VisIt translation aware.
     QTranslator *translator = new QTranslator(0);
-#if defined(_WIN32)
-    QString transPath(GetVisItArchitectureDirectory().c_str());
-    transPath += "\\translations\\";
-#else
-    QString transPath(GetVisItArchitectureDirectory().c_str());
-    transPath += "/bin/translations/";
-#endif
+    QString transPath(GetVisItResourcesDirectory(VISIT_RESOURCES_TRANSLATIONS).c_str());
     QString applicationLocale(GetViewerProperties()->GetApplicationLocale().c_str());
     if(applicationLocale == "default")
         applicationLocale = QLocale::system().name();
@@ -2588,6 +2585,9 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //    Add code to always force ssh tunneling of all data connections that
 //    is conditional on VISIT_FORCE_SSH_TUNNELING.
 //
+//    Carson Brownlee, Sun May  6 16:25:28 PDT 2012
+//    Add -manta argument.
+//
 // ****************************************************************************
 
 void
@@ -2830,6 +2830,10 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
             InitVTKRendering::ForceMesa();
             RemoteProcess::DisablePTY();
             SetNowinMode(true);
+        }
+        else if (strcmp(argv[i], "-manta") == 0)
+        {
+            avtCallback::SetMantaMode(true);
         }
         else if (strcmp(argv[i], "-fullscreen") == 0)
         {
@@ -5695,8 +5699,8 @@ ViewerSubject::ResetOperatorOptions()
     // Perform the rpc.
     //
     ViewerWindowManager *wM=ViewerWindowManager::Instance();
-    bool apply = wM->GetClientAtts()->GetApplyOperator();
-    wM->GetActiveWindow()->GetPlotList()->SetPlotOperatorAtts(oper, apply);
+    bool applyToAll = wM->GetClientAtts()->GetApplyOperator();
+    wM->GetActiveWindow()->GetPlotList()->SetPlotOperatorAtts(oper, applyToAll);
 }
 
 // ****************************************************************************
@@ -6900,18 +6904,20 @@ ViewerSubject::SetWindowArea()
 void
 ViewerSubject::ConnectToMetaDataServer()
 {
+    const char *mName = "ViewerSubject::ConnectToMetaDataServer: ";
     int timeid = visitTimer->StartTimer();
 
     //
     // Write the arguments to the debug logs
     //
-    debug4 << "Telling mdserver on host "
+    debug1 << mName << "start" << endl;
+    debug1 << mName << "Telling mdserver on host "
            << GetViewerState()->GetViewerRPC()->GetProgramHost().c_str()
            << " to connect to another client." << endl;
-    debug4 << "Arguments:" << endl;
+    debug1 << "Arguments:" << endl;
     const stringVector &sv = GetViewerState()->GetViewerRPC()->GetProgramOptions();
     for(int i = 0; i < sv.size(); ++i)
-         debug4 << "\t" << sv[i].c_str() << endl;
+         debug1 << "\t" << sv[i].c_str() << endl;
 
     //
     // Tell the viewer's fileserver to have its mdserver running on 
@@ -6932,6 +6938,7 @@ ViewerSubject::ConnectToMetaDataServer()
     {
         Warning(err.c_str());
     }
+    debug1 << mName << "end" << endl;
 
     //
     // Do heavy initialization if we still need to do it.
@@ -7005,6 +7012,29 @@ void
 ViewerSubject::ToggleLockTools(int windowIndex)
 {
      ViewerWindowManager::Instance()->ToggleLockTools(windowIndex);
+}
+
+
+// ****************************************************************************
+// Method: ViewerSubject::ToggleAllowPopup
+//
+// Purpose:
+//   Enable/disable the popup menu for the specified window
+//
+// Arguments:
+//   windowIndex : The index of the window for which to toggle the popup menu
+//
+// Programmer: Marc Durant
+// Creation:   Thu Jan 12 12:02:00 MST 2012
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ViewerSubject::ToggleAllowPopup(int windowIndex)
+{
+  ViewerWindowManager::Instance()->ToggleAllowPopup(windowIndex);
 }
 
 // ****************************************************************************
@@ -7607,7 +7637,7 @@ ViewerSubject::ProcessRendererMessage()
                 int offset = 21; // strlen("updateNamedSelection ");
                 // trim the ';' from the end of the name.
                 char *str = msg + offset;
-                int len = strlen(str);
+                size_t len = strlen(str);
                 str[len-1] = '\0';
                 UpdateNamedSelection(std::string(str), true, false);
             }
@@ -8014,6 +8044,9 @@ ViewerSubject::HandleViewerRPC()
 //    Kathleen Bonnell, Fri Jun 17 16:33:17 PDT 2011
 //    Add Query, which replaces Database, Line and PointQuery.
 //
+//    Marc Durant, Thu Jan 12 12:35:00 MST 2012
+//    Added ToggleAllowPopup
+//
 // ****************************************************************************
 
 void
@@ -8232,6 +8265,9 @@ ViewerSubject::HandleViewerRPCEx()
         break;
     case ViewerRPC::ResetMaterialAttributesRPC:
         ResetMaterialAttributes();
+        break;
+    case ViewerRPC::ToggleAllowPopupRPC:
+        ToggleAllowPopup();
         break;
     case ViewerRPC::ToggleLockToolsRPC:
         ToggleLockTools();
@@ -9243,6 +9279,9 @@ ViewerSubject::GetProcessAttributes()
 //   Brad Whitlock, Wed Apr 30 09:27:08 PDT 2008
 //   Support for internationalization.
 //
+//   Brad Whitlock, Tue Nov 29 20:34:06 PST 2011
+//   Adapt to newer ViewerConnectionProgressDialog.
+//
 // ****************************************************************************
 
 void
@@ -9266,9 +9305,10 @@ ViewerSubject::OpenClient()
     {
         if(!GetViewerProperties()->GetNowin())
         {
-            dialog = new ViewerConnectionProgressDialog(clientName.c_str(),
-                "localhost", false, 5);
-
+            dialog = new ViewerConnectionProgressDialog("localhost");
+            dialog->setComponentName(clientName.c_str());
+            dialog->setParallel(false);
+            dialog->setTimeout(5);
             // Register the dialog with the password window so we can set
             // the dialog's timeout to zero if we have to prompt for a
             // password.
@@ -9527,9 +9567,9 @@ ViewerSubject::HandleColorTable()
             // Clear all of the color tables.
             QvisColorTableButton::clearAllColorTables();
 
-            int nNames = colorAtts->GetNames().size();
+            size_t nNames = colorAtts->GetNames().size();
             const stringVector &names = colorAtts->GetNames();
-            for(int i = 0; i < nNames; ++i)
+            for(size_t i = 0; i < nNames; ++i)
             {
                 QvisColorTableButton::addColorTable(names[i].c_str());
             }
@@ -11100,4 +11140,66 @@ ReadHostProfileCallback(void *hpl,
     profileList->SelectMachines();
 }
                              
+// ****************************************************************************
+// Method: ViewerSubject::OpenWithEngine
+//
+// Purpose: 
+//   This is a callback function that lets us launch a program through the
+//   compute engine instead of through VCL.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Nov 29 16:35:08 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
 
+void
+ViewerSubject::OpenWithEngine(const std::string &remoteHost, 
+    const stringVector &args, void *data)
+{
+    const char *mName = "ViewerSubject::OpenWithEngine: ";
+
+    debug1 << mName << "start" << endl;
+    EngineKey ek(remoteHost, "");
+
+    // We use the data argument to pass in a pointer to the connection
+    // progress window.
+    ViewerConnectionProgressDialog *dialog =
+        (ViewerConnectionProgressDialog *)data;
+
+    if(dialog != NULL)
+        dialog->setIgnoreHide(true);
+
+    // Launch an engine if one does not exist so we're able to use the
+    // same dialog as the mdserver.
+    ViewerEngineManager *eMgr = ViewerEngineManager::Instance();
+    if(!eMgr->EngineExists(ek))
+    {
+        debug1 << mName << "Creating engine for " << ek.HostName() << endl;
+
+        stringVector moreArgs;
+        bool skipChooser = false;
+        int numRestarts = 0;
+        bool reverseLaunch = false;
+        eMgr->CreateEngineEx(ek, moreArgs, skipChooser, numRestarts, 
+            reverseLaunch, dialog);
+    }
+
+    debug1 << mName << "Telling engine on host " << ek.HostName() << "to run program:" << endl;
+    for(size_t i = 0; i < args.size(); ++i)
+        debug1 << "\t" << args[i] << endl;
+    debug1 << endl;
+    eMgr->LaunchProcess(ek, args);
+
+    if(dialog != NULL)
+        dialog->setIgnoreHide(false);
+
+    debug1 << mName << "end" << endl;
+}

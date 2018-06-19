@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,10 +37,11 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                         avtVectorComposeExpression.C                          //
+//                     avtVectorComposeExpression.C                          //
 // ************************************************************************* //
 
 #include <avtVectorComposeExpression.h>
+#include <avtVariableCache.h>
 
 #include <math.h>
 
@@ -48,6 +49,8 @@
 #include <vtkPointData.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
+#include <vtkInformation.h>
+#include <vtkInformationDoubleVectorKey.h>
 
 #include <ExpressionException.h>
 
@@ -159,7 +162,7 @@ avtVectorComposeExpression::GetVariableDimension(void)
 vtkDataArray *
 avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
 {
-    int numinputs = varnames.size();
+    size_t numinputs = varnames.size();
 
     bool twoDVector = 
             (GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2);
@@ -211,13 +214,44 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
         }
     }
 
-    int nvals1 = data1->GetNumberOfTuples();
-    int nvals2 = data2->GetNumberOfTuples();
-    int nvals3 = 1;
+    // As we proceed to build the vector out of components,
+    // we make a list of offsets for each component 
+    // so that we can attach that list to the resulting vector dataset
+    // In the future, we need a generic way to merge vtkInformationObjects here
+    std::vector<avtVector> offsets(3);
+    vtkInformation* data1Info = data1->GetInformation();
+    if (data1Info->Has(avtVariableCache::OFFSET_3())) {
+      double* vals = data1Info->Get(avtVariableCache::OFFSET_3());
+      offsets[0].x = vals[0];
+      offsets[0].y = vals[1];
+      offsets[0].z = vals[2];
+    }
+
+    vtkInformation* data2Info =data2->GetInformation();
+    if (data2Info->Has(avtVariableCache::OFFSET_3())) {
+      double* vals = data2Info->Get(avtVariableCache::OFFSET_3());
+      offsets[1].x = vals[0];
+      offsets[1].y = vals[1];
+      offsets[1].z = vals[2];
+    }
+  
+    if (numinputs == 3) {
+      vtkInformation* data3Info = data3->GetInformation();
+      if (data3Info->Has(avtVariableCache::OFFSET_3())) {
+        double* vals = data3Info->Get(avtVariableCache::OFFSET_3());
+        offsets[2].x = vals[0];
+        offsets[2].y = vals[1];
+        offsets[2].z = vals[2];
+      }
+    }
+
+    vtkIdType nvals1 = data1->GetNumberOfTuples();
+    vtkIdType nvals2 = data2->GetNumberOfTuples();
+    vtkIdType nvals3 = 1;
     if (numinputs == 3)
         nvals3 = data3->GetNumberOfTuples();
     
-    int nvals = nvals1;
+    vtkIdType nvals = nvals1;
     if (nvals == 1)
         nvals  = nvals2;
     if (nvals == 1 && numinputs == 3)
@@ -237,7 +271,7 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
                 dv->SetNumberOfComponents(3);  // VTK doesn't like 2.
                 dv->SetNumberOfTuples(nvals);
 
-                for (int i = 0 ; i < nvals ; i++)
+                for (vtkIdType i = 0 ; i < nvals ; i++)
                 {
                     double val1 = data1->GetTuple1((nvals1>1 ? i : 0));
                     double val2 = data2->GetTuple1((nvals2>1 ? i : 0));
@@ -253,7 +287,7 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
                 dv->SetNumberOfComponents(9); 
                 dv->SetNumberOfTuples(nvals);
                 
-                for (int i = 0 ; i < nvals ; i++)
+                for (vtkIdType i = 0 ; i < nvals ; i++)
                 {
                     double vals[9];
                     vals[0] = data1->GetComponent((nvals1>1 ? i : 0), 0);
@@ -280,8 +314,9 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
         }
         else if (numinputs == 3)
         {
-            EXCEPTION2(ExpressionException, outputVariableName, "I don't know how to compose "
-                           "3 variables to make a field for a 2D dataset.");
+            EXCEPTION2(ExpressionException, outputVariableName, 
+                       "I don't know how to compose "
+                       "3 variables to make a field for a 2D dataset.");
         }
     }
     else
@@ -298,7 +333,7 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
                 dv->SetNumberOfComponents(3); 
                 dv->SetNumberOfTuples(nvals);
                 
-                for (int i = 0 ; i < nvals ; i++)
+                for (vtkIdType i = 0 ; i < nvals ; i++)
                 {
                     double val1 = data1->GetTuple1((nvals1>1 ? i : 0));
                     double val2 = data2->GetTuple1((nvals2>1 ? i : 0));
@@ -319,7 +354,7 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
                 dv->SetNumberOfComponents(9); 
                 dv->SetNumberOfTuples(nvals);
                 
-                for (int i = 0 ; i < nvals ; i++)
+                for (vtkIdType i = 0 ; i < nvals ; i++)
                 {
                     double entry[9];
                     data1->GetTuple((nvals1>1 ? i : 0), entry);
@@ -330,7 +365,8 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
             }
             else
             {
-                EXCEPTION2(ExpressionException, outputVariableName, "The only interpretation "
+                EXCEPTION2(ExpressionException, outputVariableName, 
+                           "The only interpretation "
                            "VisIt can make of 3 variables for a 3D dataset is "
                            "a vector or a tensor.  But these inputs don't have"
                            " the right number of components to make either.");
@@ -338,12 +374,21 @@ avtVectorComposeExpression::DeriveVariable(vtkDataSet *in_ds)
         }
         else 
         {
-            EXCEPTION2(ExpressionException, outputVariableName, "You must specify three vectors "
+            EXCEPTION2(ExpressionException, outputVariableName, 
+                        "You must specify three vectors "
                         "to compose a field for a 3D dataset.");
         }
     }
 
+    //If offset information existed on the input dataset, set it on the output
+    if ((offsets[0].x != 0) || (offsets[0].y != 0) || (offsets[0].z != 0) ||
+        (offsets[1].x != 0) || (offsets[1].y != 0) || (offsets[1].z != 0) ||
+        (offsets[2].x != 0) || (offsets[2].y != 0) || (offsets[2].z != 0)) {
+      vtkInformation* dvInfo = dv->GetInformation();
+      dvInfo->Set(avtVariableCache::OFFSET_3_COMPONENT_0(), offsets[0].x, offsets[0].y, offsets[0].z);
+      dvInfo->Set(avtVariableCache::OFFSET_3_COMPONENT_1(), offsets[1].x, offsets[1].y, offsets[1].z);
+      dvInfo->Set(avtVariableCache::OFFSET_3_COMPONENT_2(), offsets[2].x, offsets[2].y, offsets[2].z);
+    }
+
     return dv;
 }
-
-

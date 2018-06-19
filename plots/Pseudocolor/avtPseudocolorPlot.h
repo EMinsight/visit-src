@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,7 +53,7 @@ class     avtPseudocolorFilter;
 class     avtShiftCenteringFilter;
 class     avtVariablePointGlyphMapper;
 class     avtVariableLegend;
-
+class     avtStaggeringFilter;
 
 // ****************************************************************************
 //  Class:  avtPseudocolorPlot
@@ -168,6 +168,7 @@ class avtPseudocolorPlot : public avtSurfaceDataPlot
     avtLegend_p                 varLegendRefPtr;
     PseudocolorAttributes       atts;
     avtPseudocolorFilter       *pcfilter;
+    avtStaggeringFilter        *staggeringFilter;
     avtShiftCenteringFilter    *filter;
     bool                        colorsInitialized;
     int                         topoDim;

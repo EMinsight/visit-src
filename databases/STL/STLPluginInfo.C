@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,7 +43,7 @@
 #include <STLPluginInfo.h>
 
 #include <visit-config.h>
-extern "C" DBP_EXPORT const char *STLVisItPluginVersion = VISIT_VERSION;
+VISIT_PLUGIN_VERSION(STL,DBP_EXPORT)
 
 // ****************************************************************************
 //  Function:  GetGeneralInfo

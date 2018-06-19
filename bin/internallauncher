@@ -725,11 +725,34 @@ $0 = shift @ARGV;
 #    Hank Childs, Wed Aug  3 22:45:51 UTC 2011
 #    Add support for Eureka's new "login1" hostname.
 #
+#    Tom Fogal, Mon Nov 14 09:16:08 MST 2011
+#    Make "-xterm" help clearer.
+#
 #    Jean Favre, Fri Nov 18 08:43:21 PST 2011 (committed by Hank)
 #    Pass along additional launch arguments when using sbatch.
 #
 #    Eric Brugger, Mon Feb 27 17:51:04 PST 2012
 #    I added support for Unity and Whitney at Sandia.
+#
+#    Eric Brugger, Mon Mar  5 10:01:28 PST 2012
+#    I corrected a typo with my changes to support Unity and Whitney at
+#    Sandia.
+#
+#    Brad Whitlock, Fri Mar 30 10:02:36 PDT 2012
+#    Remove purple and Q machine hacks. Add LSU's "philip" machine.
+#
+#    Eric Brugger, Thu May  3 10:31:06 PDT 2012
+#    I added a hack for hoth.
+#
+#    Gunther H. Weber, Mon May  7 11:36:25 PDT 2012
+#    Removed support/hack for retired Franklin # NERSC. Added support/hack for
+#    Carver at NERSC. Instead of hard coding different "mpirun" command on
+#    Euclid change PATH to include appropriate command.
+#
+#    Eric Brugger, Thu May 10 09:13:40 PDT 2012
+#    I corrected an error in the path to "mpirun" for Euclid. It was using
+#    openmpi 1.4.1, when it should use openmpi 1.4.4. I removed support
+#    for xchem.
 #
 ###############################################################################
 
@@ -1164,7 +1187,7 @@ $fullusage = "$usage
         -gdb-mdserver        Run the mdserver under gdb.
         -gdb-xmledit         Run xmledit under gdb.
         -break <funcname>    Add the specified breakpoint in gdb.
-        -xterm               Run gdb in an xterm window.
+        -xterm               With -gdb-something, run gdb in an xterm window.
         -newconsole          Run any VisIt component in a new console window.
         -totalview <args> <comp>
                              Run totalview with <args> on component <comp>.
@@ -1641,49 +1664,6 @@ if ($ssh_tunneling && !$remotehost_set)
 }
 
 # ----
-#  HACK for LANL's Q machine:
-#
-#  If we're on LANL's Q machine, then we need to make sure BSUB is in our
-#  path and that libstdc++ and libmpi are in our library path.
-# ----
-if ($host =~ /^q\d+$/ || $host =~ /^qfe\d$/)
-{
-    # These are the DISCOM pipes to White from Q.  Four per login node;
-    # choose one at random.
-    $interface = int(rand(4)+1);
-    $remotehost = "172.16.$interface.1"    if ($remotehost =~ /^white128/);
-    $remotehost = "172.16.$interface.5"    if ($remotehost =~ /^white129/);
-    $remotehost = "172.16.$interface.9"    if ($remotehost =~ /^white269/);
-    $remotehost = "172.16.$interface.13"   if ($remotehost =~ /^white432/);
-
-    if ($ENV{PATH} eq "")
-    {
-        $ENV{PATH} = "/lsf/bin";
-    }
-    else
-    {
-        $ENV{PATH} = join ':' , ("$ENV{PATH}","/lsf/bin");
-    }
-    if ($ENV{LD_LIBRARY_PATH} eq "")
-    {
-        $ENV{LD_LIBRARY_PATH} = join ':' ,
-                             ("/usr/local/packages/gcc-3.2.3/lib",
-                              "/usr/local/opt/Compaq_MPI_64_2.6_r6/lib",
-                              "/usr/local/opt/Compaq_MPI_64_2.6_r6/shlib",
-                              "/lsfdir/Q_CD/4.2/alpha5-rms/lib");
-    }
-    else
-    {
-        $ENV{LD_LIBRARY_PATH} = join ':' ,
-                             ("$ENV{LD_LIBRARY_PATH}",
-                              "/usr/local/packages/gcc-3.2.3/lib",
-                              "/usr/local/opt/Compaq_MPI_64_2.6_r6/lib",
-                              "/usr/local/opt/Compaq_MPI_64_2.6_r6/shlib",
-                              "/lsfdir/Q_CD/4.2/alpha5-rms/lib");
-    }
-}
-
-# ----
 #  HACK for Sandia's redrose machine:
 #
 #  If we're on Sandia's redrose machine, then we need to make sure that 
@@ -1725,16 +1705,17 @@ if ( ($parallel) and $exe_name eq "engine" and ($host eq "saguaro1.local" or $ho
 $IsRunningOnRanger_TACC = 0;
 $IsRunningOnSpur_TACC = 0;
 $IsRunningOnLonghorn_TACC = 0;
+$IsRunningOnLonestar_TACC = 0;
 # Hostnames are of the form spur.tacc.utexas.edu, (vis*|login#).ranger.tacc.utexas.edu
-if ( ($parallel) and $exe_name eq "engine" and (($host =~ /spur.tacc/) or ($host =~ /ranger.tacc/) or ($host =~ /longhorn/)))
+if ( ($parallel) and $exe_name eq "engine" and (($host =~ /tacc/) or ($host =~ /longhorn/)))
 {
     $IsRunningOnRanger_TACC = 1;
     $IsRunningOnSpur_TACC = 1 if $part =~ /vis/ ;  # determine machine by queue, since all jobs submit from spur
     $IsRunningOnLonghorn_TACC = 1 if $host =~ /longhorn/ ;  # determine machine by queue, since all jobs submit from spur
+    $IsRunningOnLonestar_TACC = 1 if $host =~ /ls4/ ;  # determine machine by queue, since all jobs submit from spur
     print STDERR "\n\nAttempting to launch parallel engine at TACC\n";
     print STDERR "For more information about TACC resources and configurations, see:\n";
-    print STDERR "\thttp://services.tacc.utexas.edu/index.php/ranger-user-guide\n";
-    print STDERR "\thttp://services.tacc.utexas.edu/index.php/spur-user-guide\n\n";
+    print STDERR "\thttp://www.tacc.utexas.edu/user-services/user-guides\n\n";
 
     # if launching from spur visnode to ranger, prepend 'i' to visnode hostname to get IB interface
     $remotehost = "i".$remotehost if ($remotehost =~ /vis([0-9]|big).ranger/) and ($remotehost !~ /^i/);
@@ -1821,61 +1802,8 @@ if ( ($parallel) and $exe_name eq "engine" and $host =~ /krakenpf/)
     }
 }
 
-
 # ----
-# HACK for franklin @ NERSC
-#
-# ----
-$IsRunningOnFranklinNERSC = 0;
-if ( $host =~ /^nid/ )
-{
-    $nodename=`/usr/syscom/nsg/bin/nodename`;
-    if ($nodename =~ /^franklin/ || $nodename =~ /^nid/)
-    {
-        $IsRunningOnFranklinNERSC = 1;
-        $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.4.4/snos/lib64";
-        if ($ENV{PATH} eq "")
-        {
-            $ENV{PATH} = "/opt/torque/2.3.4-200809011357/bin";
-        }
-        else
-        {
-            $ENV{PATH} = join ':' , ("$ENV{PATH}","/opt/torque/2.3.4-200809011357/bin");
-        }
-        if ($exe_name eq "gui")
-        {
-            print "The VisIt install on Franklin is provided for the purpose of running ";
-            print "the parallel remote visualization backend on Franklin or run scripts ";
-            print "via VisIt's Python Command Line Interface (CLI). If you need to run ";
-            print "VisIt's gui, please install VisIt $ver on your local workstation.\n\n";
-            print "For more information, see ";
-            print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/visit_franklin_remote.php\n\n";
-            print "If you do not want to install VisIt on your local machine, run the ";
-            print "VisIt GUI on Euclid, and follow the instructions under \"Running a ";
-            print "remote compute engine on Franklin\" on the Web page above. (VisIt on ";
-            print "Euclid already is configured with a host profile for Franklin).\n\n";
-            print "Please note that you will achieve the best performance by running the ";
-            print "VisIt GUI on your local workstation and the remote compute engine on ";
-            print "Franklin (or any other NERSC machine with VisIt).\n\n";
-            print "If you would like to perform batch data analysis or visualization on ";
-            print "Franklin using VisIt\'s CLI, add the options \"-cli -nowin\" to your ";
-            print "command line. Please contact NERSC Analytics at consult@nersc.gov for ";
-            print "further help.\n\n";
-            print "For more information about running VisIt at NERSC:";
-            print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/\n\n";
-            exit 1;
-        }
-        elsif (($exe_name eq "engine") and not $parallel)
-        {
-            print "The VisIt install on Franklin only supports running a parallel ";
-            print "engine on the compute nodes!\n";
-            exit 1;
-        }
-    }
-}
-
-# ----
-# HACK for hopper @ NERSC
+# HACK for Hopper @ NERSC
 #
 # ----
 $IsRunningOnHopperNERSC = 0;
@@ -1889,7 +1817,8 @@ if ($ENV{NERSC_HOST} eq "hopper")
     {
         if ((!$envonly) and ($exe_name eq "gui"))
         {
-            print "To run the VisIt GUI on Hopper, you need to run it on a MOM node!\n\n ";
+            print "Do not run the VisIt GUI on Hopper. Run it on you local ";
+            print "workstation (preferred/best performance) or Euclid!\n\n ";
             print "For more information about running VisIt at NERSC:";
             print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/\n\n";
             exit 1;
@@ -1907,7 +1836,7 @@ if ($ENV{NERSC_HOST} eq "hopper")
             else
             {
                 print "The VisIt install on Hopper does not support running ";
-                print "a serial engine on the login nodes!\n";
+                print "a serial engine!\n";
                 exit 1;
             }
         }
@@ -1915,26 +1844,26 @@ if ($ENV{NERSC_HOST} eq "hopper")
 }
 
 # ----
-# HACK for euclid @ NERSC
+# HACK for Euclid @ NERSC
 #
 # ----
-$IsRunningOnEuclidNERSC = 0;
-if ( $host =~ /^euclid.nersc.gov/ )
+if ($host eq "euclid.nersc.gov")
 {
-    $IsRunningOnEuclidNERSC = 1;
+    $ENV{PATH} = join ':' ,
+        ("/usr/common/usg/openmpi/1.4.4/gnu/bin",
+         "$ENV{PATH}");
 }
 
 # ----
-# HACK for xchem @ LLNL
+# HACK for Carver @ NERSC
 #
 # ----
-$IsRunningOnXchemLLNL = 0;
-if ( $host =~ /^xchem.llnl.gov/ )
+if ( $host =~ /^cvrsvc/ )
 {
-    $IsRunningOnXchemLLNL = 1;
-    $ENV{LD_LIBRARY_PATH} = join ':' ,
-        ("/opt/intel/cc/10.1.021/lib",
-         "/opt/llnl/mpich2_shared/ch3-ssm/lib");
+    $ENV{PATH} = join ':' ,
+        ("/usr/syscom/opt/torque/default/bin",
+         "/usr/common/usg/openmpi/1.4.5/gcc/bin",
+         "$ENV{PATH}");
 }
 
 # ----
@@ -1956,16 +1885,6 @@ $UsePPN = 1;
 if ($host =~ /^graph\d+$/)
 {
     $UsePPN  = 0;
-}
-
-# ----
-# HACK for up and purple @ LLNL
-#
-# ----
-if ( $host =~ /^up\d+$/ or $host =~ /^purple\d+$/)
-{
-    $ENV{LD_LIBRARY_PATH} = "/usr/lpp/ppe.poe/lib";
-    $ENV{LIBPATH} = "/usr/lpp/ppe.poe/lib";
 }
 
 # ----
@@ -2030,7 +1949,46 @@ $IsRunningOnGlorySandia = 0;
 if ( $host =~ /^glory\d+$/ or $host =~ /^unity\d+$/ or $host =~ /^whitney\d+$/ )
 {
     $IsRunningOnGlorySandia = 1;
-    $ENV{LD_LIBRARY_PATH} = "apps/x86_64/compilers/gcc/gcc-4.3.4/lib64:/apps/x86_64/compilers/gcc/gcc-4.3.4/lib64:$ENV{LD_LIBRARY_PATH}";
+    $ENV{LD_LIBRARY_PATH} = "/apps/x86_64/compilers/gcc/gcc-4.3.4/lib64:/apps/x86_64/compilers/gcc/gcc-4.3.4/lib64:$ENV{LD_LIBRARY_PATH}";
+}
+
+# ----
+# HACK for Redsky and Redsky-s @ Sandia
+# ----
+$IsRunningOnRedskySandia = 0;
+if ( $host =~ /^redsky-login\d+$/ )
+{
+    $IsRunningOnRedskySandia = 1;
+}
+
+# ----
+# HACK for LSU Philip machine:
+# ----
+if ( $host =~ /^philip\d+$/ )
+{
+    if ($ENV{LD_LIBRARY_PATH} eq "")
+    {
+        $ENV{LD_LIBRARY_PATH} = join ':' ,
+                             ("/usr/local/compilers/GNU/gcc-4.3.2/lib64");
+    }
+    else
+    {
+        $ENV{LD_LIBRARY_PATH} = join ':' ,
+                             ("$ENV{LD_LIBRARY_PATH}",
+                              "/usr/local/compilers/GNU/gcc-4.3.2/lib64");
+    }
+}
+
+# ----
+# HACK for Hoth @ LLNL
+# ----
+if ( $host =~ /^hoth/ )
+{
+    chomp($domain = `hostname -d`);
+    if ( $domain eq "llnl.gov" )
+    {
+        $ENV{LIBGL_ALWAYS_INDIRECT} = "1";
+    }
 }
 
 #  We stripped off the "port" argument above, so put it back here. Put it
@@ -2540,6 +2498,9 @@ if (-x "$visitlibdir/python")
     }
 }
 
+#Set R_HOME in case R has been installed it will be in this location..
+$ENV{R_HOME} = "$visitlibdir/r_support/R/";
+
 # Add /usr/local/lib to the shared library path.  This was added for the
 # c++ library on some sun systems, but it may have broader applicability.
 # Note that we can assume that LD_LIBRARY_PATH is not empty, since it was
@@ -2732,7 +2693,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, @launchargs if $launchargs_set;
         push @parcmd, "-n", $procs if $procs_set;
         push @parcmd, "-N",  $nodes if $nodes_set;
-        if ( $IsRunningOnFranklinNERSC || $IsRunningOnJaguar_ORNL )
+        if ( $IsRunningOnJaguar_ORNL )
         {
             push @parcmd, "$visitbindir/env";
             push @parcmd, "LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
@@ -2758,14 +2719,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
     # mpirun
     elsif ($launch eq "mpirun")
     {
-        if ($IsRunningOnEuclidNERSC)
-        {
-            @parcmd = ("/usr/common/usg/openmpi/1.4.1/gnu/bin/mpirun");
-        }
-        else
-        {
-            @parcmd = ("mpirun");
-        }
+        @parcmd = ("mpirun");
         if ($debug_totalview eq $exe_name)
         {
             push @parcmd, "-tv";
@@ -3009,6 +2963,15 @@ if ($procs_set or ($parallel and $parlaunch_set))
             if ($security_key_set) { push @mpicmd, "-key", $security_key; }
             push @mpicmd, @post_args;
         }
+        elsif ($sublauncher eq "aprun")
+        {
+            @mpicmd = ("aprun");
+            push @mpicmd, "-n", $procs;
+            push @mpicmd, @sublaunchargs if $sublaunchargs_set;
+            push @mpicmd, "@visitcmd";
+            if ($security_key_set) { push @mpicmd, "-key", $security_key; }
+            push @mpicmd, @post_args;
+        }
         elsif ($sublauncher eq "")
         {
             @mpicmd = "@visitcmd";
@@ -3025,7 +2988,16 @@ if ($procs_set or ($parallel and $parlaunch_set))
             print TFILE "#!/bin/sh\n";
             if ($IsRunningOnGlorySandia)
             {
+                print TFILE "source /usr/share/modules/init/bash\n";
+                print TFILE "module purge\n";
+                print TFILE "module load mpi/openmpi-1.4.3_pgi-9.0-4\n";
                 print TFILE "module load compilers/gcc-4.3.4\n";
+            }
+            if ($IsRunningOnRedskySandia)
+            {
+                print TFILE "source /usr/share/Modules/init/bash\n";
+                print TFILE "module purge\n";
+                print TFILE "module load mpi/openmpi-1.4.3_oobpr_intel-11.1-f064-c064\n";
             }
             print TFILE $cdcmd;
             print TFILE $limitcmd;
@@ -3166,7 +3138,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
                     $ppn = ceil($procs / $nodes);
                     push @mpicmd, "-N",  $ppn;
                 }
-                if ( $IsRunningOnFranklinNERSC || $IsRunningOnJaguar_ORNL )
+                if ( $IsRunningOnJaguar_ORNL )
                 {
                     push @mpicmd, "$visitbindir/env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
                 }
@@ -3346,6 +3318,10 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 {
                    $thread_factor=8;
                 }
+                if ($IsRunningOnLonestar_TACC)
+                {
+                   $thread_factor=12;
+                }
                 if ($nodes_set) 
                 { $tacc_way = $ppn; $tacc_procs = $thread_factor*$nodes; }
                 # if nodes not set explicitly assume 1way
@@ -3358,15 +3334,12 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 }
                 push @parcmd, "-pe", "${tacc_way}way", $tacc_procs;
             }
-            elsif ($IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC)
+            elsif ($IsRunningOnHopperNERSC)
             {
                 push @parcmd, "-d", "$cwd" if $wd_set;
-                if ($nodes_set) {
-                    if ($IsRunningOnFranklinNERSC) {
-                        $nprocpernode=4;
-                    } else {
-                        $nprocpernode=24;
-                    }
+                if ($nodes_set)
+                {
+                    $nprocpernode=24;
                     $nwidth=$nprocpernode*$nodes;
                     # If the number of nodes is set, we need to modify mppwidth to ensure
                     # allocation of the proper number of nodes. The number of nodes allocated

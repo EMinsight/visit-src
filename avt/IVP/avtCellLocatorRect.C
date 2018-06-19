@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,7 +95,8 @@ void avtCellLocatorRect::Free()
 // ---------------------------------------------------------------------------
 
 vtkIdType avtCellLocatorRect::FindCell( const double pos[3],
-                                        avtInterpolationWeights* weights ) const
+                                        avtInterpolationWeights* weights,
+                                        bool ignoreGhostCells ) const
 {
 #if 0
 
@@ -152,6 +153,9 @@ vtkIdType avtCellLocatorRect::FindCell( const double pos[3],
     }
 
     vtkIdType cell = (i[2]*(coord[1].size()-1) + i[1])*(coord[0].size()-1) + i[0];
+
+    if( ignoreGhostCells && ghostPtr && ghostPtr[cell] )
+        return -1;
 
     if( weights )
     {

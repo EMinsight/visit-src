@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -155,6 +155,7 @@ avtIntegralCurve::avtIntegralCurve()
     ivp = NULL;
 
     status = STATUS_OK;
+    direction = DIRECTION_FORWARD;
     domain = -1;
     sortKey = 0;
     id = -1;
@@ -234,10 +235,14 @@ avtIntegralCurve::~avtIntegralCurve()
 //   a huge step in time ... so big that it causes the particle to go well
 //   too far in the future.)
 //
+//   Hank Childs, Sat Mar 10 14:10:47 PST 2012
+//   Fix bug with supporting reverse pathlines.
+//
 // ****************************************************************************
 
 void avtIntegralCurve::Advance( avtIVPField* field )
 {
+
     // Catch cases where the start position is outside the
     // domain of field; in this case, mark the curve 
     if( !field->IsInside( ivp->GetCurrentT(), ivp->GetCurrentY() ) )
@@ -275,25 +280,29 @@ void avtIntegralCurve::Advance( avtIVPField* field )
         avtIVPStep           step;
         avtIVPSolver::Result result;
 
-        try
-        { 
-            result = ivp->Step( field, tfinal, &step );
-        }
-        catch (avtIVPField::Undefined&)
-        {
-            result = avtIVPSolver::OUTSIDE_DOMAIN;
-        }
+        result = ivp->Step( field, tfinal, &step );
 
-        if( result == avtIVPSolver::OK || result == avtIVPSolver::TERMINATE )
+        if( result == avtIVPSolverResult::OK || result == avtIVPSolverResult::TERMINATE )
         {
             // The step was successful, call AnalyzeStep() which will
             // determine((among other things) whether to terminate.
             AnalyzeStep( step, field );
 
-            if( result == avtIVPSolver::TERMINATE )
+            if( result == avtIVPSolverResult::TERMINATE )
                 break;
+
+            // Check if the new position is outside the domain
+            // (or in the domain's ghost data); in this case
+            // finish here and continue in the next domain.
+            if( !field->IsInside( ivp->GetCurrentT(), ivp->GetCurrentY() ) )
+            {
+                if( DebugStream::Level5() )
+                    debug5 << "avtIntegralCurve::Advance(): step ended in ghost data\n";
+                
+                break;
+            }
         }
-        else if( result == avtIVPSolver::OUTSIDE_DOMAIN )
+        else if( result == avtIVPSolverResult::OUTSIDE_DOMAIN )
         {
             // Last step took us outside the domain, see what can be done.
 
@@ -340,11 +349,7 @@ void avtIntegralCurve::Advance( avtIVPField* field )
                 // next domain.
                 avtVector y = ivp->GetCurrentY();
                 avtVector v;
-                try
-                { 
-                    v = (*field)( t, y );
-                }
-                catch (avtIVPField::Undefined&)
+                if( (*field)(t, y, v) != avtIVPSolverResult::OK )
                 {
                     if( DebugStream::Level5() )
                         debug5 << "avtIntegralCurve::Advance(): bad step, "
@@ -525,11 +530,15 @@ avtIntegralCurve::CurrentLocation(avtVector &end)
 //   Hank Childs, Sun Dec  5 11:43:46 PST 2010
 //   Send encounteredNumericalProblems.
 //
+//   David Camp, Wed Mar  7 10:43:07 PST 2012
+//   Added a Serialize flag to the arguments. This is to support the restore
+//   ICs code.
+//
 // ****************************************************************************
 
 void
 avtIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff, 
-                            avtIVPSolver *solver)
+                            avtIVPSolver *solver, SerializeFlags serializeFlags)
 {
     if( DebugStream::Level5() )
         debug5 << "  avtIntegralCurve::Serialize "
@@ -543,27 +552,30 @@ avtIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
     buff.io(mode, encounteredNumericalProblems);
     buff.io(mode, originatingRank);
     
-    if ( mode == MemStream::WRITE )
+    if (solver)
     {
-        avtIVPState solverState;
+        if ( mode == MemStream::WRITE )
+        {
+            avtIVPState solverState;
 
-        ivp->GetState(solverState);
-        solverState.Serialize(mode, buff);
+            ivp->GetState(solverState);
+            solverState.Serialize(mode, buff);
+        }
+        else
+        {
+            // TODO:
+            //ivp->Serialize( mode, buff );
+
+            avtIVPState solverState;
+            solverState.Serialize(mode, buff);
+
+            if( ivp )
+                delete ivp;
+
+            ivp = solver->Clone();
+            ivp->PutState(solverState);
+        }
     }
-    else
-    {
-        // TODO:
-        //ivp->Serialize( mode, buff );
-
-        avtIVPState solverState;
-        solverState.Serialize(mode, buff);
-
-        if( ivp )
-            delete ivp;
-        
-        ivp = solver->Clone();
-        ivp->PutState(solverState);
-    }    
 
     if( DebugStream::Level5() )
         debug5 << "avtIntegralCurve::Serialize() size is " 
@@ -586,4 +598,28 @@ avtIntegralCurve::DomainCompare(const avtIntegralCurve *icA,
 {
     return icA->domain < icB->domain;
 }
+
+
+// ****************************************************************************
+//  Method: avtIntegralCurve::LessThan
+//
+//  Purpose:
+//      Used for sorting integral curves when doing parallel communication.
+//      This method is used in conjunction with the STL sort of a vector.
+//
+//  Programmer: Hank Childs
+//  Creation:   December 6, 2011
+//
+// ****************************************************************************
+
+bool
+avtIntegralCurve::LessThan(const avtIntegralCurve *ic) const
+{
+    if (id < ic->id)
+        return true;
+    if (ic->id < id)
+        return false;
+    return false;  // equal
+}
+
 

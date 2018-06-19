@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -211,6 +211,12 @@ typedef ref_ptr<avtDataRequest> avtDataRequest_p;
 //    Brad Whitlock, Thu Sep  1 10:56:29 PDT 2011
 //    Add selectionName.
 //
+//    Brad Whitlock, Wed Jan  4 16:42:43 PST 2012
+//    Added flag for how to handle missing data.
+//
+//    Mark C. Miller, Fri Apr 13 10:41:35 PDT 2012
+//    I const qualified a couple of methods preventing use of this class
+//    in a const setting.
 // ****************************************************************************
 
 class PIPELINE_API avtDataRequest
@@ -231,9 +237,9 @@ class PIPELINE_API avtDataRequest
     avtDataRequest        &operator=(const avtDataRequest &);
     bool                         operator==(const avtDataRequest &);
 
-    int                          GetTimestep(void)     { return timestep; };
+    int                          GetTimestep(void) const { return timestep; };
     void                         SetTimestep(int t)     { timestep = t; };
-    const char                  *GetVariable(void)     { return variable; };
+    const char                  *GetVariable(void) const { return variable; };
     avtSILSpecification         &GetSIL(void)          { return sil; };
     avtSILRestriction_p          GetRestriction(void);
 
@@ -423,7 +429,12 @@ class PIPELINE_API avtDataRequest
                                      { needNativePrecision = nnp; }
 
     void                         UpdateAdmissibleDataTypes(
-                                     std::vector<int> admissibleTypes);
+                                     const std::vector<int> &admissibleTypes);
+    void                         UpdateAdmissibleDataTypes(int dt1);
+    void                         UpdateAdmissibleDataTypes(int dt1, int dt2);
+    void                         UpdateAdmissibleDataTypes(int dt1, int dt2, int dt3);
+    static std::vector<int>      AllAdmissibleDataTypes();
+
     bool                         IsAdmissibleDataType(int dataType) const;
     std::vector<int>             GetAdmissibleDataTypes() const;
     void                         InitAdmissibleDataTypes();
@@ -461,6 +472,22 @@ class PIPELINE_API avtDataRequest
                                      { selectionName = s; }
     const std::string           &GetSelectionName() const
                                      { return selectionName; }
+
+    typedef enum {
+        MISSING_DATA_IGNORE,   // Ignore any missing data
+        MISSING_DATA_REMOVE,   // Remove all missing data
+        MISSING_DATA_IDENTIFY  // Identify missing data by adding avtMissingData
+                               // array to the datasets so we can show which
+                               // cells contain missing data.
+    } MissingDataBehavior_t;
+    void                         IgnoreMissingData()
+                                     { missingDataBehavior = MISSING_DATA_IGNORE;}
+    void                         RemoveMissingData()
+                                     { missingDataBehavior = MISSING_DATA_REMOVE;}
+    void                         IdentifyMissingData()
+                                     { missingDataBehavior = MISSING_DATA_IDENTIFY;}
+    MissingDataBehavior_t        MissingDataBehavior() const
+                                     { return missingDataBehavior; }
 
     void                         DebugDump(avtWebpage *);
 
@@ -516,6 +543,7 @@ class PIPELINE_API avtDataRequest
     bool                         transformVectorsDuringProject;
     bool                         needPostGhostMaterialInfo;
     std::string                  selectionName;
+    MissingDataBehavior_t        missingDataBehavior;
 
     //
     // If we are processing in parallel, this information may have been lost.

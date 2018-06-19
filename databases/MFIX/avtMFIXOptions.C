@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,7 +68,9 @@ GetMFIXReadOptions(void)
 {
     DBOptionsAttributes *rv = new DBOptionsAttributes;
     rv->SetBool("Big Endian", true);
-    rv->SetInt(N_DOMAINS_PER_PROC, DEF_N_DOMAINS_PER_PROC);
+    rv->SetInt(N_X_DOMAINS, DEF_N_X_DOMAINS);
+    rv->SetInt(N_Y_DOMAINS, DEF_N_Y_DOMAINS);
+    rv->SetInt(N_Z_DOMAINS, DEF_N_Z_DOMAINS);
     return rv;
 }
 

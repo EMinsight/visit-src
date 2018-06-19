@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -186,15 +186,18 @@ ZoomAxisArray::EndMiddleButtonAction()
 //
 //  Modifications:
 //
+//    Marc Durant, Mon Dec 19 14:40:00 MST 2011
+//    Cancelling zoom action if mouse movement was too small.
+//
 // ****************************************************************************
 
 void
 ZoomAxisArray::ZoomCamera(void)
 {
-    if (anchorX == lastX && anchorY == lastY)
+    if (!SufficientDistanceMoved())
     {
         //
-        // This is a point, not a rectangle.
+        // This is a point, line, or very, very small rectangle
         //
         return;
     }

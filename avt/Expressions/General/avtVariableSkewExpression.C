@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,9 +36,9 @@
 *
 *****************************************************************************/
 
-// ********************************************************************** //
-//                          avtVariableSkewExpression.C                       //
-// ********************************************************************** //
+// ************************************************************************* //
+//                      avtVariableSkewExpression.C                          //
+// ************************************************************************* //
 
 #include <avtVariableSkewExpression.h>
 
@@ -111,8 +111,8 @@ avtVariableSkewExpression::DoOperation(vtkDataArray *in1, vtkDataArray *in2,
                                    vtkDataArray *out, int ncomponents, 
                                    int ntuples)
 {
-    int in1ncomps = in1->GetNumberOfComponents();
-    int in2ncomps = in2->GetNumberOfComponents();
+    vtkIdType in1ncomps = in1->GetNumberOfComponents();
+    vtkIdType in2ncomps = in2->GetNumberOfComponents();
     if (in1ncomps == 1 && in2ncomps == 1)
     {
         double *r = in1->GetRange();
@@ -126,7 +126,7 @@ avtVariableSkewExpression::DoOperation(vtkDataArray *in1, vtkDataArray *in2,
     }
     else
     {
-        EXCEPTION2(ExpressionException, outputVariableName, "Skew can only be used on scalar " 
-                   "variables.");
+        EXCEPTION2(ExpressionException, outputVariableName, "Skew can only be "
+                   "used on scalar variables.");
     }
 }

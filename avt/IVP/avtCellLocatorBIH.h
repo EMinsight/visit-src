@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,14 +57,16 @@ public:
     ~avtCellLocatorBIH();
 
     vtkIdType FindCell( const double pos[3], 
-                        avtInterpolationWeights* iw ) const;
+                        avtInterpolationWeights* iw,
+                        bool ignoreGhostCells ) const;
 
 protected:
 
     void FindCellRecursive( const double pos[3], 
                             avtInterpolationWeights* weights,
                             unsigned int node,
-                            vtkIdType& cell ) const;
+                            vtkIdType& cell,
+                            bool ignoreGhostCells ) const;
 
     void Build();
     void Free();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -416,6 +416,11 @@ CGetNumberOfZones(avtDataRepresentation &data, void *sum, bool &)
 //    Hank Childs, Sat Dec  4 17:35:02 PST 2010
 //    Check for the case where we can't do the conversion.
 //
+//    Brad Whitlock, Thu Jan 19 14:08:36 PST 2012
+//    Added warnings for a case I ran into where quadratic elements were not
+//    being converted to polydata properly. Maybe this routine should use the
+//    facelist filter.
+//
 // ****************************************************************************
 
 void
@@ -440,14 +445,23 @@ CConvertUnstructuredGridToPolyData(avtDataRepresentation &data, void *, bool &)
         for (vtkIdType i = 0 ; i < ncells ; i++)
         {
             int celltype = ugrid->GetCellType(i);
-            if (celltype == VTK_HEXAHEDRON || celltype == VTK_VOXEL || 
-                celltype == VTK_WEDGE || celltype == VTK_TETRA ||
-                celltype == VTK_PYRAMID)
+            if (celltype == VTK_HEXAHEDRON ||
+                celltype == VTK_VOXEL || 
+                celltype == VTK_WEDGE || 
+                celltype == VTK_TETRA ||
+                celltype == VTK_PYRAMID ||
+                celltype == VTK_QUADRATIC_TETRA ||
+                celltype == VTK_QUADRATIC_HEXAHEDRON ||
+                celltype == VTK_QUADRATIC_WEDGE ||
+                celltype == VTK_QUADRATIC_PYRAMID ||
+                celltype == VTK_QUADRATIC_LINEAR_QUAD ||
+                celltype == VTK_QUADRATIC_LINEAR_WEDGE
+               )
             {
                 static bool issuedWarning = false;
                 if (!issuedWarning)
                 {
-                    avtCallback::IssueWarning("The data sets has "
+                    avtCallback::IssueWarning("The data set has "
                           "a topologically three dimensional cell even "
                           "thought it supposedly is topologically 2D."
                           "  This occurs most often when there is an error in "
@@ -456,6 +470,25 @@ CConvertUnstructuredGridToPolyData(avtDataRepresentation &data, void *, bool &)
                           "resolve this issue.  (This warning will only be "
                           "issued once per session.)");
                     issuedWarning = true;
+                }
+                continue;
+            }
+            if(celltype == VTK_QUADRATIC_EDGE || 
+               celltype == VTK_QUADRATIC_TRIANGLE ||
+               celltype == VTK_QUADRATIC_QUAD
+              )
+            {
+                static bool issuedWarning2 = false;
+                if (!issuedWarning2)
+                {
+                    avtCallback::IssueWarning("The data set has "
+                          "a quadratic element in it and this code to "
+                          "convert 2D elements to polydata is only capable "
+                          "of 1:1 cell to cell translation, whereas quadratic "
+                          "cells produce a 1:N translation. Please contact a "
+                          "VisIt developer to resolve this issue. "
+                          "(This warning will only be issued once per session.)");
+                    issuedWarning2 = true;
                 }
                 continue;
             }
@@ -1323,6 +1356,10 @@ GetDataRange(vtkDataSet *ds, double *de, const char *vname,
 //    Hank Childs, Thu Sep 23 14:06:57 PDT 2010
 //    Use the original pointer when doing a recursive call.
 //
+//    Hank Childs, Fri Feb 24 14:53:01 PST 2012
+//    Fix uninitialized memory read that can lead to possible infinite 
+//    recursion when there is no valid data in the array.
+//
 // ****************************************************************************
 
 template <class T> static bool
@@ -1360,11 +1397,17 @@ GetScalarRange(T *buf, int n, double *exts, unsigned char *ghosts,
                 max = *buf;
         }
     }
-    if (! visitIsFinite(min) || ! visitIsFinite(max))
-        return GetScalarRange(buf_orig, n, exts, ghosts, true);
 
-    exts[0] = (double) min;
-    exts[1] = (double) max;
+    if (setOne)
+    {
+        if (! visitIsFinite(min) || ! visitIsFinite(max))
+            return GetScalarRange(buf_orig, n, exts, ghosts, true);
+        else
+        {
+            exts[0] = (double) min;
+            exts[1] = (double) max;
+        }
+    }
 
     return setOne;
 }
@@ -1470,6 +1513,9 @@ GetDataScalarRange(vtkDataSet *ds, double *exts, const char *vname,
 //
 //  Modifications:
 //
+//    Hank Childs, Fri Feb 24 14:53:01 PST 2012
+//    Don't set the min/max if there are no valid values.
+//
 // ****************************************************************************
 
 template <class T> static bool
@@ -1502,8 +1548,11 @@ GetComponentRange(T *buf, int n, int c, int nc, double *exts, unsigned char *gho
                 max = *buf;
         }
     }
-    exts[0] = (double) min;
-    exts[1] = (double) max;
+    if (setOne)
+    {
+        exts[0] = (double) min;
+        exts[1] = (double) max;
+    }
 
     return setOne;
 }
@@ -3194,7 +3243,7 @@ CCalculateHistogram(avtDataRepresentation &data, void *args, bool &errOccurred)
     }
 
     int ntups = arr->GetNumberOfTuples();
-    int nbins = cha->numVals.size();
+    int nbins = static_cast<int>(cha->numVals.size());
     double min = cha->min;
     double max = cha->max;
     VISIT_LONG_LONG *numVals = &(cha->numVals[0]);

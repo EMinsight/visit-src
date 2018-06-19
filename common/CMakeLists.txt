@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,6 +59,9 @@
 #   Kathleen Biagas, Tue Aug 23 10:16:30 PDT 2011
 #   Added QueryArgumentException.
 #
+#   Brad Whitlock, Mon Nov 28 16:20:55 PST 2011
+#   I moved LaunchRPC to this directory from the launcher/rpc directory.
+#
 #****************************************************************************/
 
 SET(COMM_SOURCES
@@ -72,9 +75,11 @@ comm/ExistingRemoteProcess.C
 comm/FConvert.C
 comm/FileConnection.C
 comm/IConvert.C
+comm/LaunchService.C
 comm/LConvert.C
 comm/ParentProcess.C
 comm/RemoteProcess.C
+comm/SocketBridge.C
 comm/SocketConnection.C
 comm/TypeRepresentation.C)
 IF(WIN32)
@@ -228,6 +233,7 @@ state/GaussianControlPointList.C
 state/GlobalAttributes.C
 state/GlobalLineoutAttributes.C
 state/LaunchProfile.C
+state/LaunchRPC.C
 state/MachineProfile.C
 state/HostProfileList.C
 state/InteractorAttributes.C

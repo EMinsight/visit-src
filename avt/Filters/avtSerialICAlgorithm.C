@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -111,6 +111,40 @@ avtSerialICAlgorithm::Initialize(vector<avtIntegralCurve *> &seedPts)
     avtICAlgorithm::Initialize(seedPts);
 
     AddIntegralCurves(seedPts);
+}
+
+// ****************************************************************************
+//  Method: avtSerialICAlgorithm::Initialize
+//
+//  Purpose:
+//      Do a restore initialization, don't add ICs that are not in current
+//  time slice.
+//
+//  Programmer: David Camp
+//  Creation:   March 5, 2012
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, int curTimeSlice)
+{
+    for (int i = 0; i < ics.size(); i++)
+    {
+        avtIntegralCurve *s = ics[i];
+
+        if (s->domain.timeStep == curTimeSlice)
+        {
+            s->status = avtIntegralCurve::STATUS_OK;
+            SetDomain(s);
+            activeICs.push_back(s);
+        }
+        else
+        {
+            terminatedICs.push_back(s);
+        }
+    }
 }
 
 // ****************************************************************************
@@ -335,16 +369,27 @@ avtSerialICAlgorithm::RunAlgorithm()
 // ****************************************************************************
 
 void
-avtSerialICAlgorithm::ResetIntegralCurvesForContinueExecute()
+avtSerialICAlgorithm::ResetIntegralCurvesForContinueExecute(int curTimeSlice)
 {
+    std::list<avtIntegralCurve *> termICs;
+
     while (! terminatedICs.empty())
     {
         avtIntegralCurve *s = terminatedICs.front();
         terminatedICs.pop_front();
         
-        activeICs.push_back(s);
-        s->status = avtIntegralCurve::STATUS_OK;
+        if (curTimeSlice == -1 || s->domain.timeStep == curTimeSlice)
+        {
+            activeICs.push_back(s);
+            s->status = avtIntegralCurve::STATUS_OK;
+        }
+        else
+        {
+            termICs.push_back(s);
+        }
     }
+
+    terminatedICs = termICs;
 }
 
 
@@ -365,6 +410,15 @@ avtSerialICAlgorithm::ResetIntegralCurvesForContinueExecute()
 //  rank exit the execute loop we will hang in the LoadNextTimeSlice()
 //  on all of the other ranks that did not exit the execute loop.
 //
+//  Hank Childs, Fri Mar  9 16:49:06 PST 2012
+//  Add support for reverse pathlines.
+//
+//  Hank Childs, Wed Mar 28 08:36:34 PDT 2012
+//  Add support for terminated particles.
+//
+//  Hank Childs, Sun Apr  1 10:32:00 PDT 2012
+//  Fix recently introduced error with bad logic about what has been terminated.
+//
 // ****************************************************************************
 
 bool
@@ -374,14 +428,20 @@ avtSerialICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
     list<avtIntegralCurve *>::const_iterator it;
     for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
     {
-        if ((*it)->domain.domain != -1 && (*it)->domain.timeStep > curTimeSlice)
+        bool itsDone = false;
+        if ((*it)->domain.domain == -1 || (*it)->domain.timeStep == curTimeSlice)
+            itsDone = true;
+        if ((*it)->status == avtIntegralCurve::STATUS_TERMINATED)
+            itsDone = true;
+        if (! itsDone)
         {
             val = 1;
             break;
         }
     }
 
-    SumIntAcrossAllProcessors(val);
+    // Serial algorithm ... they don't need to be synched up.
+    //SumIntAcrossAllProcessors(val);
 
     return val > 0;
 }

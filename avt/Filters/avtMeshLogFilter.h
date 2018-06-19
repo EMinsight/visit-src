@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -88,12 +88,6 @@ class AVTFILTERS_API avtMeshLogFilter : public avtDataTreeIterator
     virtual void          UpdateDataObjectInfo(void);
 
   private:
-    void                  ScaleVal(float &v, bool invLog);
-    void                  ScaleVal(double &v, bool invLog);
-    void                  ScaleVal_log(float &v);
-    void                  ScaleVal_log(double &v);
-    void                  ScaleVal_invlog(float &v);
-    void                  ScaleVal_invlog(double &v);
 };
 
 

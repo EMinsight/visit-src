@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -180,8 +180,8 @@ avtCompositeRF::GetRayValue(const avtRay *ray,
     const float  *sample      = ray->sample[colorVariableIndex];
     const float  *sample2     = ray->sample[opacityVariableIndex];
     const float  *weight      = NULL;
-    float         min_weight  = 0.;
-    float         min_weight_denom = 0.;
+    double        min_weight  = 0.;
+    double        min_weight_denom = 0.;
     if (weightVariableIndex >= 0)
     {
         weight = ray->sample[weightVariableIndex];

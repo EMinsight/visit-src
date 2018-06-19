@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                     avtTestGreaterThanOrEqualToExpression.C                   //
+//                 avtTestGreaterThanOrEqualToExpression.C                   //
 // ************************************************************************* //
 
 #include <avtTestGreaterThanOrEqualToExpression.h>
@@ -109,8 +109,7 @@ avtTestGreaterThanOrEqualToExpression::~avtTestGreaterThanOrEqualToExpression()
  
 void
 avtTestGreaterThanOrEqualToExpression::DoOperation(vtkDataArray *in1, 
-                                               vtkDataArray *in2, vtkDataArray *out,
-                                               int ncomponents, int ntuples)
+    vtkDataArray *in2, vtkDataArray *out, int ncomponents, int ntuples)
 {
     bool var1IsSingleton = (in1->GetNumberOfTuples() == 1);
     bool var2IsSingleton = (in2->GetNumberOfTuples() == 1);

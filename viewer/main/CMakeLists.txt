@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,6 +39,14 @@
 #  Add link of ${CMAKE_THREAD_LIBS} to the viewer.
 #
 #****************************************************************************/
+IF(VISIT_PARALLEL AND WIN32)
+    SET(VIEWERLIB_WIN32_SOURCES
+        ViewerSubmitParallelEngineToWindowsHPC.cpp
+    )
+    SET_SOURCE_FILES_PROPERTIES(ViewerEngineManager.C PROPERTIES
+        COMPILE_DEFINITIONS VISIT_SUPPORTS_WINDOWS_HPC
+    )
+ENDIF(VISIT_PARALLEL AND WIN32)
 
 SET(VIEWERLIB_SOURCES
 ActionGroupDescription.C
@@ -91,6 +99,7 @@ ViewerWindowManager.C
 ViewerWindowManagerAttributes.C
 VisItViewer.C
 WindowActions.C
+${VIEWERLIB_WIN32_SOURCES}
 )
 
 # If the viewer is static then we need some static symbol lookup functions
@@ -213,7 +222,7 @@ ${CMAKE_THREAD_LIBS}
 
 #*************************** The viewer executable ***************************
 IF(NOT APPLE)
-    ADD_EXECUTABLE(viewer_exe viewer.C ${VIEWER_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+    ADD_EXECUTABLE(viewer_exe ${VISIT_APPLICATION_STYLE} viewer.C ${VIEWER_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
 ELSE(NOT APPLE)
     SET(VIEWER_ICON_FILE VisItIcon.icns)
     SET_SOURCE_FILES_PROPERTIES(${VISIT_SOURCE_DIR}/common/icons/${VIEWER_ICON_FILE} PROPERTIES

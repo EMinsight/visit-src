@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -113,6 +113,7 @@ ColorTableObserver::Update(Subject *)
        colorAtts->IsSelected(ColorTableAttributes::ID_colorTables))
     {
         // Clear all of the color tables.
+        QvisColorTableButton::setColorTableAttributes(colorAtts);
         QvisColorTableButton::clearAllColorTables();
 
         int nNames = colorAtts->GetNames().size();

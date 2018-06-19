@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,8 @@
 
 class WindowAttributes;
 
+class avtCompactTreeFilter;
+class avtGradientExpression;
 class avtLookupTable;
 class avtShiftCenteringFilter;
 class avtUserDefinedMapper;
@@ -115,6 +117,9 @@ class avtResampleFilter;
 //    Declare that we are managing transparency within the plot for the
 //    splatting & 3D texturing case.
 //
+//    Brad Whitlock, Tue Jan 31 12:11:11 PST 2012
+//    I added a compact tree filter.
+//
 // ****************************************************************************
 
 class
@@ -144,8 +149,10 @@ avtVolumePlot : public avtVolumeDataPlot
     VolumeAttributes                atts;
     avtLowerResolutionVolumeFilter *volumeFilter;
     avtVolumeFilter                *volumeImageFilter;
+    avtGradientExpression          *gradientFilter;
     avtResampleFilter              *resampleFilter;
     avtShiftCenteringFilter        *shiftCentering;
+    avtCompactTreeFilter           *compactTree;
     avtVolumeRenderer_p             renderer;
     avtUserDefinedMapper           *mapper;
     avtLookupTable                 *avtLUT;

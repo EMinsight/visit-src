@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,35 +38,24 @@
 #  Cyrus Harrison, Wed Mar 10 11:05:26 PST 2010
 #  Use CMAKE_LIBRARY_OUTPUT_DIRECTORY instead of LIBRARY_OUTPUT_DIRECTORY.
 #
+#  Cyrus Harrison, Wed Apr 11 14:21:57 PDT 2012
+#  Use new cmake commands for distutils setup.
+#
 #****************************************************************************/
 
-# custom install the pyavt module to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt
 
-CONFIGURE_FILE(src/__init__.py
-               ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt/__init__.py @ONLY)
-CONFIGURE_FILE(src/filters.py
-               ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt/filters.py @ONLY)
+# deps for pyavt
+SET(pyavt_sources py_src/__init__.py
+                  py_src/filters.py
+                  py_src/templates/advanced_expression.py
+                  py_src/templates/advanced_query.py
+                  py_src/templates/simple_expression.py
+                  py_src/templates/simple_query.py)
 
-# custom install templates to ${LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt-templates/
-CONFIGURE_FILE(templates/simple_expression.py
-       ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt-templates/simple_expression.py @ONLY)
-CONFIGURE_FILE(templates/advanced_expression.py
-       ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt-templates/advanced_expression.py @ONLY)
+PYTHON_ADD_DISTUTILS_SETUP(pyavt_py_setup
+                           site-packages
+                           setup.py
+                           ${pyavt_sources})
 
-CONFIGURE_FILE(templates/simple_query.py
-       ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt-templates/simple_query.py @ONLY)
-CONFIGURE_FILE(templates/advanced_query.py
-       ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/pyavt-templates/advanced_query.py @ONLY)
-
-INSTALL(FILES src/__init__.py src/filters.py
-              DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/pyavt/
-              PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
-)
-
-INSTALL(FILES templates/simple_expression.py templates/advanced_expression.py
-              templates/simple_query.py templates/advanced_query.py
-              DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/pyavt-templates/
-              PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
-)
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
-#include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
 #include <vtkPointData.h>
 
 #include <DebugStream.h>
@@ -271,7 +271,7 @@ avtTimeIteratorDataTreeIteratorExpression::InitializeOutput(void)
         if (nc == 0)
         {
             vtkDataSet *in_ds = tree->GetDataRepresentation().GetDataVTK();
-            vtkFloatArray *arr = vtkFloatArray::New();
+            vtkDoubleArray *arr = vtkDoubleArray::New();
             arr->SetNumberOfComponents(GetIntermediateSize());
             if (IsPointVariable())
                 arr->SetNumberOfTuples(in_ds->GetNumberOfPoints());
@@ -384,8 +384,6 @@ avtTimeIteratorDataTreeIteratorExpression::ConstructOutput(avtDataTree_p t)
         delete [] outDT;
         return (rv);
     }
-
-    return NULL;
 }
 
 

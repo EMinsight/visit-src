@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,10 +108,9 @@ void
 avtMemoryUsageQuery::PerformQuery(QueryAttributes *atts)
 {
     // grab memory usage per engine process
-    unsigned int m_size = 0;
-    unsigned int m_rss  = 0;
+    unsigned long m_size, m_rss;
     
-    GetMemorySize(m_size,m_rss);
+    GetMemorySize(m_size, m_rss);
     
     if(m_size == 0 || m_rss == 0)
     {

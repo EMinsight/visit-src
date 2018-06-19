@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -69,6 +69,8 @@ class  QVBoxLayout;
 class  QLabel;
 class  QListWidgetItem;
 class  QCheckBox;
+class  QButtonGroup;
+class  QRadioButton;
 class  QGroupBox;
 class  QMenuBar;
 class  QMenu;
@@ -324,6 +326,7 @@ private slots:
     void addPlotHelper(int plotType, const QString &varName);
     void operatorAction(QAction *);
 
+    void applyWindowChanged(int val);;
     void applyOperatorToggled(bool val);;
     void applySelectionToggled(bool val);
 private:
@@ -344,6 +347,11 @@ private:
     QAction                 *operatorRemoveLastAct;
     QAction                 *operatorRemoveAllAct;
 
+    QWidget                 *applyWindow;
+    QLabel                  *applyWindowLabel;
+    QButtonGroup            *applyWindowButtonGroup;
+    QRadioButton            *applyWindowActiveRadioButton;
+    QRadioButton            *applyWindowAllRadioButton;
     QCheckBox               *applyOperatorCheckBox;
     QCheckBox               *applySelectionCheckBox;
 

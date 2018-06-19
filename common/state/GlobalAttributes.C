@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -61,6 +61,8 @@ void GlobalAttributes::Init()
     autoUpdateFlag = false;
     replacePlots = false;
     applyOperator = true;
+    applySelection = true;
+    applyWindow = false;
     executing = false;
     windowLayout = 1;
     makeDefaultConfirm = true;
@@ -78,7 +80,6 @@ void GlobalAttributes::Init()
     userDirForSessionFiles = false;
 #endif
     saveCrashRecoveryFile = true;
-    applySelection = true;
     ignoreExtentsFromDbs = false;
     expandNewPlots = false;
 
@@ -109,6 +110,8 @@ void GlobalAttributes::Copy(const GlobalAttributes &obj)
     autoUpdateFlag = obj.autoUpdateFlag;
     replacePlots = obj.replacePlots;
     applyOperator = obj.applyOperator;
+    applySelection = obj.applySelection;
+    applyWindow = obj.applyWindow;
     executing = obj.executing;
     windowLayout = obj.windowLayout;
     makeDefaultConfirm = obj.makeDefaultConfirm;
@@ -122,7 +125,6 @@ void GlobalAttributes::Copy(const GlobalAttributes &obj)
     newPlotsInheritSILRestriction = obj.newPlotsInheritSILRestriction;
     userDirForSessionFiles = obj.userDirForSessionFiles;
     saveCrashRecoveryFile = obj.saveCrashRecoveryFile;
-    applySelection = obj.applySelection;
     ignoreExtentsFromDbs = obj.ignoreExtentsFromDbs;
     expandNewPlots = obj.expandNewPlots;
 
@@ -289,6 +291,8 @@ GlobalAttributes::operator == (const GlobalAttributes &obj) const
             (autoUpdateFlag == obj.autoUpdateFlag) &&
             (replacePlots == obj.replacePlots) &&
             (applyOperator == obj.applyOperator) &&
+            (applySelection == obj.applySelection) &&
+            (applyWindow == obj.applyWindow) &&
             (executing == obj.executing) &&
             (windowLayout == obj.windowLayout) &&
             (makeDefaultConfirm == obj.makeDefaultConfirm) &&
@@ -302,7 +306,6 @@ GlobalAttributes::operator == (const GlobalAttributes &obj) const
             (newPlotsInheritSILRestriction == obj.newPlotsInheritSILRestriction) &&
             (userDirForSessionFiles == obj.userDirForSessionFiles) &&
             (saveCrashRecoveryFile == obj.saveCrashRecoveryFile) &&
-            (applySelection == obj.applySelection) &&
             (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs) &&
             (expandNewPlots == obj.expandNewPlots));
 }
@@ -455,6 +458,8 @@ GlobalAttributes::SelectAll()
     Select(ID_autoUpdateFlag,                   (void *)&autoUpdateFlag);
     Select(ID_replacePlots,                     (void *)&replacePlots);
     Select(ID_applyOperator,                    (void *)&applyOperator);
+    Select(ID_applySelection,                   (void *)&applySelection);
+    Select(ID_applyWindow,                      (void *)&applyWindow);
     Select(ID_executing,                        (void *)&executing);
     Select(ID_windowLayout,                     (void *)&windowLayout);
     Select(ID_makeDefaultConfirm,               (void *)&makeDefaultConfirm);
@@ -468,7 +473,6 @@ GlobalAttributes::SelectAll()
     Select(ID_newPlotsInheritSILRestriction,    (void *)&newPlotsInheritSILRestriction);
     Select(ID_userDirForSessionFiles,           (void *)&userDirForSessionFiles);
     Select(ID_saveCrashRecoveryFile,            (void *)&saveCrashRecoveryFile);
-    Select(ID_applySelection,                   (void *)&applySelection);
     Select(ID_ignoreExtentsFromDbs,             (void *)&ignoreExtentsFromDbs);
     Select(ID_expandNewPlots,                   (void *)&expandNewPlots);
 }
@@ -581,6 +585,12 @@ GlobalAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool force
     {
         addToParent = true;
         node->AddNode(new DataNode("replacePlots", replacePlots));
+    }
+
+    if(completeSave || !FieldsEqual(ID_applyWindow, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("applyWindow", applyWindow));
     }
 
     if(completeSave || !FieldsEqual(ID_applyOperator, &defaultObject))
@@ -769,6 +779,8 @@ GlobalAttributes::SetFromNode(DataNode *parentNode)
         SetAutoUpdateFlag(node->AsBool());
     if((node = searchNode->GetNode("replacePlots")) != 0)
         SetReplacePlots(node->AsBool());
+    if((node = searchNode->GetNode("applyWindow")) != 0)
+        SetApplyWindow(node->AsBool());
     if((node = searchNode->GetNode("applyOperator")) != 0)
         SetApplyOperator(node->AsBool());
     if((node = searchNode->GetNode("windowLayout")) != 0)
@@ -849,6 +861,20 @@ GlobalAttributes::SetApplyOperator(bool applyOperator_)
 {
     applyOperator = applyOperator_;
     Select(ID_applyOperator, (void *)&applyOperator);
+}
+
+void
+GlobalAttributes::SetApplySelection(bool applySelection_)
+{
+    applySelection = applySelection_;
+    Select(ID_applySelection, (void *)&applySelection);
+}
+
+void
+GlobalAttributes::SetApplyWindow(bool applyWindow_)
+{
+    applyWindow = applyWindow_;
+    Select(ID_applyWindow, (void *)&applyWindow);
 }
 
 void
@@ -943,13 +969,6 @@ GlobalAttributes::SetSaveCrashRecoveryFile(bool saveCrashRecoveryFile_)
 }
 
 void
-GlobalAttributes::SetApplySelection(bool applySelection_)
-{
-    applySelection = applySelection_;
-    Select(ID_applySelection, (void *)&applySelection);
-}
-
-void
 GlobalAttributes::SetIgnoreExtentsFromDbs(bool ignoreExtentsFromDbs_)
 {
     ignoreExtentsFromDbs = ignoreExtentsFromDbs_;
@@ -1019,6 +1038,18 @@ bool
 GlobalAttributes::GetApplyOperator() const
 {
     return applyOperator;
+}
+
+bool
+GlobalAttributes::GetApplySelection() const
+{
+    return applySelection;
+}
+
+bool
+GlobalAttributes::GetApplyWindow() const
+{
+    return applyWindow;
 }
 
 bool
@@ -1100,12 +1131,6 @@ GlobalAttributes::GetSaveCrashRecoveryFile() const
 }
 
 bool
-GlobalAttributes::GetApplySelection() const
-{
-    return applySelection;
-}
-
-bool
 GlobalAttributes::GetIgnoreExtentsFromDbs() const
 {
     return ignoreExtentsFromDbs;
@@ -1164,6 +1189,8 @@ GlobalAttributes::GetFieldName(int index) const
     case ID_autoUpdateFlag:                   return "autoUpdateFlag";
     case ID_replacePlots:                     return "replacePlots";
     case ID_applyOperator:                    return "applyOperator";
+    case ID_applySelection:                   return "applySelection";
+    case ID_applyWindow:                      return "applyWindow";
     case ID_executing:                        return "executing";
     case ID_windowLayout:                     return "windowLayout";
     case ID_makeDefaultConfirm:               return "makeDefaultConfirm";
@@ -1177,7 +1204,6 @@ GlobalAttributes::GetFieldName(int index) const
     case ID_newPlotsInheritSILRestriction:    return "newPlotsInheritSILRestriction";
     case ID_userDirForSessionFiles:           return "userDirForSessionFiles";
     case ID_saveCrashRecoveryFile:            return "saveCrashRecoveryFile";
-    case ID_applySelection:                   return "applySelection";
     case ID_ignoreExtentsFromDbs:             return "ignoreExtentsFromDbs";
     case ID_expandNewPlots:                   return "expandNewPlots";
     default:  return "invalid index";
@@ -1211,6 +1237,8 @@ GlobalAttributes::GetFieldType(int index) const
     case ID_autoUpdateFlag:                   return FieldType_bool;
     case ID_replacePlots:                     return FieldType_bool;
     case ID_applyOperator:                    return FieldType_bool;
+    case ID_applySelection:                   return FieldType_bool;
+    case ID_applyWindow:                      return FieldType_bool;
     case ID_executing:                        return FieldType_bool;
     case ID_windowLayout:                     return FieldType_int;
     case ID_makeDefaultConfirm:               return FieldType_bool;
@@ -1224,7 +1252,6 @@ GlobalAttributes::GetFieldType(int index) const
     case ID_newPlotsInheritSILRestriction:    return FieldType_bool;
     case ID_userDirForSessionFiles:           return FieldType_bool;
     case ID_saveCrashRecoveryFile:            return FieldType_bool;
-    case ID_applySelection:                   return FieldType_bool;
     case ID_ignoreExtentsFromDbs:             return FieldType_bool;
     case ID_expandNewPlots:                   return FieldType_bool;
     default:  return FieldType_unknown;
@@ -1258,6 +1285,8 @@ GlobalAttributes::GetFieldTypeName(int index) const
     case ID_autoUpdateFlag:                   return "bool";
     case ID_replacePlots:                     return "bool";
     case ID_applyOperator:                    return "bool";
+    case ID_applySelection:                   return "bool";
+    case ID_applyWindow:                      return "bool";
     case ID_executing:                        return "bool";
     case ID_windowLayout:                     return "int";
     case ID_makeDefaultConfirm:               return "bool";
@@ -1271,7 +1300,6 @@ GlobalAttributes::GetFieldTypeName(int index) const
     case ID_newPlotsInheritSILRestriction:    return "bool";
     case ID_userDirForSessionFiles:           return "bool";
     case ID_saveCrashRecoveryFile:            return "bool";
-    case ID_applySelection:                   return "bool";
     case ID_ignoreExtentsFromDbs:             return "bool";
     case ID_expandNewPlots:                   return "bool";
     default:  return "invalid index";
@@ -1333,6 +1361,16 @@ GlobalAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_applyOperator:
         {  // new scope
         retval = (applyOperator == obj.applyOperator);
+        }
+        break;
+    case ID_applySelection:
+        {  // new scope
+        retval = (applySelection == obj.applySelection);
+        }
+        break;
+    case ID_applyWindow:
+        {  // new scope
+        retval = (applyWindow == obj.applyWindow);
         }
         break;
     case ID_executing:
@@ -1398,11 +1436,6 @@ GlobalAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_saveCrashRecoveryFile:
         {  // new scope
         retval = (saveCrashRecoveryFile == obj.saveCrashRecoveryFile);
-        }
-        break;
-    case ID_applySelection:
-        {  // new scope
-        retval = (applySelection == obj.applySelection);
         }
         break;
     case ID_ignoreExtentsFromDbs:

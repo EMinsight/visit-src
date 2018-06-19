@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,10 +67,10 @@ class avtPoincareIC;
 //    Changed color to colorBy
 //
 //    Dave Pugmire, Wed May 27 15:03:42 EDT 2009
-//    Removed GetStreamlinePoints().
+//    Removed GetFieldlinePoints().
 //
 //    Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
-//    Add ability to restart streamline integration.
+//    Add ability to restart fieldline integration.
 //
 //    Hank Childs, Fri Jun  4 19:58:30 CDT 2010
 //    Use avtStreamlines, not avtStreamlineWrappers.
@@ -126,6 +126,11 @@ class avtPoincareFilter : public avtStreamlineFilter
     void SetOPointMaxIterations( int val ) { OPointMaxIterations = val; }
     void SetShowXPoints( bool val ) { showXPoints = val; }
     void SetXPointMaxIterations( int val ) { XPointMaxIterations = val; }
+
+    void SetPerformOLineAnalysis( bool val ) { performOLineAnalysis = val; }
+    void SetOLineToroidalWinding( int val ) { OLineToroidalWinding = val; }
+    void SetOLineAxisFileName( std::string val ) { OLineAxisFileName = val; }
+
     void SetShowChaotic( bool val ) { showChaotic = val; }
     void SetShowIslands( bool val ) { showIslands = val; }
     void SetShowLines( bool val )   { showLines = val; }
@@ -138,7 +143,7 @@ class avtPoincareFilter : public avtStreamlineFilter
     void                      SetIntersectionCriteria(vtkObject *obj, int);
 
   protected:
-    // Streamline overides.
+    // Fieldline overides.
     virtual void Execute(void);
     virtual bool ContinueExecute();
     virtual void PreExecute(void);
@@ -193,9 +198,13 @@ class avtPoincareFilter : public avtStreamlineFilter
                                 bool ptFlag );
 
     // Poincare filter methods.
-    bool ClassifyStreamlines(std::vector<avtIntegralCurve *> &ic);
+    bool ClassifyFieldlines(std::vector<avtIntegralCurve *> &ic);
     void CreatePoincareOutput(avtDataTree *dt,
                               std::vector<avtIntegralCurve *> &ic);
+
+    bool ClassifyRationals(std::vector<avtIntegralCurve *> &ic);
+    void CreateRationalOutput(avtDataTree *dt,
+                              std::vector<avtIntegralCurve *> &ic); /////////RATAIONAL
 
     void CreateIntegralCurveOutput(std::vector<avtIntegralCurve*,
                                    std::allocator<avtIntegralCurve*> >&) {};
@@ -229,6 +238,10 @@ class avtPoincareFilter : public avtStreamlineFilter
 
     unsigned int OPointMaxIterations;
     unsigned int XPointMaxIterations;
+
+    bool performOLineAnalysis;
+    int  OLineToroidalWinding;
+    std::string OLineAxisFileName;
 
 //     class ICHelper
 //     {

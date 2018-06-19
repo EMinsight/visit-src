@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -102,7 +102,7 @@ ${GLEW_LIBRARY_DIR}
 ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
 )
 
-ADD_EXECUTABLE(mdserver ${MDSERVER_SOURCES} ${MDSERVER_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+ADD_EXECUTABLE(mdserver ${VISIT_APPLICATION_STYLE} ${MDSERVER_SOURCES} ${MDSERVER_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
 TARGET_LINK_LIBRARIES(mdserver 
     ${mdserver_MDatabase}
     ${mdserver_IDatabase}

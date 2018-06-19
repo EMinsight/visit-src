@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2006, The Regents of the University of California
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -45,7 +45,6 @@
 #include "avtparaDISOptions.h"
 #include <vtkUnstructuredGrid.h>
 #include "ParaDISFileSet.h" 
-using namespace std; 
 // ************************************************************************* //
 //                            parallelParDIS.h                           //
 // ************************************************************************* //
@@ -61,25 +60,25 @@ struct FileSet {
   //===============================================
   FileSet();
   //===============================================
-  void AddVar(string varname, string vartype, int components);
+  void AddVar(std::string varname, std::string vartype, int components);
   //===============================================
-  bool HaveVar(string varname);
+  bool HaveVar(std::string varname);
   //===============================================
-  int VarNum(string varname); 
+  int VarNum(std::string varname); 
   //===============================================
-  string VarType(string varname); 
+  std::string VarType(std::string varname); 
   //===============================================
   long NumElems(void); 
   //===============================================
-  int VarComponents(string varname); 
+  int VarComponents(std::string varname); 
   //===============================================
   // Returns how many tokens to skip per element to read the variable
-  int VarTokenPositionInElement(string varname); 
+  int VarTokenPositionInElement(std::string varname); 
   //===============================================
   // Returns how many bytes to skip per element to read the variable
-  int VarBytePositionInElement(string varname); 
+  int VarBytePositionInElement(std::string varname); 
   //===============================================
-  int VarTypeToBytes(string typeName); // lookup type in mDataTypeSizes
+  int VarTypeToBytes(std::string typeName); // lookup type in mDataTypeSizes
   //===============================================
 
   int mNumFiles; 
@@ -110,7 +109,7 @@ class ElementFetcher {
     GetElemsFromTextFile()
     called from IterateOverFiles()
   */
-  void GetElemsFromTextFile(string filename, long fileOffset, long elems2Read);
+  void GetElemsFromTextFile(std::string filename, long fileOffset, long elems2Read);
   
   /*!
     InterpretTextElement()
@@ -122,7 +121,7 @@ class ElementFetcher {
     GetElemsFromBinaryFile()
     called from IterateOverFiles()
   */
-  void GetElemsFromBinaryFile(string filename, long fileOffset, long elemsToRead);  
+  void GetElemsFromBinaryFile(std::string filename, long fileOffset, long elemsToRead);  
   /*!
     InterpretBinaryElement()
     called from GetElemsFromTextFile(), implemented in subclass; interprets the data chunk representing an element and places it in the right place in mOutputData, incrementing mOutputIndex as well of course.  

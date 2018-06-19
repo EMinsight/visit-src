@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                      avtPerMaterialValueExpression.C                          //
+//                  avtPerMaterialValueExpression.C                          //
 // ************************************************************************* //
 
 #include <avtPerMaterialValueExpression.h>
@@ -135,6 +135,10 @@ avtPerMaterialValueExpression::~avtPerMaterialValueExpression()
 //    Kathleen Bonnell, Tue Jun  3 08:09:52 PDT 2008
 //    Remove unreferenced variable.
 //
+//    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
+//    Added logic to support presentGhostZoneTypes, which allows us to
+//    differentiate between ghost zones for boundaries & nesting.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -150,9 +154,8 @@ avtPerMaterialValueExpression::DeriveVariable(vtkDataSet *in_ds)
     // avtMixedVariable entry.
    
     // get input array
-    vtkFloatArray *val_array = NULL;
-    val_array = (vtkFloatArray *)in_ds->GetCellData()->GetArray(activeVariable);
-    
+    vtkDataArray *val_array = in_ds->GetCellData()->GetArray(activeVariable);
+
     if(val_array == NULL) // check for error on input
     {
         ostringstream oss;
@@ -160,33 +163,42 @@ avtPerMaterialValueExpression::DeriveVariable(vtkDataSet *in_ds)
             << "." << endl
             << "The value_for_material expression requires a varaible with" 
             << " zonal centering." <<endl;
-            
+
         EXCEPTION2(ExpressionException, outputVariableName,oss.str().c_str());
-    
+
     }
 
     // only ask for post ghost Material info if the dataset actually
     // has ghost zones and VisIt created them. 
-    
+
     avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
-    bool created_ghosts = datts.GetContainsGhostZones() != AVT_CREATED_GHOSTS;
-    if(!in_ds->GetCellData()->GetArray("avtGhostZones") || created_ghosts)
-        doPostGhost = false;
+    bool created_ghosts = datts.GetContainsGhostZones() == AVT_CREATED_GHOSTS;
+    // check bitmask to make sure we actually have boundary ghost zones
+    // (in some cases we may only have nesting ghosts zones, and post ghost
+    // is not the proper path)
+    if(created_ghosts)
+        created_ghosts = datts.GetGhostZoneTypesPresent() & AVT_BOUNDARY_GHOST_ZONES;
+    doPostGhost = doPostGhost &&
+                  in_ds->GetCellData()->GetArray("avtGhostZones") &&
+                  created_ghosts;
+
+    debug5 << "avtMatvfExpression: GetGhostZoneTypesPresent() = "
+           << datts.GetGhostZoneTypesPresent() <<  endl;
 
     debug5 << "avtPerMaterialValueExpression: Using post ghost material "
               " and mixedvar objects ?  " << doPostGhost <<endl;
-    
+
     // prepare result array
-    vtkFloatArray *res = vtkFloatArray::New();
+    vtkDataArray *res = val_array->NewInstance();
     res->SetNumberOfTuples(ncells);
-    
+
     // Request ghost adjusted values if required. 
     avtMaterial      *mat = GetMetaData()->GetMaterial(currentDomainsIndex,
                                                        currentTimeState,
                                                        doPostGhost);
     if(mat == NULL ) // error
     {
-       EXCEPTION2(ExpressionException, outputVariableName,                         
+       EXCEPTION2(ExpressionException, outputVariableName,
                    "could not obtaing valid material object.");
     }
     
@@ -335,14 +347,13 @@ avtPerMaterialValueExpression::ProcessArguments(ArgsExpr *args,
     }
     else
     {
-        debug5 << "avtPerMaterialValueExpression: Second argument is not a valid "
-                  "material id (integer) or name (string): " 
-                << type.c_str() << endl;
+        debug5 << "avtPerMaterialValueExpression: Second argument is not a "
+               << "valid material id (integer) or name (string): " 
+               << type.c_str() << endl;
         EXCEPTION2(ExpressionException, outputVariableName, 
           "avtPerMaterialValueExpression: Second argument is not a material "
           "number (integer) or name (string).");
     }
-
 }
 
 

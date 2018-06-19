@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 #include <RemoveCellsAttributes.h>
 
 #include <visit-config.h>
-extern "C" OP_EXPORT const char *RemoveCellsVisItPluginVersion = VISIT_VERSION;
+VISIT_PLUGIN_VERSION(RemoveCells,OP_EXPORT)
 
 // ****************************************************************************
 //  Function:  GetGeneralInfo

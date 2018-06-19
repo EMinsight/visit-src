@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                               avtTraceExpression.C                            //
+//                               avtTraceExpression.C                        //
 // ************************************************************************* //
 
 #include <avtTraceExpression.h>
@@ -109,9 +109,9 @@ avtTraceExpression::DoOperation(vtkDataArray *in, vtkDataArray *out,
     {
         for (int i = 0 ; i < ntuples ; i++)
         {
-            float val1 = in->GetComponent(i, 0);
-            float val2 = in->GetComponent(i, 4);
-            float val3 = in->GetComponent(i, 8);
+            double val1 = in->GetComponent(i, 0);
+            double val2 = in->GetComponent(i, 4);
+            double val3 = in->GetComponent(i, 8);
             out->SetTuple1(i, val1+val2+val3);
         }
     }

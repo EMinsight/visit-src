@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -140,16 +140,14 @@
             }
             else
             { // VisIt turned the label into floats!
-debug3 << "*** WARNING - VisIt turned the Label data into floats. That is not efficient!" << endl;
-                const float *fptr = (const float *)data->GetVoidPointer(0);
+debug3 << "*** WARNING - VisIt transformed the Label data from unsigned char. That is not efficient!" << endl;
                 char *tempstr = new char[labelLength];
                 memset(tempstr, 0, labelLength);
                 for(vtkIdType id = 0; id < npts; ++id)
                 {
                     // Store the float-ified label in a real string.
                     for(int k = 0; k < labelLength - 1; ++k)
-                        tempstr[k] = (char)*fptr++;
-                    ++fptr;
+                        tempstr[k] = static_cast<char>(data->GetComponent(id, k));
 
                     // Use the label.
                     BEGIN_LABEL

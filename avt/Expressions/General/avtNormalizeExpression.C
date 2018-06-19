@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtNormalizeExpression.C                           //
+//                        avtNormalizeExpression.C                           //
 // ************************************************************************* //
 
 #include <avtNormalizeExpression.h>
@@ -143,13 +143,13 @@ avtNormalizeExpression::DeriveVariable(vtkDataSet *in)
 
     for (int i=0; i<ntuples; i++)
     {
-        float xin = vectorValues->GetComponent(i, 0);
-        float yin = vectorValues->GetComponent(i, 1);
-        float zin = vectorValues->GetComponent(i, 2);
+        double xin = vectorValues->GetComponent(i, 0);
+        double yin = vectorValues->GetComponent(i, 1);
+        double zin = vectorValues->GetComponent(i, 2);
 
-        float mag = sqrt(xin*xin + yin*yin + zin*zin);
+        double mag = sqrt(xin*xin + yin*yin + zin*zin);
 
-        float xout, yout, zout;
+        double xout, yout, zout;
         if (mag == 0.)
             xout = yout = zout = 0.;
         else

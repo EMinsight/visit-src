@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -149,7 +149,7 @@ avtShapeletDecompResult::Coefficient(int n1, int n2) const
     if( (n1 <0 || n1 >= nmax) || (n2 <0 || n2 >= nmax) )
         return 0.0;
     int idx = (nmax - n2);
-    idx = coeffs.size() - (idx*idx + idx)/2 + n1;
+    idx = static_cast<int>(coeffs.size()) - (idx*idx + idx)/2 + n1;
     return coeffs[idx];
 }
 

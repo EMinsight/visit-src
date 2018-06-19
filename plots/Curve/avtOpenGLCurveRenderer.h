@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,8 +79,8 @@ protected:
     void DrawCurveAsSymbols();
     void DrawCurveAsLines();
 
-    void GetAspect(int &bin_x_n, float &bin_x_size, float &bin_x_offset,
-                   int &bin_y_n, float &bin_y_size, float &bin_y_offset);
+    void GetAspect(int &bin_x_n, double &bin_x_size, double &bin_x_offset,
+                   int &bin_y_n, double &bin_y_size, double &bin_y_offset);
     void RenderBall(void);
     void RenderLine(void);
 };

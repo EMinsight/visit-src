@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -129,13 +129,13 @@ avtBase10LogWithMinExpression::DoOperation(vtkDataArray *in1,vtkDataArray *in2,
 
     for (int i = 0 ; i < ntuples ; i++)
     {
-        int tup2 = (var2IsSingleton ? 0 : i);
-        float f2 = in2->GetTuple1(tup2);
+        vtkIdType tup2 = (var2IsSingleton ? 0 : i);
+        double f2 = in2->GetTuple1(tup2);
         for (int j = 0 ; j < in1ncomps ; j++)
         {
-            int tup1 = (var1IsSingleton ? 0 : i);
-            float f1 = in1->GetComponent(tup1, j);
-            float f = (f1 < f2 ? f2 : f1);
+            vtkIdType tup1 = (var1IsSingleton ? 0 : i);
+            double f1 = in1->GetComponent(tup1, j);
+            double f = (f1 < f2 ? f2 : f1);
             out->SetComponent(i, j, log10(f));
         }
     }

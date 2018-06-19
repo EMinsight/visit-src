@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,7 +70,7 @@ ${QT_QTCORE_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${QT_LIBRARY_DIR})
-ADD_EXECUTABLE(qtssh ${QTSSH_SOURCES})
+ADD_EXECUTABLE(qtssh ${VISIT_APPLICATION_STYLE} ${QTSSH_SOURCES})
 ADD_DEPENDENCIES(qtssh remotecommand visitcommon viewer) 
 
 # TARGET_LINK_LIBRARIES is the normal command we would use, but cmake pulls in 

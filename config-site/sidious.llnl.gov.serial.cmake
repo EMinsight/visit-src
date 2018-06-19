@@ -12,22 +12,6 @@ SET(VISITHOME /usr/gapps/visit/thirdparty_shared)
 SET(VISITARCH linux-x86_64_gcc-4.1)
 
 ##
-## VTK
-##
-VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/5.8.0/${VISITARCH})
-
-##
-## Specify the Qt4 binary dir. 
-## (qmake us used to locate & setup Qt4 dependencies)
-##
-VISIT_OPTION_DEFAULT(VISIT_QT_BIN ${VISITHOME}/qt/4.6.1/${VISITARCH}/bin)
-
-##
-## Specify the location of the python.
-##
-VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.6.4/${VISITARCH})
-
-##
 ## Compiler flags.
 ##
 VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc)
@@ -37,12 +21,34 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden")
 
 ##############################################################
 ##
-## Database reader plugin support libraries
+## The HDF4, HDF5 and NetCDF libraries must be first so that
+## their libdeps are defined for any plugins that need them.
 ##
 ## For libraries with LIBDEP settings, order matters.
 ## Libraries with LIBDEP settings that depend on other
 ## Library's LIBDEP settings must come after them.
 ##############################################################
+##
+##
+## Specify the location of the python.
+##
+VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR /usr/gapps/visit/thirdparty_shared/python/2.6.4/linux-x86_64_gcc-4.1)
+
+##
+## Specify the PySide dir.
+##
+VISIT_OPTION_DEFAULT(VISIT_PYSIDE_DIR ${VISITHOME}/pyside/1.0.7/${VISITARCH})
+
+##
+## VTK
+##
+VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk-womesa/5.8.0/${VISITARCH})
+
+##
+## Specify the Qt4 binary dir.
+## (qmake is used to locate & setup Qt4 dependencies)
+##
+VISIT_OPTION_DEFAULT(VISIT_QT_BIN ${VISITHOME}/qt/4.7.4/${VISITARCH}/bin)
 
 ##
 ## AdvIO
@@ -52,7 +58,7 @@ VISIT_OPTION_DEFAULT(VISIT_ADVIO_DIR ${VISITHOME}/AdvIO/1.2/${VISITARCH}/)
 ##
 ## Boxlib
 ##
-VISIT_OPTION_DEFAULT(VISIT_BOXLIB_DIR ${VISITHOME}/boxlib/2010.10.01/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_BOXLIB_DIR ${VISITHOME}/boxlib/0.1.8/${VISITARCH})
 
 ##
 ## CCMIO
@@ -84,15 +90,14 @@ VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz
 
 ##
 ## H5Part
-## Must come AFTER HDF5 to ensure LIBDEP for H5Part gets hdf5 LIBDEPS
 ##
-VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR ${VISITHOME}/h5part/1.6.0/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP})
+VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR ${VISITHOME}/h5part/1.6.4/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
 
 ##
 ## Mili
 ##
-VISIT_OPTION_DEFAULT(VISIT_MILI_DIR ${VISITHOME}/mili/1.10.0/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MILI_DIR ${VISITHOME}/mili/1.11.1/${VISITARCH})
 
 ##
 ## NetCDF
@@ -149,3 +154,8 @@ ITAPS_INCLUDE_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.2/GRUMMP/0.6.3/${VISITARCH
 ITAPS_FILE_PATTERNS(GRUMMP *.bdry *.smesh *.vmesh)
 ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_geom GR_base SUMAAlog_lite OptMS vtkGraphics cgm dl)
 ITAPS_LINK_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.2/GRUMMP/0.6.3/${VISITARCH}/lib)
+
+##
+## FastBit
+##
+VISIT_OPTION_DEFAULT(VISIT_FASTBIT_DIR ${VISITHOME}/fastbit/1.2.0/${VISITARCH})

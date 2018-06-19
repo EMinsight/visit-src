@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -518,11 +518,7 @@ avtLabelPlot::CustomizeMapper(avtDataObjectInformation &doi)
     // GetAnySpatialExtents
     double e[6] = {0.,1.,0.,1.,0.,1.};
     doi.GetAttributes().GetOriginalSpatialExtents()->CopyTo(e);
-    float fe[6];
-    int i;
-    for(i = 0; i < 6; ++i)
-        fe[i] = float(e[i]);
-    renderer->SetExtents(fe);
+    renderer->SetExtents(e);
 
     bool ugl = atts.GetVarType() == LabelAttributes::LABEL_VT_MATERIAL ||
                atts.GetVarType() == LabelAttributes::LABEL_VT_SUBSET;
@@ -531,7 +527,7 @@ avtLabelPlot::CustomizeMapper(avtDataObjectInformation &doi)
     debug4 << "avtLabelPlot::CustomizeMapper: Labels = " << endl;
     std::vector<std::string> labels;
     doi.GetAttributes().GetLabels(labels);
-    for(i = 0; i < labels.size(); ++i)
+    for(size_t i = 0; i < labels.size(); ++i)
         debug4 << "\tlabel["<<i<<"] = " << labels[i].c_str() << endl;
     debug4 << endl;
 }
@@ -660,3 +656,24 @@ avtLabelPlot::ReleaseData(void)
     }
     debug3 << "avtLabelPlot::ReleaseData: 1" << endl;
 }
+
+
+// ****************************************************************************
+//  Method: avtLabelPlot::GetExtraInfoForPick
+//
+//  Purpose:
+//    Override default settings for extraPickinfo.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   February 29, 2012
+//
+// ****************************************************************************
+
+const MapNode &
+avtLabelPlot::GetExtraInfoForPick()
+{
+    extraPickInfo["glyphPickIfPointMesh"] = false;
+
+    return extraPickInfo;
+}
+

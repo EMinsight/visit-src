@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1449,8 +1449,8 @@ HashEntryMemoryManager::HashEntryMemoryManager()
 
 HashEntryMemoryManager::~HashEntryMemoryManager()
 {
-    int size = hashpool.size();
-    for (int i = 0 ; i < size ; i++)
+    size_t size = hashpool.size();
+    for (size_t i = 0 ; i < size ; i++)
     {
         delete [] hashpool[i];
     }
@@ -1502,8 +1502,8 @@ QuadMemoryManager::QuadMemoryManager()
 
 QuadMemoryManager::~QuadMemoryManager()
 {
-    int npools = quadpool.size();
-    for (int i = 0 ; i < npools ; i++)
+    size_t npools = quadpool.size();
+    for (size_t i = 0 ; i < npools ; i++)
     {
         Quad *pool = quadpool[i];
         delete [] pool;
@@ -1563,8 +1563,8 @@ TriMemoryManager::TriMemoryManager()
 
 TriMemoryManager::~TriMemoryManager()
 {
-    int npools = tripool.size();
-    for (int i = 0 ; i < npools ; i++)
+    size_t npools = tripool.size();
+    for (size_t i = 0 ; i < npools ; i++)
     {
         Tri *pool = tripool[i];
         delete [] pool;
@@ -1748,7 +1748,7 @@ HashEntry::CreateOutputCells(vtkPolyData *output, vtkCellData *in_cd,
 {
     for (int i = 0 ; i < last_good_entry ; i++)
     {
-        bool isQuad = face_type & face_mask[i];
+        bool isQuad = (face_type & face_mask[i]) > 0;
         if (isQuad)
         {
             Quad *q = faces[i].quad;
@@ -3009,7 +3009,6 @@ AddTriQuadraticHexahedron(vtkIdType *pts, int cellId, HashEntryList &list)
 void
 AddUnknownCell(vtkCell *cell, int cellId, HashEntryList &list)
 {
-    vtkIdList *pt_ids = cell->GetPointIds();
     int nFaces = cell->GetNumberOfFaces();
     vtkIdType nodes[4];
     for (int i = 0 ; i < nFaces ; i++)

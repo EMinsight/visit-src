@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,6 +57,9 @@
 #   Eric Brugger, Tue Oct 25 13:55:27 PDT 2011
 #   Add avtMultiresFilter.
 #
+#   Hank Childs, Tue Mar 13 12:59:07 PDT 2012
+#   Move avtDatasetOnDemandFilter from Pipeline/AbstractFilters directory.
+#
 #****************************************************************************/
 
 SET(AVTFILTERS_SOURCES
@@ -67,6 +70,7 @@ avtContourFilter.C
 avtCoordSystemConvert.C
 avtCurveConstructorFilter.C
 avtCustomTransform.C
+avtDatasetOnDemandFilter.C
 avtDisplaceFilter.C
 avtFacelistFilter.C
 avtFeatureEdgesFilter.C
@@ -82,11 +86,14 @@ avtLineToPolylineFilter.C
 avtMassVoxelExtractor.C
 avtMasterSlaveICAlgorithm.C
 avtMeshLogFilter.C
+avtMissingDataFilter.C
 avtMultiresFilter.C
 avtNamedSelectionFilter.C
 avtParDomICAlgorithm.C
 avtParICAlgorithm.C
 avtPICSFilter.C
+avtPODICAlgorithm.C
+avtPOSBalanceICAlgorithm.C
 avtPointToGlyphFilter.C
 avtRayCompositer.C
 avtRayTracer.C
@@ -98,6 +105,7 @@ avtSerialICAlgorithm.C
 avtShiftCenteringFilter.C
 avtSimilarityTransformFilter.C
 avtSmoothPolyDataFilter.C
+avtStaggeringFilter.C
 avtStreamlineFilter.C
 avtStreamlinePolyDataFilter.C
 avtSummationFilter.C
@@ -113,8 +121,15 @@ avtWorldSpaceToImageSpaceTransform.C
 avtXRayFilter.C
 )
 
+#IF(HAVE_LIB_R)
+#  LIST(APPEND AVTFILTERS_SOURCES avtRExtremesFilter.C)
+#ENDIF(HAVE_LIB_R)
+
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
+IF(HAVE_LIB_R)
+${R_INCLUDE_DIR}
+ENDIF(HAVE_LIB_R)
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight

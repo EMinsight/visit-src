@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -177,6 +177,12 @@ class PLUGIN_API ViewerOperatorPluginInfo : public virtual CommonOperatorPluginI
     virtual AttributeSubject *GetDefaultAtts() = 0;
     virtual void SetClientAtts(AttributeSubject *atts) = 0;
     virtual void GetClientAtts(AttributeSubject *atts) = 0;
+    virtual void GetClientAtts(AttributeSubject *atts,
+                               const bool activeOperator,
+                               const bool applyToAll)
+    {
+      GetClientAtts(atts);
+    };
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
                                         const ViewerPlot *plot,

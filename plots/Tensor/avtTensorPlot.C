@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -482,6 +482,27 @@ avtTensorPlot::ReleaseData(void)
     {
         ghostFilter->ReleaseData();
     }
+}
+
+
+// ****************************************************************************
+//  Method: avtTensorPlot::GetExtraInfoForPick
+//
+//  Purpose:
+//    Override default settings for extraPickinfo.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   February 29, 2012
+//
+// ****************************************************************************
+
+const MapNode &
+avtTensorPlot::GetExtraInfoForPick()
+{
+    extraPickInfo["glyphPickAlways"] = true;
+    extraPickInfo["nodeCenteredNeedZonesForPick"] = false;
+
+    return extraPickInfo;
 }
 
 

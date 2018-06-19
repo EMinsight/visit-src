@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,7 +125,7 @@ avtNaturalLogExpression::~avtNaturalLogExpression()
  
 void
 avtNaturalLogExpression::DoOperation(vtkDataArray *in, vtkDataArray *out,
-                                 int ncomponents, int ntuples)
+                                     int ncomponents, int ntuples)
 {
     for (int i = 0 ; i < ntuples ; i++)
     {

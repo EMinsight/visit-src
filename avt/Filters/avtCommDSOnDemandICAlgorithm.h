@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,7 +84,7 @@ class avtCommDSOnDemandICAlgorithm : public avtParICAlgorithm
 
     virtual const char*       AlgoName() const {return "CommDSOnDemand";}
     virtual void              Initialize(std::vector<avtIntegralCurve *> &);
-    virtual void              ResetIntegralCurvesForContinueExecute();
+    virtual void              ResetIntegralCurvesForContinueExecute(int curTimeSlice=-1);
     virtual bool              CheckNextTimeStepNeeded(int curTimeSlice);
     virtual void              AddIntegralCurves(std::vector<avtIntegralCurve*> &ics);
     virtual bool              PostStepCallback();

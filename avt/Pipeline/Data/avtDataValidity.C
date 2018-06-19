@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -419,10 +419,10 @@ avtDataValidity::Write(avtDataObjectString &str,
     vals[15]= (queryable ? 1 : 0);
     vals[16]= (hasEverOwnedAnyDomain ? 1 : 0);
     vals[17]= (errorOccurred ? 1 : 0);
-    vals[18]= errorString.size();
+    vals[18]= static_cast<int>(errorString.size());
     wrtr->WriteInt(str, vals, numVals);
 
-    str.Append((char *) errorString.c_str(), errorString.size(),
+    str.Append((char *) errorString.c_str(), static_cast<int>(errorString.size()),
                      avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY); 
 }
 

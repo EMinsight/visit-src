@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -214,6 +214,8 @@ class MIR_API TetMIR : public MIR
 
     int                                     nrealclean;
     int                                     nrealmixed;
+
+    int                                     coordsListType;
 
     QuadraticHash<ReconstructedCoord,int>  *coordsHash;
     std::vector<ReconstructedCoord>         coordsList;

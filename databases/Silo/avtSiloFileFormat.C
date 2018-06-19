@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,7 @@
 
 #include <float.h>
 
+#include <vtkBitArray.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkCellType.h>
@@ -153,17 +154,13 @@ static void AddAle3drlxstatEnumerationInfo(avtScalarMetaData *smd);
 
 static void HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm,
     const char *multimesh_name, avtMeshType *mt, int *num_groups,
-    vector<int> *group_ids, vector<string> *block_names, int dontForceSingle);
+    vector<int> *group_ids, vector<string> *block_names, int);
 static void BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     const char *meshName, int timestate, int type, avtVariableCache *cache,
-    int dontForceSingle);
+    int);
 
 static int MultiMatHasAllMatInfo(const DBmultimat *const mm);
 static vtkDataArray *CreateDataArray(int silotype, void *data, int numvals);
-
-
-// the maximum number of nodelists any given single node can be in
-static const int maxCoincidentNodelists = 12;
 
 // ****************************************************************************
 //  Class: avtSiloFileFormat
@@ -264,6 +261,13 @@ static const int maxCoincidentNodelists = 12;
 //
 //    Mark C. Miller, Wed Jul 21 12:18:17 PDT 2010
 //    Added logic to ignore force single behavior for older versions of Silo.
+//
+//    Mark C. Miller, Thu Apr 12 23:06:24 PDT 2012
+//    Changed maxAnnotIntLists to numAnnotIntLists.
+//
+//    Brad Whitlock, Sat Apr 21 23:35:34 PDT 2012
+//    Change to forceSingle so it's easier to understand.
+//
 // ****************************************************************************
 
 avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
@@ -273,9 +277,9 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     //
     // Initialize class variables BEFORE processing read options 
     //
-    dontForceSingle = 0;
+    forceSingle = 0;
     numNodeLists = 0;
-    maxAnnotIntLists = 0;
+    numAnnotIntLists = 0;
     tocIndex = 0; 
     ignoreSpatialExtentsAAN = Auto;
     ignoreDataExtentsAAN = Auto;
@@ -303,7 +307,7 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     for (int i = 0; rdatts != 0 && i < rdatts->GetNumberOfOptions(); ++i)
     {
         if (rdatts->GetName(i) == SILO_RDOPT_FORCE_SINGLE)
-            dontForceSingle = rdatts->GetBool(SILO_RDOPT_FORCE_SINGLE) ? 0 : 1;
+            forceSingle = rdatts->GetBool(SILO_RDOPT_FORCE_SINGLE) ? 1 : 0;
         else if (rdatts->GetName(i) == SILO_RDOPT_SEARCH_ANNOTINT)
             searchForAnnotInt = rdatts->GetBool(SILO_RDOPT_SEARCH_ANNOTINT);
         else if (rdatts->GetName(i) == SILO_RDOPT_IGNORE_SEXTS)
@@ -330,20 +334,20 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
 #endif
     if (ignoreForceSingle)
     {
-        if (!dontForceSingle)
+        if (forceSingle)
         {
-            debug1 << "Ignoring Don't Force Single setting of 0 (false) which would have...\n"
+            debug1 << "Ignoring Force Single setting of 1 which would have...\n"
                    << "...otherwise caused the Silo library to try to force all datatype'd\n"
                    << "...arrays to float because the old version of the Silo library being\n"
                    << "...used here does NOT correctly honor the force single setting." << endl;
         }
-        dontForceSingle = 1;
+        forceSingle = 0;
     }
 
     //
     // Set any necessary Silo library behavior 
     //
-    DBForceSingle(!dontForceSingle);
+    DBForceSingle(forceSingle);
     
     //
     // If there is ever a problem with Silo, we want it to throw an
@@ -1004,6 +1008,8 @@ avtSiloFileFormat::CloseFile(int f)
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
 //
+//    Mark C. Miller, Thu Apr 12 23:07:11 PDT 2012
+//    Removed pascalsTriangleMap class member.
 // ****************************************************************************
 
 void
@@ -1029,7 +1035,6 @@ avtSiloFileFormat::FreeUpResources(void)
     multispecCache.Clear();
 
     nlBlockToWindowsMap.clear();
-    pascalsTriangleMap.clear();
 
     map<string, map<int, vector<int>* > >::iterator it1;
     map<int, vector<int>* >::iterator it2;
@@ -1904,7 +1909,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     // So far, we've coded only for MRG trees representing AMR hierarchies
                     HandleMrgtreeForMultimesh(dbfile, mm, multimesh_names[i],
                         &mt, &num_amr_groups, &amr_group_ids, &amr_block_names,
-                        dontForceSingle);
+                        forceSingle);
                 }
 #endif
 #endif
@@ -4272,6 +4277,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 //    Cyrus Harrison, Thu Sep 23 11:02:22 PDT 2010
 //    Added missing broadcast for 'haveAMRGroupInfo'.
 //
+//    Mark C. Miller, Thu Apr 12 23:07:36 PDT 2012
+//    Removed calls to build NChooseRMaps supporting nodelists.
 // ****************************************************************************
 void
 avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
@@ -4325,11 +4332,6 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
     BroadcastInt(numNodeLists);
     if (numNodeLists > 0)
     {
-        //
-        // Build the NChooseR map
-        //
-        avtScalarMetaData::BuildEnumNChooseRMap(numNodeLists, maxCoincidentNodelists, pascalsTriangleMap);
-
         int nlMapSize = nlBlockToWindowsMap.size();
         BroadcastInt(nlMapSize);
         if (rank == 0)
@@ -4352,9 +4354,7 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
             }
         }
     }
-    BroadcastInt(maxAnnotIntLists);
-    if (maxAnnotIntLists > 0)
-        avtScalarMetaData::BuildEnumNChooseRMap(maxAnnotIntLists, maxCoincidentNodelists, pascalsTriangleMap);
+    BroadcastInt(numAnnotIntLists);
 
     //
     // Broadcast Group Info
@@ -5296,6 +5296,10 @@ avtSiloFileFormat::FindMultiMeshAdjConnectivity(DBfile *dbfile, int &ndomains,
 //    Hank Childs, Wed Jun  1 10:41:59 PDT 2005
 //    The block numbers is gmap[0], not gmap[1].  gmap[1] is the domain number.
 //
+//    Cyrus Harrison, Tue Mar 13 11:39:15 PDT 2012
+//    At Gary Kerbel's request, skip periodic boundary boundaries identified
+//    by the 12th entry of the neighbor array.
+//
 // ****************************************************************************
 
 void
@@ -5327,7 +5331,7 @@ avtSiloFileFormat::FindGmapConnectivity(DBfile *dbfile, int &ndomains,
                  groupIds[i] = 0;
              }
              needGroupInfo = false;
-         }   
+         }
          else
          {
              needGroupInfo = false;  // What else to do?!?
@@ -5375,25 +5379,54 @@ avtSiloFileFormat::FindGmapConnectivity(DBfile *dbfile, int &ndomains,
     {
         if (lneighbors > 0)
         {
+            int nactual_neighbors = 0;
             neighbors = new int[lneighbors];
             int index = 0;
             for (int j = 0 ; j < ndomains ; j++)
             {
-                for (int k = 0 ; k < nneighbors[j] ; k++)
+                int n_all_neighbors = nneighbors[j];
+                for (int k = 0 ; k < n_all_neighbors; k++)
                 {
                     char neighborname[256];
                     sprintf(neighborname, "gmap%d/neighbor%d",j,k);
                     int neighbor_info[512];  // We only want 11, but it can
-                                             // be as big as 400. 
+                                             // be as big as 400.
+                    // clear the 12th entry
+                    // for some codes, non-zero @ neighbor_info[11]
+                    // indicates a periodic boundary condition that we should
+                    // not include as a neighbor
+                    neighbor_info[11] = 0;
                     DBReadVar(dbfile, neighborname, neighbor_info);
-                    for (int l = 0 ; l < 11 ; l++)
+                    if(neighbor_info[11] == 0)
                     {
-                        neighbors[index+l] = neighbor_info[l];
+                        memcpy(&neighbors[index],neighbor_info,11*sizeof(int));
+                        index += 11;
+                        nactual_neighbors+=1;
                     }
-                    index += 11;
+                    else
+                    {
+                        // remove periodic boundary conditions
+                        // from neighbor count
+                        nneighbors[j] += -1;
+                    }
                 }
             }
+            //
+            // this can happen if we excluded periodic boundaries
+            //
+            // we already alloced neighbors, simply adjust lneighbors
+            // at this point reclaming the small amount of extra memory
+            // for these neighbors, seems like too much work.
+            if(nactual_neighbors *11 != lneighbors)
+            {
+                int *nei_tmp = new int[nactual_neighbors *11];
+                memcpy(nei_tmp,neighbors,nactual_neighbors *11*sizeof(int));
+                delete [] neighbors;
+                neighbors = nei_tmp;
+                lneighbors = nactual_neighbors *11;
+            }
         }
+
     }
 }
 
@@ -5691,53 +5724,6 @@ avtSiloFileFormat::AddCSGMultimesh(const char *const dirname,
 }
 
 // ****************************************************************************
-//  Function: UpdateNodelistEntry
-//
-//  Purpose: Re-factorization of code used to paint a single value into a
-//           nodelist 'variable' 
-//
-//  Programmer: Mark C. Miller 
-//  Creation:   December 19, 2008 
-//
-// ****************************************************************************
-static void
-UpdateNodelistEntry(float *ptr, int nodeId, int val, float uval,
-    int numLists, const vector<vector<int> > &pascalsTriangleMap)
-{
-#ifdef USE_BIT_MASK_FOR_NODELIST_ENUMS
-    if (ptr[nodeId] == uval)
-    {
-        // If the value at this node is uninitialized, set it to val
-        ptr[nodeId] = 1<<val;
-    }
-    else
-    {
-        int curval = int(ptr[nodeId]);
-        curval |= (1<<val);
-        ptr[nodeId] = curval;
-    }
-#else
-    if (ptr[nodeId] == uval)
-    {
-        // If the value at this node is uninitialized, set it to val
-        ptr[nodeId] = (float) val;
-    }
-    else
-    {
-        // Otherwise, we've already got a value at this node.
-        // We need to obtain a new value that represents all
-        // the sets this node is already in plus the new one
-        // we're adding. Use avtScalarMetaData helper method
-        // to do it.
-        double curval = ptr[nodeId];
-        avtScalarMetaData::UpdateValByInsertingDigit(&curval,
-            numLists, maxCoincidentNodelists, pascalsTriangleMap, val);
-        ptr[nodeId] = float(curval);
-    }
-#endif
-}
-
-// ****************************************************************************
 //  Method: avtSiloFileFormat::GetNodelistsVar
 //
 //  Purpose: Return scalar variable representing (enumerated scalar) nodelists 
@@ -5762,6 +5748,10 @@ UpdateNodelistEntry(float *ptr, int nodeId, int val, float uval,
 //    Mark C. Miller, Tue Mar  3 19:33:23 PST 2009
 //    Added logic to get blockNum from groupInfo before attempting to use
 //    special vtk array.
+// 
+//    Mark C. Miller, Thu Apr 12 23:08:49 PDT 2012
+//    Replaced vtkFloatArray with vtkBitArray and support of arbitrarily
+//    large numbers of nodelists
 // ****************************************************************************
 
 vtkDataArray *
@@ -5852,13 +5842,13 @@ avtSiloFileFormat::GetNodelistsVar(int domain)
     group_max_idx[2] = base_index[2] + dims[2] - 1;
 
     //
-    // Initialize the return variable array with exlude value
+    // Initialize the return variable array
     //
-    nlvar = vtkFloatArray::New();
+    const int bpuc = sizeof(unsigned char)*8;
+    nlvar = vtkBitArray::New();
+    nlvar->SetNumberOfComponents(((numNodeLists+bpuc-1)/bpuc)*bpuc);
     nlvar->SetNumberOfTuples(dims[0]*dims[1]*(dims[2]?dims[2]:1));
-    float *ptr = (float *) nlvar->GetVoidPointer(0);
-    for (i = 0; i < dims[0]*dims[1]*(dims[2]?dims[2]:1); i++)
-        ptr[i] = -1.0; // always exclude value 
+    memset(nlvar->GetVoidPointer(0), 0, nlvar->GetSize()/bpuc);
 
     //
     // Iterate over all nodesets for this block, finding those that have
@@ -5908,8 +5898,7 @@ avtSiloFileFormat::GetNodelistsVar(int domain)
             for (int yi = isec[2]; yi <= isec[3]; yi++)
             {
                 for (int xi = isec[0]; xi <= isec[1]; xi++)
-                    UpdateNodelistEntry(ptr, zi*nxy + yi*dims[0] + xi,
-                        val, -1.0, numNodeLists, pascalsTriangleMap);
+                    nlvar->SetComponent(zi*nxy + yi*dims[0] + xi, val, 1);
             }
         }
     }
@@ -6003,13 +5992,16 @@ compare_ev_pair(const void *a, const void *b)
 //    Mark C. Miller, Fri Mar 20 11:10:04 PDT 2009
 //    Added comment regarding effect of compare_node_ids on negative valued
 //    node ids (-1) of 3-node faces.
+//
+//    Mark C. Miller, Thu Apr 12 23:10:07 PDT 2012
+//    Replaced float* arg with vtiBitArray and changed calls to manipulate the
+//    float* array with calls to SetComponents of the vtkBitArray. This enables
+//    the code to support an arbitrary number of nodelists.
 // ****************************************************************************
 
 static void
-PaintNodesForAnnotIntFacelist(float *ptr,
-    const vector<ev_pair_t> &elemidv, DBucdmesh *um,
-    int maxAnnotIntLists,
-    const vector<vector<int> > &pascalsTriangleMap)
+PaintNodesForAnnotIntFacelist(vtkBitArray *nlvar,
+    const vector<ev_pair_t> &elemidv, DBucdmesh *um)
 {
     DBzonelist *zl = um->zones;
 
@@ -6113,10 +6105,8 @@ PaintNodesForAnnotIntFacelist(float *ptr,
                         //
                         if (edgeIdx == elemidv[elemIdx].id)
                         {
-                            UpdateNodelistEntry(ptr, edge[i][0], elemidv[elemIdx].val,
-                                -1.0, maxAnnotIntLists, pascalsTriangleMap);
-                            UpdateNodelistEntry(ptr, edge[i][1], elemidv[elemIdx].val,
-                                -1.0, maxAnnotIntLists, pascalsTriangleMap);
+                            nlvar->SetComponent(edge[i][0], elemidv[elemIdx].val, 1);
+                            nlvar->SetComponent(edge[i][1], elemidv[elemIdx].val, 1);
                             elemIdx++;
 
                             //
@@ -6325,18 +6315,14 @@ PaintNodesForAnnotIntFacelist(float *ptr,
                         //
                         if (faceIdx == elemidv[elemIdx].id)
                         {
-                            UpdateNodelistEntry(ptr, face[i][0], elemidv[elemIdx].val,
-                                -1.0, maxAnnotIntLists, pascalsTriangleMap);
-                            UpdateNodelistEntry(ptr, face[i][1], elemidv[elemIdx].val,
-                                -1.0, maxAnnotIntLists, pascalsTriangleMap);
-                            UpdateNodelistEntry(ptr, face[i][2], elemidv[elemIdx].val,
-                                -1.0, maxAnnotIntLists, pascalsTriangleMap);
+                            nlvar->SetComponent(face[i][0], elemidv[elemIdx].val, 1);
+                            nlvar->SetComponent(face[i][1], elemidv[elemIdx].val, 1);
+                            nlvar->SetComponent(face[i][2], elemidv[elemIdx].val, 1);
                             // The compare_node_ids comparison method used to sort the nodes
                             // of the face in the call to qsort, above, is designed to cause
                             // all -1 valued nodes to wind up at the end of the sorted list.
                             if (face[i][3] != -1)
-                                UpdateNodelistEntry(ptr, face[i][3], elemidv[elemIdx].val,
-                                    -1.0, maxAnnotIntLists, pascalsTriangleMap);
+                                nlvar->SetComponent(face[i][3], elemidv[elemIdx].val, 1);
                             elemIdx++;
 
                             //
@@ -6373,13 +6359,15 @@ PaintNodesForAnnotIntFacelist(float *ptr,
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
 //
+//    Mark C. Miller, Thu Apr 12 23:12:08 PDT 2012
+//    Replaced vtkFloatArray with vtkBitArray to support arbitrary number
+//    of nodelists.
 // ****************************************************************************
 
 vtkDataArray *
 avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
 {
     int i;
-    vtkDataArray *nlvar = 0;
     string meshName = metadata->MeshForVar(listsname);
 
     //
@@ -6399,14 +6387,14 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
     debug5 << "Generating " << listsname << " variable for domain " << domain << endl;
 
     //
-    // Initialize the return variable array with exlude value
+    // Initialize the return variable array
     //
+    const int bpuc = sizeof(unsigned char)*8;
     int npts = ds->GetNumberOfPoints();
-    nlvar = vtkFloatArray::New();
+    vtkBitArray *nlvar = vtkBitArray::New();
+    nlvar->SetNumberOfComponents(((numAnnotIntLists+bpuc-1)/bpuc)*bpuc);
     nlvar->SetNumberOfTuples(npts);
-    float *ptr = (float *) nlvar->GetVoidPointer(0);
-    for (i = 0; i < npts; i++)
-        ptr[i] = -1.0; // always exclude value 
+    memset(nlvar->GetVoidPointer(0), 0, nlvar->GetSize()/bpuc);
 
     //
     // Try to get the ANNOTATION_INT object. In theory, this could fail on a
@@ -6475,8 +6463,7 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
     if (listsname == "AnnotInt_Nodelists")
     {
         for (i = 0; i < elemidv.size(); i++)
-            UpdateNodelistEntry(ptr, elemidv[i].id, elemidv[i].val,
-                -1.0, maxAnnotIntLists, pascalsTriangleMap);
+            nlvar->SetComponent(elemidv[i].id, elemidv[i].val, 1);
     }
     else
     {
@@ -6519,8 +6506,7 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
         // method we're calling is written to assume that.
         //
         qsort(&elemidv[0], elemidv.size(), sizeof(ev_pair_t), compare_ev_pair);
-        PaintNodesForAnnotIntFacelist(ptr, elemidv, um, maxAnnotIntLists,
-            pascalsTriangleMap);
+        PaintNodesForAnnotIntFacelist(nlvar, elemidv, um);
 
         DBFreeUcdmesh(um);
     }
@@ -7683,7 +7669,7 @@ avtSiloFileFormat::GetMesh(int domain, const char *m)
 
             BuildDomainAuxiliaryInfoForAMRMeshes(dbfile, mm, m, timestep,
                                                  true_type, cache,
-                                                 dontForceSingle);
+                                                 forceSingle);
         }
     }
     else if (type == DB_POINTMESH)
@@ -13689,7 +13675,7 @@ avtSiloFileFormat::CalcSpecies(DBfile *dbfile, const char *specname)
 
     DBForceSingle(1);
     DBmatspecies *silospec = DBGetMatspecies(dbfile, specname);
-    DBForceSingle(!dontForceSingle);
+    DBForceSingle(forceSingle);
 
     if (silospec == NULL)
     {
@@ -15122,6 +15108,9 @@ AddAle3drlxstatEnumerationInfo(avtScalarMetaData *smd)
 //    As per Cyrus' recommendation, forced it to work only if mesh name
 //    is specifically 'hydro_mesh' but left all other logic (which supports
 //    perhaps multiple meshes) in place.
+//
+//    Mark C. Miller, Thu Apr 12 23:14:21 PDT 2012
+//    Replaced use of NChooseR enumeration mode with ByBitMap.
 // ****************************************************************************
 void
 avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
@@ -15140,15 +15129,6 @@ avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *
     // meshes.
     avtScalarMetaData *smd = new avtScalarMetaData("Nodelists",
                                      meshname, AVT_NODECENT);
-
-#ifdef USE_BIT_MASK_FOR_NODELIST_ENUMS
-    smd->SetEnumerationType(avtScalarMetaData::ByBitMask);
-#else
-    smd->SetEnumerationType(avtScalarMetaData::ByNChooseR);
-    smd->SetEnumNChooseRN(numNodeLists);
-    smd->SetEnumNChooseRMaxR(maxCoincidentNodelists);
-#endif
-    smd->hideFromGUI = true;
 
     int i;
     nlBlockToWindowsMap.clear();
@@ -15189,15 +15169,11 @@ avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *
         }
     }
 
-    // record the always exclude value as blocknum=-1
-    smd->SetEnumAlwaysExcludeValue(-1.0);
+    smd->SetEnumerationType(avtScalarMetaData::ByBitMask);
     smd->SetEnumPartialCellMode(avtScalarMetaData::Dissect);
-    md->Add(smd);
+    smd->hideFromGUI = true;
 
-    //
-    // Build the pascal triangle map for updating nodelist variable values
-    //
-    avtScalarMetaData::BuildEnumNChooseRMap(numNodeLists, maxCoincidentNodelists, pascalsTriangleMap);
+    md->Add(smd);
 }
 
 // ****************************************************************************
@@ -15232,10 +15208,12 @@ avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
 //
+//    Mark C. Miller, Thu Apr 12 23:15:08 PDT 2012
+//    Replaced NChooseR enumeration mode with ByBitMap
 // ****************************************************************************
 void
-avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
-    string meshname, avtSiloMultiMeshCacheEntry *obj)
+avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile,
+    avtDatabaseMetaData *md, string meshname, avtSiloMultiMeshCacheEntry *obj)
 {
     //
     // This is expensive as it will wind up iterating over all subfiles.
@@ -15322,32 +15300,19 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
         }
 
         if (pass == 0)
-            maxAnnotIntLists = smd->enumNames.size();
+            numAnnotIntLists = smd->enumNames.size();
         else
         {
-            if (smd->enumNames.size() > maxAnnotIntLists)
-                maxAnnotIntLists = smd->enumNames.size();
+            if (smd->enumNames.size() > numAnnotIntLists)
+                numAnnotIntLists = smd->enumNames.size();
         }
 
-#ifdef USE_BIT_MASK_FOR_NODELIST_ENUMS
         smd->SetEnumerationType(avtScalarMetaData::ByBitMask);
-#else
-        smd->SetEnumerationType(avtScalarMetaData::ByNChooseR);
-        smd->SetEnumNChooseRN(maxAnnotIntLists);
-        smd->SetEnumNChooseRMaxR(maxCoincidentNodelists);
-#endif
-        smd->hideFromGUI = true;
-        
-        // record the always exclude value as -1
-        smd->SetEnumAlwaysExcludeValue(-1.0);
         smd->SetEnumPartialCellMode(avtScalarMetaData::Dissect);
+        smd->hideFromGUI = true;
+
         md->Add(smd);
     }
-
-    //
-    // Build the pascal triangle map for updating nodelist variable values
-    //
-    avtScalarMetaData::BuildEnumNChooseRMap(maxAnnotIntLists, maxCoincidentNodelists, pascalsTriangleMap);
 }
 
 // ****************************************************************************
@@ -15387,7 +15352,7 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
 #ifdef SILO_VERSION_GE 
 #if SILO_VERSION_GE(4,6,3)
 static DBgroupelmap * 
-GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode, int dontForceSingle)
+GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode, int forceSingle)
 {
     int i,k,q,pass;
     DBgroupelmap *retval = 0;
@@ -15496,7 +15461,7 @@ GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode, int dontForceSingle
         }
     }
 
-    DBForceSingle(!dontForceSingle);
+    DBForceSingle(!forceSingle);
     return retval;
 }
 #endif
@@ -15521,13 +15486,13 @@ GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode, int dontForceSingle
 //    Fix macro compilation problem with old versions of Silo.
 //
 //    Mark C. Miller, Mon Nov  9 10:43:05 PST 2009
-//    Added dontForceSingle arg.
+//    Added forceSingle arg.
 // ****************************************************************************
 
 static void
 HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh_name,
     avtMeshType *mt, int *num_groups, vector<int> *group_ids, vector<string> *block_names,
-    int dontForceSingle)
+    int forceSingle)
 {
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
@@ -15583,7 +15548,7 @@ HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh
     //
     // Get level grouping information from the levels subtree
     //
-    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode, dontForceSingle);
+    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode, forceSingle);
     *num_groups = lvlgm->num_segments;
     group_ids->resize(mm->nblocks,-1);
     for (i = 0; i < lvlgm->num_segments; i++)
@@ -15742,7 +15707,7 @@ HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh
 static void
 BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     const char *meshName, int timestate, int db_mesh_type,
-    avtVariableCache *cache, int dontForceSingle)
+    avtVariableCache *cache, int forceSingle)
 {
 #ifdef MDSERVER
 
@@ -15848,7 +15813,7 @@ BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     //
     // Get level grouping information from tree
     //
-    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode, dontForceSingle);
+    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode, forceSingle);
     num_levels = lvlgm->num_segments;
     debug5 << "num_levels = " << num_levels << endl;
     vector<int> levelId;
@@ -15880,7 +15845,7 @@ BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     //
     // Get Parent/Child maps
     //
-    DBgroupelmap *chldgm = GetCondensedGroupelMap(dbfile, childsNode, dontForceSingle);
+    DBgroupelmap *chldgm = GetCondensedGroupelMap(dbfile, childsNode, forceSingle);
 
     //
     // Read the ratios variable (on the levels) and the parent/child
@@ -15889,7 +15854,7 @@ BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     DBForceSingle(0);
     DBmrgvar *ratvar = DBGetMrgvar(dbfile, ratioVarName.c_str());
     DBmrgvar *ijkvar = DBGetMrgvar(dbfile, ijkExtsVarName.c_str());
-    DBForceSingle(!dontForceSingle);
+    DBForceSingle(forceSingle);
 
     //
     // The number of patches can be inferred from the size of the child groupel map.

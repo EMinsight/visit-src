@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -188,6 +188,14 @@ class IVP_API DomainType
 //   Dave Pugmire, Fri Feb 18 14:52:18 EST 2011
 //   Replaced minH with minHFactor for use when integrating upto a domain boundary.
 //
+//   Hank Childs, Tue Dec  6 16:23:47 PST 2011
+//   Add virtual methods LessThan (for sorting) and 
+//   PrepareForFinalCommunication.
+//
+//   David Camp, Wed Mar  7 10:43:07 PST 2012
+//   Added a Serialize flag to the arguments. This is to support the restore
+//   ICs code.
+//
 // ****************************************************************************
 
 class IVP_API avtIntegralCurve
@@ -202,12 +210,15 @@ class IVP_API avtIntegralCurve
 
     enum Status
     {
-        STATUS_OK       = 0,
-        STATUS_FINISHED = 1,
+        STATUS_OK         = 0,
+        STATUS_FINISHED   = 1,
+        STATUS_TERMINATED = 2,
     };
 
     enum SerializeFlags
     {
+        SERIALIZE_ALL     = -1,
+        SERIALIZE_NO_OPT  = 0,
         SERIALIZE_STEPS   = 1,
         SERIALIZE_INC_SEQ = 2,
     };
@@ -228,9 +239,10 @@ class IVP_API avtIntegralCurve
     void      CurrentLocation(avtVector &end);
 
     virtual void      Serialize(MemStream::Mode mode, MemStream &buff, 
-                                avtIVPSolver *solver);
+                                avtIVPSolver *solver, SerializeFlags serializeFlags);
 
     virtual void      PrepareForSend(void) { ; };
+    virtual void      ResetAfterSend(void) { ; };
 
     virtual bool      SameCurve(avtIntegralCurve *ic)
                                { return id == ic->id; };
@@ -244,6 +256,10 @@ class IVP_API avtIntegralCurve
     void     SetPostStepCallback(avtIntegralCurveCallback func) {postStepCallbackFunction = func; }
 
     virtual avtIntegralCurve* MergeIntegralCurveSequence(std::vector<avtIntegralCurve *> &v) = 0;
+    virtual void      PrepareForFinalCommunication(void) {;};
+
+    // This is used for sorting, particularly for parallel communication
+    virtual bool LessThan(const avtIntegralCurve *ic) const;
 
   protected:
     avtIntegralCurveCallback postStepCallbackFunction;
@@ -289,6 +305,8 @@ inline std::ostream& operator<<( std::ostream& out,
         return out << "OK";
     case avtIntegralCurve::STATUS_FINISHED:
         return out << "FINISHED";
+    case avtIntegralCurve::STATUS_TERMINATED:
+        return out << "TERMINATED";
     default:
         return out << "UNKNOWN";
     }

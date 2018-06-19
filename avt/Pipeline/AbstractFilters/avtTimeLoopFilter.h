@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,6 +95,8 @@ class PIPELINE_API avtTimeLoopFilter : virtual public avtFilter
                                             { endTime = e; };
     void                                SetStride(int s)
                                             { stride = s; };
+    int                                 GetStartTime() const {return startTime;}
+    int                                 GetEndTime() const {return endTime;}
 
   protected:
     intVector                           validTimes;
@@ -135,15 +137,15 @@ class PIPELINE_API avtTimeLoopFilter : virtual public avtFilter
     // picks can parallelize over time by only reading one domain.
     virtual bool                        OperationNeedsAllData(void) 
                                           { return true; };
+    
+    // Asks whether the data can be parallelized over time.
+    virtual bool                         DataCanBeParallelizedOverTime(void);
 
   private:
     // Asks whether it is possible to do parallelization over time.
     // This is for internal decision making.
     bool                                CanDoTimeParallelization(void);
 
-    // Asks whether the data can be parallelized over time.  Currently 
-    // unimplemented and always returns false.
-    bool                                DataCanBeParallelizedOverTime(void);
 };
 
 

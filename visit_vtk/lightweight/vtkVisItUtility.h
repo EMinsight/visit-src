@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,11 +67,15 @@ class vtkRectilinearGrid;
 //    Tom Fogal, Tue Sep 27 12:25:55 MDT 2011
 //    Add API for keeping track of static VTK objects.
 //
+//    Brad Whitlock, Wed Mar 21 12:01:11 PDT 2012
+//    I added NewPoints.
+//
 // ****************************************************************************
 
 namespace vtkVisItUtility
 {
     VISIT_VTK_LIGHT_API vtkPoints  *GetPoints(vtkDataSet *);
+    VISIT_VTK_LIGHT_API vtkPoints  *NewPoints(vtkDataSet *);
     VISIT_VTK_LIGHT_API void        GetLogicalIndices(vtkDataSet *, const bool, 
                                                 const int, int [3], 
                                                 const bool = false,

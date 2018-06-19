@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -66,11 +66,19 @@ ELSE (WIN32)
     ENDIF(APPLE)
 
     # Install Mesa headers
-    INSTALL(DIRECTORY ${MESA_INCLUDE_DIR}
-        DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/mesa
-        FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
-        DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-    )
+    IF(VISIT_MESA_SKIP_INSTALL)
+        MESSAGE(STATUS "Skipping mesa installation")
+    ELSE(VISIT_MESA_SKIP_INSTALL)
+        IF(VISIT_HEADERS_SKIP_INSTALL)
+            MESSAGE(STATUS "Skipping mesa headers installation")
+        ELSE(VISIT_HEADERS_SKIP_INSTALL)
+            INSTALL(DIRECTORY ${MESA_INCLUDE_DIR}
+                DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/mesa
+                FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
+                DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            )
+        ENDIF(VISIT_HEADERS_SKIP_INSTALL)
+    ENDIF(VISIT_MESA_SKIP_INSTALL)
 ENDIF (WIN32)
 
 IF(NOT WIN32)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -148,6 +148,8 @@
 #include <PyConstructDataBinningAttributes.h>
 #include <PyDatabaseCorrelation.h>
 #include <PyExportDBAttributes.h>
+#include <PyExpression.h>
+#include <PyExpressionList.h>
 #include <PyFileOpenOptions.h>
 #include <PyFontAttributes.h>
 #include <PyGaussianControlPoint.h>
@@ -238,7 +240,6 @@
 extern "C"
 {
     VISITMODULE_API void initvisit();
-    VISITMODULE_API void initvisit2();
     VISITMODULE_API void cli_initvisit(int, bool, int, char **, int, char **);
     VISITMODULE_API void cli_runscript(const char *);
 
@@ -605,56 +606,6 @@ VisItUnlockPythonInterpreter(PyThreadState *myThreadState)
     // release our hold on the global interpreter
     PyEval_ReleaseLock();
 }
-
-//
-// VisIt module functions that are written in Python.
-//
-static const char visit_EvalCubicSpline[] =
-"def EvalCubicSpline(t, allX, allY):\n"
-"    n = len(allY)\n"
-"    if((allX[0] > t) or (allX[n-1] < t)):\n"
-"        raise 't must be in the range between the first and last X'\n"
-"    for i in range(1, n):\n"
-"        if(allX[i] >= t):\n"
-"            break\n"
-"    i1 = max(i-2, 0)\n"
-"    i2 = max(i-1, 0)\n"
-"    i3 = i\n"
-"    i4 = min(i+1, n-1)\n"
-"    X = (allX[i1], allX[i2], allX[i3], allX[i4])\n"
-"    Y = (allY[i1], allY[i2], allY[i3], allY[i4])\n"
-"    dx = (X[2] - X[1])\n"
-"    invdx = 1. / dx\n"
-"    dy1   = (Y[2] + (Y[0] * -1.)) * (1. / (X[2] - X[0]))\n"
-"    dy2   = (Y[2] + (Y[1] * -1.)) * invdx\n"
-"    dy3   = (Y[3] + (Y[1] * -1.)) * (1. / (X[3] - X[1]))\n"
-"    ddy2  = (dy2 + (dy1 * -1)) * invdx\n"
-"    ddy3  = (dy3 + (dy2 * -1)) * invdx\n"
-"    dddy3 = (ddy3 + (ddy2 * -1)) * invdx\n"
-"    u = (t - X[1])\n"
-"    return (Y[1] + dy1*u + ddy2*u*u + dddy3*u*u*(u-dx))\n";
-
-static const char visit_EvalLinear[] =
-"def EvalLinear(t, c0, c1):\n"
-"    return ((c0*(1. - float(t))) + (c1*float(t)))\n";
-
-static const char visit_EvalQuadratic[] =
-"def EvalQuadratic(t, c0, c1, c2):\n"
-"    T = float(t)\n"
-"    T2 = T * T\n"
-"    OMT = 1. - T\n"
-"    OMT2 = OMT * OMT\n"
-"    return ((c0*OMT2) + (c1*(2.*OMT*T)) + (c2*T2))\n";
-
-static const char visit_EvalCubic[] =
-"def EvalCubic(t, c0, c1, c2, c3):\n"
-"    T = float(t)\n"
-"    T2 = T * T\n"
-"    T3 = T * T2\n"
-"    OMT = 1. - T\n"
-"    OMT2 = OMT * OMT\n"
-"    OMT3 = OMT2 * OMT\n"
-"    return ((c0*OMT3) + (c1*(3.*OMT2*T)) + (c2*(3.*OMT*T2)) + (c3*T3))\n";
 
 // ****************************************************************************
 // Function: IntReturnValue
@@ -11097,6 +11048,9 @@ visit_Query(PyObject *self, PyObject *args, PyObject *kwargs)
 //  Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
 //  Pass args to viewer via MapNode.
 //
+//  Cyrus Harrison, Fri Mar 30 13:51:24 PDT 2012
+//  Convert python query filter to use new query params infrastructure.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11123,6 +11077,9 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
 
     stringVector vars;
+    std::string  args_pickled  = "";
+    std::string  script_source = "";
+
     // if vars were passed in, add them to the variable list
     if(py_vars_tuple != NULL)
     {
@@ -11141,20 +11098,16 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
                             "PythonQuery: Failed to pickle passed 'args' value.");
             return NULL;
         }
-        char *res_str = PyString_AS_STRING(res);
-        vars.push_back(res_str);
-    }
-    else
-    {
-        // if there were no args, use blank string as a place holder.
-        vars.push_back("");
+        args_pickled = std::string(PyString_AS_STRING(res));
+        // decref b/c we created a new python string
+        Py_DECREF(res);
     }
 
     if(source_text != NULL)
     {
         debug5 << "Using passed source text as Python Query script" << endl;
-        // add the source as the last variable
-        vars.push_back(source_text);
+        // use the passed source
+        script_source = std::string(source_text);
     }
     else if(source_file != NULL)
     {
@@ -11170,16 +11123,16 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
             PyErr_SetString(VisItError, err_msg.str().c_str());
             return NULL;
         }
-        std::string py_script((std::istreambuf_iterator<char>(ifs)),
-                          std::istreambuf_iterator<char>());
-        vars.push_back(py_script);
+        script_source = std::string((std::istreambuf_iterator<char>(ifs)),
+                                     std::istreambuf_iterator<char>());
     }
 
     MUTEX_LOCK();
         MapNode params;
         params["query_name"] = std::string("Python");
-        if (!vars.empty())
-            params["vars"] = vars;
+        params["vars"]       = vars;
+        params["args"]       = args_pickled;
+        params["source"]     = script_source;
         GetViewerMethods()->Query(params);
     MUTEX_UNLOCK();
 
@@ -16406,6 +16359,9 @@ AddDefaultMethods()
 //   Brad Whitlock, Tue Dec 14 16:27:10 PST 2010
 //   Add SelectionProperties.
 //
+//   Brad Whitlock, Wed Mar  7 13:56:18 PST 2012
+//   Add Expression and ExpressionList.
+//
 // ****************************************************************************
 
 static void
@@ -16422,6 +16378,8 @@ AddExtensions()
     ADD_EXTENSION(PyColorControlPointList_GetMethodTable);
     ADD_EXTENSION(PyConstructDataBinningAttributes_GetMethodTable);
     ADD_EXTENSION(PyExportDBAttributes_GetMethodTable);
+    ADD_EXTENSION(PyExpression_GetMethodTable);
+    ADD_EXTENSION(PyExpressionList_GetMethodTable);
     ADD_EXTENSION(PyGaussianControlPoint_GetMethodTable);
     ADD_EXTENSION(PyGaussianControlPointList_GetMethodTable);
     ADD_EXTENSION(PyGlobalAttributes_GetMethodTable);
@@ -16520,6 +16478,8 @@ InitializeExtensions()
     PyAnnotationAttributes_StartUp(GetViewerState()->GetAnnotationAttributes(), 0);
     PyConstructDataBinningAttributes_StartUp(GetViewerState()->GetConstructDataBinningAttributes(), 0);
     PyExportDBAttributes_StartUp(GetViewerState()->GetExportDBAttributes(), 0);
+    PyExpression_StartUp(0, 0);
+    PyExpressionList_StartUp(GetViewerState()->GetExpressionList(), 0);
     PyGlobalAttributes_StartUp(GetViewerState()->GetGlobalAttributes(), 0);
     PyLaunchProfile_StartUp(0, 0);
     PyMachineProfile_StartUp(0, 0);
@@ -17316,11 +17276,20 @@ CreateListenerThread()
 //   Brad Whitlock, Fri Feb  1 16:51:42 PST 2008
 //   Close the callback manager.
 //
+//   Cyrus Harrison, Fri Apr  6 15:18:32 PDT 2012
+//   Avoid crash if CloseModule() is called multiple times.
+//
 // ****************************************************************************
 
 static void
 CloseModule()
 {
+    // this is called both by visit_Close & terminatevisit
+    // make sure we don't procede if we have already
+    // cleaned up.
+    if(!moduleInitialized)
+        return;
+
 #if defined(_WIN32)
     //
     // Wait for the reading thread to be done.
@@ -17593,37 +17562,6 @@ GetViewerMethods()
     return viewer->GetViewerMethods();
 }
 
-// ****************************************************************************
-// Function: initscriptfunctions
-//
-// Purpose:
-//   This function executes some Python commands that define new VisIt module
-//   functions. This allows us to include Python functions in this C++
-//   extension module.
-//
-// Notes:
-//
-// Programmer: Brad Whitlock
-// Creation:   Mon Dec 17 17:24:00 PST 2001
-//
-// Modifications:
-//   Cyrus Harrison, Wed Jan  5 16:12:43 PST 2011
-//   Run code defining helper functions using the visit module's dictionary.
-//   This will ensure the functions import correctly.
-//
-//   Cyrus Harrison, Mon Feb  7 15:34:17 PST 2011
-//   Add missing global dict.
-//
-// ****************************************************************************
-
-static void
-initscriptfunctions(PyObject *gdict,PyObject *mdict)
-{
-    PyRun_String((char*)(visit_EvalLinear),Py_file_input,gdict,mdict);
-    PyRun_String((char*)(visit_EvalQuadratic),Py_file_input,gdict,mdict);
-    PyRun_String((char*)(visit_EvalCubic),Py_file_input,gdict,mdict);
-    PyRun_String((char*)(visit_EvalCubicSpline),Py_file_input,gdict,mdict);
-}
 
 // ****************************************************************************
 // Function: initvisit
@@ -17666,12 +17604,18 @@ initscriptfunctions(PyObject *gdict,PyObject *mdict)
 //
 // ****************************************************************************
 
+void initvisitmodule()
+{
+    initvisit();
+}
+
 void
 initvisit()
 {
     int initCode = 0;
     PyObject *main_module = NULL;
     PyObject *gdict = NULL;
+    PyEval_InitThreads();
     // save a pointer to the main PyThreadState object
     mainThreadState = PyThreadState_Get();
 
@@ -17704,110 +17648,6 @@ initvisit()
     VisItInterrupt = PyErr_NewException((char*)"visit.VisItInterrupt", NULL, NULL);
     PyDict_SetItemString(d, "VisItInterrupt", VisItInterrupt);
 
-    // Define builtin visit functions that are written in python.
-    initscriptfunctions(gdict,d);
-}
-
-// ****************************************************************************
-// Method: initvisit2
-//
-// Purpose:
-//   Same as initvisit except that if the "visit" module is not already
-//   available then we add functions to the global namespace instead of
-//   to the "visit" module.
-//
-// Note:       This method is only called from the "front end" visit module
-//             that we use from a standard Python interpreter. It differs
-//             from initvisit because we may be doing "import visit" or
-//             "from visit import *" in the standard Python interpreter and
-//             since we're doing something a little funny (clobbering the
-//             front end interface's methods with these) we need to know
-//             which namespace to use. If the front end VisIt module was
-//             imported using "import visit" then there will be a module
-//             entry called "visit" in the global symbols and we want to
-//             append functions to it. Otherwise, just append the functions
-//             to the global namespace.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Dec 13 11:37:05 PDT 2006
-//
-// Modifications:
-//   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
-//   Assyme PyErr_NewException won't modify its string argument and cast
-//   literals to char*'s before passing in.
-//
-//   Cyrus Harrison, Thu Jan  6 09:59:30 PST 2011
-//   Pass proper dictionary to initscriptfunctions.
-//
-//   Cyrus Harrison, Mon Feb  7 15:34:17 PST 2011
-//   Add missing global dict.
-//
-// ****************************************************************************
-
-void
-initvisit2()
-{
-    int initCode = 0;
-    PyObject *d = NULL;
-    PyObject *main_module = NULL;
-    PyObject *gdict = NULL;
-
-    // save a pointer to the main PyThreadState object
-    mainThreadState = PyThreadState_Get();
-
-    //
-    // Initialize the module, but only do it one time.
-    //
-    if(!moduleInitialized)
-    {
-        MUTEX_CREATE();
-#ifndef POLLING_SYNCHRONIZE
-        SYNC_CREATE();
-#endif
-        THREAD_INIT();
-        initCode = InitializeModule();
-    }
-
-    main_module = PyImport_AddModule("__main__"); //borrowed
-    gdict = PyModule_GetDict(main_module); //borrowed
-
-    d = PyEval_GetLocals();
-
-    if(PyDict_GetItemString(d, "visit") != NULL)
-    {
-        // Add the VisIt module to Python. Note that we're passing the address
-        // of the first element of a vector.
-        visitModule = Py_InitModule("visit", &VisItMethods[0]);
-
-        // Add the Python error message.
-        d = PyModule_GetDict(visitModule);
-    }
-    else
-    {
-        // Add the VisIt module's functions to the global namespace.
-        localNameSpace = true;
-        d = PyEval_GetLocals();
-        for(int i = 0; i < VisItMethods.size(); ++i)
-        {
-            if(VisItMethods[i].ml_name != NULL)
-            {
-                PyObject *v = PyCFunction_New(&VisItMethods[i], Py_None);
-                if(v == NULL)
-                    continue;
-                if(PyDict_SetItemString(d, VisItMethods[i].ml_name, v) != 0)
-                    continue;
-                Py_DECREF(v);
-            }
-        }
-    }
-
-    VisItError = PyErr_NewException((char*)"visit.VisItException", NULL, NULL);
-    PyDict_SetItemString(d, "VisItException", VisItError);
-    VisItInterrupt = PyErr_NewException((char*)"visit.VisItInterrupt", NULL, NULL);
-    PyDict_SetItemString(d, "VisItInterrupt", VisItInterrupt);
-
-    // Define builtin visit functions that are written in python.
-    initscriptfunctions(gdict,d);
 }
 
 // ****************************************************************************

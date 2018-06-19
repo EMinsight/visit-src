@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,8 +56,10 @@
 #include <avtCallback.h>
 #include <avtDatabaseMetaData.h>
 #include <avtExpressionEvaluatorFilter.h>
+#include <avtIntervalTree.h>
 #include <avtMetaData.h>
 #include <avtOriginatingSource.h>
+#include <avtSILRestrictionTraverser.h>
 
 #include <DebugStream.h>
 #include <ExpressionException.h>
@@ -95,6 +97,7 @@ avtCMFEExpression::avtCMFEExpression()
     isNodal = false;
     onDemandProcessing = false;
     calculateMeshExtents = false;
+    initialSILHasData = false;
 }
 
 
@@ -369,6 +372,10 @@ avtCMFEExpression::ProcessArguments(ArgsExpr *args,
 //    Hank Childs, Thu Aug 26 23:36:03 PDT 2010
 //    Pass along Booleans for which extents we should calculate.
 //
+//    Hank Childs/David Camp, Tue Mar 13 06:56:31 PDT 2012
+//    Add support for only reading necessary domains to evaluate CMFE.
+//    (specifically for pos_cmfe + PICS/parallelize over seeds)
+//
 // ****************************************************************************
 
 void
@@ -420,13 +427,50 @@ avtCMFEExpression::Execute()
         ds = new avtDataRequest(ds, firstDBSIL);
         spec = new avtContract(spec, ds);
     }
+    // This optimization is only being applied when doing onDemandProcessing.
+    // If we are not doing onDemandProcessing, then we would have to unify
+    // the "list" data member over all processors.
+    else if (onDemandProcessing && OnlyRequiresSpatiallyOverlappingData())
+    {
+        avtIntervalTree *it = dob->GetOriginatingSource()->GetMetaData()
+                                          ->GetSpatialExtents(actualTimestep);
+        if (it != NULL)
+        {
+            int nleaves;
+            vtkDataSet **leaves = GetInputDataTree()->GetAllLeaves(nleaves);
+
+            std::vector<int> list;
+            std::vector<int> leaveslist;
+            for (int i = 0 ; i < nleaves ; i++)
+            {
+                double bounds[6];
+                leaves[i]->GetBounds(bounds);
+                double mins[3] = { bounds[0], bounds[2], bounds[4] };
+                double maxs[3] = { bounds[1], bounds[3], bounds[5] };
+
+                it->GetElementsListFromRange(mins, maxs, leaveslist);
+                list.insert( list.end(), leaveslist.begin(), leaveslist.end() );
+            }
+            ds->GetRestriction()->RestrictDomains(list);
+            delete [] leaves;
+        }
+    }
+    else if (! initialSILHasData)
+    {
+        // When doing on demand processing, we do an execution where
+        // the SIL has no data, to prep the pipeline.  In that case, 
+        // we want to turn off all data in this pipeline execution 
+        // ... else we will read *all* the domains (bad).
+        ds->GetRestriction()->TurnOffAll();
+    }
+
     spec->GetDataRequest()->SetTimestep(actualTimestep);
     spec->GetDataRequest()->SetDesiredGhostDataType(ghostNeeds);
     spec->SetOnDemandStreaming(onDemandProcessing);
     spec->SetCalculateMeshExtents(calculateMeshExtents);
     spec->SetCalculateVariableExtentsList(varExtentsList);
     spec->SetReplicateSingleDomainOnAllProcessors(replicateSingleDomainOnAllProcessors);
-    for (int i = 0 ; i < dataSels.size() ; i++)
+    for (size_t i = 0 ; i < dataSels.size() ; i++)
         spec->GetDataRequest()->AddDataSelectionRefPtr(dataSels[i]);
 
     avtExpressionEvaluatorFilter *eef = new avtExpressionEvaluatorFilter;
@@ -562,12 +606,12 @@ avtCMFEExpression::GetTimestate(ref_ptr<avtDatabase> dbp)
             int c = (isDelta ? md->GetCycles()[firstDBTime] + cycle : cycle);
             int closest      = 0;
             int closest_dist = abs(c-md->GetCycles()[0]);
-            for (int i = 0 ; i < md->GetCycles().size() ; i++)
+            for (size_t i = 0 ; i < md->GetCycles().size() ; i++)
             {
                 int dist = abs(c-md->GetCycles()[i]);
                 if (dist < closest_dist)
                 {
-                    closest      = i;
+                    closest      = static_cast<int>(i);
                     closest_dist = dist;
                 }
             }
@@ -586,15 +630,15 @@ avtCMFEExpression::GetTimestate(ref_ptr<avtDatabase> dbp)
         }
         else
         {
-            float c = (isDelta ? md->GetTimes()[firstDBTime] + dtime : dtime);
-            int   closest      = 0;
-            float closest_dist = fabs(c-md->GetTimes()[0]);
-            for (int i = 0 ; i < md->GetTimes().size() ; i++)
+            double c = (isDelta ? md->GetTimes()[firstDBTime] + dtime : dtime);
+            int    closest      = 0;
+            double closest_dist = fabs(c-md->GetTimes()[0]);
+            for (size_t i = 0 ; i < md->GetTimes().size() ; i++)
             {
-                float dist = fabs(c-md->GetTimes()[i]);
+                double dist = fabs(c-md->GetTimes()[i]);
                 if (dist < closest_dist)
                 {
-                    closest      = i;
+                    closest      = static_cast<int>(i);
                     closest_dist = dist;
                 }
             }
@@ -661,6 +705,10 @@ avtCMFEExpression::GetTimestate(ref_ptr<avtDatabase> dbp)
 //    Hank Childs, Thu Aug 26 23:36:03 PDT 2010
 //    Store what extents should be calculated.
 //
+//    Hank Childs, Tue Mar 13 06:56:31 PDT 2012
+//    Check whether any data is being requested.  (This is needed to get
+//    bookkeeping together when doing on demand processing.)
+//
 // ****************************************************************************
 
 void
@@ -670,6 +718,11 @@ avtCMFEExpression::ExamineContract(avtContract_p spec)
 
     firstDBTime = spec->GetDataRequest()->GetTimestep();
     firstDBSIL  = spec->GetDataRequest()->GetRestriction();
+
+    int ts = firstDBSIL->GetTopSet();
+    avtSILRestrictionTraverser trav(firstDBSIL);
+    initialSILHasData = trav.UsesData(ts);
+
     ghostNeeds  = spec->GetDataRequest()->GetDesiredGhostDataType();
     const std::vector<avtDataSelection_p> ds = spec->GetDataRequest()->GetAllDataSelections();
     int numSels = ds.size();

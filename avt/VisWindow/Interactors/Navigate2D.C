@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -237,6 +237,9 @@ Navigate2D::EndMiddleButtonAction()
 //    Gunther H. Weber, Fri Sep 28 13:48:04 PDT 2007
 //    Added missing StartZoom() / EndZoom()
 //
+//    Brad Whitlock, Fri Mar  2 14:19:45 PST 2012
+//    I added a call to issue the view callback.
+//
 // ****************************************************************************
 
 void
@@ -245,6 +248,7 @@ Navigate2D::OnMouseWheelForward()
     StartZoom();
     ZoomCamera2D(MotionFactor * 0.2 * this->MouseWheelMotionFactor);
     EndZoom();
+    IssueViewCallback(true);
 }
 
 // ****************************************************************************
@@ -262,6 +266,9 @@ Navigate2D::OnMouseWheelForward()
 //    Gunther H. Weber, Fri Sep 28 13:48:04 PDT 2007
 //    Added missing StartZoom() / EndZoom()
 //
+//    Brad Whitlock, Fri Mar  2 14:19:45 PST 2012
+//    I added a call to issue the view callback.
+//
 // ****************************************************************************
 
 void
@@ -270,6 +277,7 @@ Navigate2D::OnMouseWheelBackward()
     StartZoom();
     ZoomCamera2D(MotionFactor * -0.2 * this->MouseWheelMotionFactor);
     EndZoom();
+    IssueViewCallback(true);
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -180,7 +180,7 @@ class avtH5PartFileFormat : public avtMTSDFileFormat
                           *ConstructIdentifiersFromDataRangeSelection(
                                   std::vector<avtDataSelection *> &);
     void                   ConstructIdQueryString(const std::vector<double>&,
-                                  std::string& );
+                                  const std::string &, std::string& );
     void                   PerformQuery();
     
     // Is there an active query? If value is stringQuery, "queryString" contains

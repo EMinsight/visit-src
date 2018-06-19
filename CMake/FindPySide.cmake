@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,7 +59,7 @@ IF(NOT GeneratorRunner_FOUND OR NOT Shiboken_FOUND)
     set(PySide_FOUND 0)
 ELSEIF(PySide_FOUND)
     SET(PYSIDE_FOUND 1)
-    SET_UP_THIRD_PARTY(PYSIDE lib include pyside-python2.6 shiboken-python2.6)
+    SET_UP_THIRD_PARTY(PYSIDE lib include pyside-python${PYTHON_VERSION} shiboken-python${PYTHON_VERSION})
     # The PySide module is symlinked into the python install VisIt uses for dev builds.
     # For 'make install' and 'make package' we need to actually install the PySide SOs.
     SET(PYSIDE_MODULE_SRC  ${VISIT_PYSIDE_DIR}/lib/python${PYTHON_VERSION}/site-packages/PySide/)
@@ -78,7 +78,7 @@ ELSEIF(PySide_FOUND)
             GET_FILENAME_COMPONENT(libname ${pysidelib} NAME)
             INSTALL(CODE
                     "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                    COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib 
+                    COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH}
                     \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${PYSIDE_MODULE_INSTALLED_DIR}/${libname}\"
                     OUTPUT_VARIABLE OSXOUT)
                     MESSAGE(STATUS \"\${OSXOUT}\")
@@ -93,21 +93,25 @@ ENDIF(NOT GeneratorRunner_FOUND OR NOT Shiboken_FOUND)
 
 #****************************************************************************
 # PYSIDE_ADD_MODULE
-# Defines a new PySide module and creates a dependent generator target.
+# Defines a new PySide module and creates a dependent generator target and
+# distutils setup call.
 #****************************************************************************
-FUNCTION(PYSIDE_ADD_MODULE module_name  
-                           mod_gen_sources 
-                           mod_gen_include_paths 
-                           mod_gen_link_libs 
-                           mod_gen_global 
+FUNCTION(PYSIDE_ADD_MODULE module_name
+                           dest_dir
+                           mod_sources
+                           mod_gen_sources
+                           mod_gen_include_paths
+                           mod_gen_link_libs
+                           mod_gen_global
                            mod_gen_typesystem)
 
 MESSAGE(STATUS "Configuring PySide module: ${module_name}")
 
-PYSIDE_ADD_GENERATOR_TARGET("${module_name}_gen" 
-                            ${mod_gen_sources} 
-                            ${mod_gen_include_paths} 
-                            ${mod_gen_global} 
+
+PYSIDE_ADD_GENERATOR_TARGET("${module_name}_gen"
+                            ${mod_gen_sources}
+                            ${mod_gen_include_paths}
+                            ${mod_gen_global}
                             ${mod_gen_typesystem})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
@@ -117,19 +121,61 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}
                     ${CMAKE_CURRENT_BINARY_DIR}/${module_name}
                     ${${mod_gen_include_paths}})
 
-add_library(${module_name} MODULE ${${mod_gen_sources}})
-set_target_properties(${module_name} PROPERTIES PREFIX "")
+add_library(${module_name} MODULE ${${mod_sources}} ${${mod_gen_sources}})
+
+SET_TARGET_PROPERTIES(${module_name} PROPERTIES PREFIX "")
+SET_TARGET_PROPERTIES(${module_name} PROPERTIES
+                                     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${dest_dir})
 
 target_link_libraries(${module_name}
                       ${SHIBOKEN_PYTHON_LIBRARIES}
                       ${SHIBOKEN_LIBRARY}
                       ${PYSIDE_LIBRARY}
                       ${${mod_gen_link_libs}})
+
 add_dependencies(${module_name} "${module_name}_gen")
 
-
+VISIT_INSTALL_TARGETS_RELATIVE(${dest_dir} ${module_name})
 
 ENDFUNCTION(PYSIDE_ADD_MODULE)
+
+#****************************************************************************
+# PYSIDE_ADD_HYBRID_MODULE
+# Defines a new PySide module and creates a dependent generator target and
+# distutils setup call.
+#****************************************************************************
+FUNCTION(PYSIDE_ADD_HYBRID_MODULE module_name
+                                  dest_dir
+                                  mod_py_setup
+                                  mod_py_sources
+                                  mod_sources
+                                  mod_gen_sources
+                                  mod_gen_include_paths
+                                  mod_gen_link_libs
+                                  mod_gen_global
+                                  mod_gen_typesystem)
+
+MESSAGE(STATUS "Configuring PySide module: ${module_name}")
+
+PYTHON_ADD_DISTUTILS_SETUP("${module_name}_py_setup"
+                            ${dest_dir}
+                            ${mod_py_setup}
+                            ${mod_py_sources})
+
+PYSIDE_ADD_MODULE(${module_name}
+                  ${dest_dir}/${module_name}
+                  ${mod_sources}
+                  ${mod_gen_sources}
+                  ${mod_gen_include_paths}
+                  ${mod_gen_link_libs}
+                  ${mod_gen_global}
+                  ${mod_gen_typesystem})
+
+add_dependencies(${module_name} "${module_name}_py_setup")
+add_dependencies(${module_name} "${module_name}_gen")
+
+ENDFUNCTION(PYSIDE_ADD_HYBRID_MODULE)
+
 
 #****************************************************************************
 # PYSIDE_ADD_GENERATOR_TARGET
@@ -172,7 +218,4 @@ add_custom_command(OUTPUT ${${gen_sources}}
 
 add_custom_target(${target_name} DEPENDS ${${gen_sources}})
 ENDFUNCTION(PYSIDE_ADD_GENERATOR_TARGET)
-
-
-
 

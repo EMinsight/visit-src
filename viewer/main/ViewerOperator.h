@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,7 +51,6 @@ class DataNode;
 class ViewerPlot;
 class ViewerOperatorPluginInfo;
 class avtDatabaseMetaData;
-class avtPluginFilter;
 class ExpressionList;
 
 #include <vector>
@@ -145,7 +144,8 @@ class VIEWER_API ViewerOperator : public ViewerBase
 
     void SetPlot(ViewerPlot *p);
     void SetClientAttsFromOperator();
-    void SetOperatorAttsFromClient();
+    void SetOperatorAttsFromClient(const bool activePlot,
+                                   const bool applyToAll);
     bool SetOperatorAtts(const AttributeSubject *toolAtts);
     const AttributeSubject *GetOperatorAtts() const;
 
@@ -169,8 +169,6 @@ class VIEWER_API ViewerOperator : public ViewerBase
     int                           type;
     ViewerOperatorPluginInfo     *viewerPluginInfo;
     AttributeSubject             *operatorAtts;
-    avtPluginFilter              *avtfilter;
-
 };
 
 #endif

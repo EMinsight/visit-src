@@ -1,8 +1,8 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
-# LLNL-CODE-400142
+# LLNL-CODE-442911
 # All rights reserved.
 #
 # This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -186,7 +186,7 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                             STRING(REGEX MATCH "${frameworkNameWE}[A-Za-z0-9._/-]*" frameworkMatch ${realFramework})
                             INSTALL(CODE 
                                 "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                    COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${frameworkMatch}\"
+                                    COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${frameworkMatch}\"
                                     OUTPUT_VARIABLE OSXOUT)
                                  MESSAGE(STATUS \"\${OSXOUT}\")
                                 ")
@@ -202,7 +202,7 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                                 GET_FILENAME_COMPONENT(libName ${curNAMEWithExt} NAME)
                                 INSTALL(CODE 
                                     "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${libName}\"
+                                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${libName}\"
                                         OUTPUT_VARIABLE OSXOUT)
                                      MESSAGE(STATUS \"\${OSXOUT}\")
                                     ")
@@ -232,7 +232,7 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                     STRING(REGEX MATCH "${frameworkNameWE}[A-Za-z0-9._/-]*" frameworkMatch ${realFramework})
                     INSTALL(CODE 
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                            COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${frameworkMatch}\"
+                            COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${frameworkMatch}\"
                             OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")
@@ -249,7 +249,7 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                         GET_FILENAME_COMPONENT(libName ${tmpLIBFILE} NAME)
                         INSTALL(CODE 
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${libName}\"
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${libName}\"
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
@@ -280,7 +280,7 @@ ENDFUNCTION(THIRD_PARTY_INSTALL_LIBRARY)
 #
 
 FUNCTION(THIRD_PARTY_INSTALL_INCLUDE pkg incdir)
-        IF(VISIT_INSTALL_THIRD_PARTY)
+        IF(VISIT_INSTALL_THIRD_PARTY AND NOT VISIT_HEADERS_SKIP_INSTALL)
             STRING(TOLOWER ${pkg} lcpkg)
 #            MESSAGE("***INSTALL ${incdir} -> ${VISIT_INSTALLED_VERSION_INCLUDE}/${lcpkg}")
             INSTALL(DIRECTORY ${incdir}
@@ -297,5 +297,5 @@ FUNCTION(THIRD_PARTY_INSTALL_INCLUDE pkg incdir)
                 PATTERN "libccmio" EXCLUDE
                 PATTERN ".svn" EXCLUDE
             )
-        ENDIF(VISIT_INSTALL_THIRD_PARTY)
+        ENDIF(VISIT_INSTALL_THIRD_PARTY AND NOT VISIT_HEADERS_SKIP_INSTALL)
 ENDFUNCTION(THIRD_PARTY_INSTALL_INCLUDE)

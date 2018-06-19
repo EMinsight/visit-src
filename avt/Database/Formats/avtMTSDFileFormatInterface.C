@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -482,11 +482,15 @@ avtMTSDFileFormatInterface::GetFilename(int ts)
 //    Don't uniformly declare all times as inaccurate if they are out of 
 //    sequence.
 //
+//    Hank Childs, Tue Apr 10 15:12:01 PDT 2012
+//    Make use of argument for whether we should force reading of all
+//    cycles and times.
+//
 // ****************************************************************************
 
 void
 avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
-    int timeState, bool)
+    int timeState, bool forceReadAllCyclesTimes)
 {
     int i, j;
 
@@ -520,6 +524,10 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
         chunks[i][0]->SetTimeSliceOffset(offset);
         offset += tsPerGroup[i];
     }
+    if (forceReadAllCyclesTimes)
+        chunks[tsGroup][0]->SetReadAllCyclesAndTimes(true);
+    else
+        chunks[tsGroup][0]->SetReadAllCyclesAndTimes(false);
     chunks[tsGroup][0]->SetDatabaseMetaData(md, localTS);
     for (i = 0 ; i < nTimestepGroups ; i++)
         if (i != tsGroup)

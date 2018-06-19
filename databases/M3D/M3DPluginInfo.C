@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,7 +43,7 @@
 #include <M3DPluginInfo.h>
 
 #include <visit-config.h>
-extern "C" DBP_EXPORT const char *M3DVisItPluginVersion = VISIT_VERSION;
+VISIT_PLUGIN_VERSION(M3D,DBP_EXPORT)
 
 // ****************************************************************************
 //  Function:  GetGeneralInfo

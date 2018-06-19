@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,11 +62,7 @@ ViewerPasswordWindow *ViewerPasswordWindow::instance = NULL;
 ViewerConnectionProgressDialog *ViewerPasswordWindow::dialog = NULL;
 bool ViewerPasswordWindow::needToChangeUsername = false;
 
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
 std::set<int> ViewerPasswordWindow::failedPortForwards;
-#endif
 
 // ****************************************************************************
 //  Constructor:  ViewerPasswordWindow::ViewerPasswordWindow
@@ -225,11 +221,7 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
     char *buffer = new char[20000];
     char *pbuf   = buffer;
 
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
     failedPortForwards.clear();
-#endif
 
     if(!instance)
         instance = new ViewerPasswordWindow();
@@ -326,9 +318,6 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
         {
             // Check for failed port forwards; this will be
             // in the buffer after the password was accepted.
-#if defined(PANTHERHACK)
-// Broken on Panther
-#else
             char failedStr[]  = "forwarding failed for listen port ";
             if (strstr(buffer, failedStr))
             {
@@ -343,7 +332,6 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
                     }
                 }
             }
-#endif
 
             // Success!  Just return.
             delete[] buffer;

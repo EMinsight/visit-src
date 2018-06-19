@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -127,8 +127,6 @@ void
 avtSymmEvalExpression::ProcessArguments(ArgsExpr *args,
                                         ExprPipelineState *state)
 {
-    int  i;
-
     const char *badSyntaxMsg = "The symmetry evaluation expression expects "
              "three arguments: a variable, a default variable to use when "
              "the mesh is not defined across the symmetry condition, and "
@@ -159,7 +157,7 @@ avtSymmEvalExpression::ProcessArguments(ArgsExpr *args,
     inputParameters.clear();
     ListExpr *list = dynamic_cast<ListExpr*>(thirdTree);
     std::vector<ListElemExpr*> *elems = list->GetElems();
-    if (elems->size() != GetNumberOfInputParameters())
+    if (static_cast<int>(elems->size()) != GetNumberOfInputParameters())
     {
         char msg[1024];
         SNPRINTF(msg, 1024, "%s.  You're list had %ld numbers, where %d were "
@@ -168,7 +166,7 @@ avtSymmEvalExpression::ProcessArguments(ArgsExpr *args,
         EXCEPTION2(ExpressionException, outputVariableName, msg);
     }
 
-    for (i = 0 ; i < elems->size() ; i++)
+    for (size_t i = 0 ; i < elems->size() ; i++)
     {
         ExprNode *item = (*elems)[i]->GetItem();
         std::string type = item->GetTypeName();
@@ -184,7 +182,7 @@ avtSymmEvalExpression::ProcessArguments(ArgsExpr *args,
         {
             char msg[1024];
             SNPRINTF(msg, 1024, "%s.  Element #%d in your list was "
-                      "not a number.",  badSyntaxMsg, i);
+                      "not a number.",  badSyntaxMsg, static_cast<int>(i));
             EXCEPTION2(ExpressionException, outputVariableName, msg);
         }
         ConstExpr *c = dynamic_cast<ConstExpr*>(item);
@@ -197,7 +195,7 @@ avtSymmEvalExpression::ProcessArguments(ArgsExpr *args,
         }
         else if (c->GetConstantType() == ConstExpr::Float)
         {
-            float v = dynamic_cast<FloatConstExpr*>(c)->GetValue();
+            double v = dynamic_cast<FloatConstExpr*>(c)->GetValue();
             if (negate)
                 v = -v;
             inputParameters.push_back(v);
@@ -219,6 +217,12 @@ avtSymmEvalExpression::ProcessArguments(ArgsExpr *args,
 //  Programmer: Hank Childs
 //  Creation:   January 21, 2006
 //
+//  Modifications:
+//
+//    Hank Childs, Wed Mar 14 08:47:56 PDT 2012
+//    Add new argument to function call indicating whether this is a serial-
+//    only execution.  (It isn't.)
+//
 // ****************************************************************************
 
 void
@@ -235,8 +239,10 @@ avtSymmEvalExpression::Execute(void)
                       "must take the form: <var> <default-var> [parameters]");
     }
 
+    bool serialOnly = false;
     avtDataTree_p output = avtPosCMFEAlgorithm::PerformCMFE(in1, in2,
-                                 varnames[0], varnames[1], outputVariableName);
+                                 varnames[0], varnames[1], outputVariableName,
+                                 serialOnly);
     SetOutputDataTree(output);
 }
 

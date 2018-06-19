@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2535,6 +2535,9 @@ ViewerPlotList::GetNumVisiblePlots() const
 //    SIL if the material restrictions for the new plot and matched plot are
 //    the same.
 //
+//    Hank Childs, Tue Apr 10 21:46:32 PDT 2012
+//    Make sure variable-creating-operators get the full list of expressions.
+//
 // ****************************************************************************
 
 int
@@ -2675,12 +2678,16 @@ ViewerPlotList::AddPlot(int type, const std::string &var, bool replacePlots,
     // If a plot of an operator variable is added, let's find the operator
     // and add it to the execution pipeline
     OperatorPluginManager *oPM = GetOperatorPluginManager();
+
+    const avtDatabaseMetaData *md = newPlot->GetMetaData();
+    avtDatabaseMetaData md2 = *md;
+    md2.SetExprList(*(ParsingExprList::Instance()->GetList()));
     for (int j = 0; j < oPM->GetNEnabledPlugins(); j++)
     {
         std::string id = oPM->GetEnabledID(j);
         CommonOperatorPluginInfo *info = oPM->GetCommonPluginInfo(id);
-        const avtDatabaseMetaData *md = newPlot->GetMetaData();
-        ExpressionList *exprs = info->GetCreatedExpressions(md);
+
+        ExpressionList *exprs = info->GetCreatedExpressions(&md2);
         if (exprs == NULL)
             continue;
         for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
@@ -4506,7 +4513,10 @@ ViewerPlotList::SetPlotAtts(const int plotType)
 // ****************************************************************************
 
 void
-ViewerPlotList::SetPlotOperatorAtts(const int operatorType, bool applyToAll)
+ViewerPlotList::SetPlotOperatorAtts(const int operatorType,
+                                    bool activeWindow,
+                                    bool applyToAllWindows,
+                                    bool applyToAllPlots)
 {
     //
     // Loop through the list setting the plot operator attributes from the
@@ -4514,9 +4524,12 @@ ViewerPlotList::SetPlotOperatorAtts(const int operatorType, bool applyToAll)
     //
     for (int i = 0; i < nPlots; i++)
     {
-        if (plots[i].active || applyToAll)
-        {
-            plots[i].plot->SetOperatorAttsFromClient(operatorType);
+      if (plots[i].active || applyToAllPlots)
+      {
+          plots[i].plot->
+            SetOperatorAttsFromClient(operatorType,
+                                      activeWindow && plots[i].active,
+                                      applyToAllWindows||applyToAllPlots);
         }
     }
 

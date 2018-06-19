@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,7 +76,7 @@ avtStateRecorderIntegralCurve::avtStateRecorderIntegralCurve(
 {
     distance = 0.0;
     sequenceCnt = 0;
-    serializeFlags = 0;
+    _serializeFlags = SERIALIZE_NO_OPT;
 }
 
 
@@ -92,7 +92,7 @@ avtStateRecorderIntegralCurve::avtStateRecorderIntegralCurve()
 {
     distance = 0.0;
     sequenceCnt = 0;
-    serializeFlags = 0;
+    _serializeFlags = SERIALIZE_NO_OPT;
     historyMask = 0;
 }
 
@@ -200,23 +200,39 @@ void avtStateRecorderIntegralCurve::RecordStep(const avtIVPField* field,
 //    Hank Childs, Sun Dec  5 10:18:13 PST 2010
 //    Pass the avtIVPField to CheckForTermination.
 //
+//    Hank Childs, Mon Mar 12 16:28:33 PDT 2012
+//    Make sure last step is always recorded.  Previous logic would lead to a
+//    missing step if termination occurred somewhere outside this loop.
+//    Props to Christoph Garth for eyeballing this.
+//
+//    Hank Childs, Sun Apr  1 10:35:48 PDT 2012
+//    Change status to use new TERMINATED designation.
+//
 // ****************************************************************************
 
 void
 avtStateRecorderIntegralCurve::AnalyzeStep( avtIVPStep& step, 
                                             avtIVPField* field )
 {
-    // Record the first position of the step.
-    RecordStep( field, step, step.GetT0() );
+    if (history.size() == 0)
+    {
+        // Record the first position of the step.
+        RecordStep( field, step, step.GetT0() );
+    }
 
     // Possibly need this for state we record.
     distance += step.GetLength();
 
     if (CheckForTermination(step, field))
     {
-        status = STATUS_FINISHED;
-        RecordStep( field, step, step.GetT1() );
+        status = STATUS_TERMINATED;
     }
+
+    // This must be called after CheckForTermination, because 
+    // CheckForTermination will modify the step if it goes beyond the
+    // termination criteria.  (Example: streamlines will split a step if it
+    // is terminating by distance.)
+    RecordStep( field, step, step.GetT1() );
 }
 
 // ****************************************************************************
@@ -349,38 +365,44 @@ size_t avtStateRecorderIntegralCurve::GetNumberOfSamples() const
 //   Dave Pugmire, Mon Sep 20 14:51:50 EDT 2010
 //   Serialize the distance field.
 //
+//   David Camp, Wed Mar  7 10:43:07 PST 2012
+//   Added a Serialize flag to the arguments. This is to support the restore
+//   ICs code.
+//
 // ****************************************************************************
 
 void
 avtStateRecorderIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff, 
-                         avtIVPSolver *solver)
+                                         avtIVPSolver *solver, SerializeFlags serializeFlags)
 {
     // Have the base class serialize its part
-    avtIntegralCurve::Serialize(mode, buff, solver);
+    avtIntegralCurve::Serialize(mode, buff, solver, serializeFlags);
 
     buff.io(mode, distance);
 
     buff.io(mode, historyMask);
-    buff.io(mode, serializeFlags);
-
-    bool serializeSteps = serializeFlags&SERIALIZE_STEPS;
+    unsigned long saveSerializeFlags = serializeFlags | _serializeFlags;
+    buff.io(mode, saveSerializeFlags);
 
     if (DebugStream::Level5())
-        debug5<<"  avtStateRecorderIntegralCurve::Serialize "<<(mode==MemStream::READ?"READ":"WRITE")<<" serSteps= "<<serializeSteps<<endl;
+        debug5<<"  avtStateRecorderIntegralCurve::Serialize "<<(mode==MemStream::READ?"READ":"WRITE")<<" saveSerializeFlags= "<<saveSerializeFlags<<endl;
     
     // R/W the steps.
-    if( serializeSteps )
+    if (saveSerializeFlags & SERIALIZE_STEPS)
         buff.io(mode, history);
 
-    if ((serializeFlags & SERIALIZE_INC_SEQ) && mode == MemStream::WRITE)
+    if (saveSerializeFlags & SERIALIZE_INC_SEQ)
     {
-        long seqCnt = sequenceCnt+1;
-        buff.io(mode, seqCnt);
+        if (mode == MemStream::WRITE)
+        {
+            long seqCnt = sequenceCnt+1;
+            buff.io(mode, seqCnt);
+        }
+        else
+            buff.io(mode, sequenceCnt);
     }
     else
         buff.io(mode, sequenceCnt);
-
-    serializeFlags = 0;
 
     if (DebugStream::Level5())
         debug5 << "DONE: avtStateRecorderIntegralCurve::Serialize. sz= "<<buff.len() << endl;
@@ -466,6 +488,24 @@ avtStateRecorderIntegralCurve::MergeIntegralCurveSequence(std::vector<avtIntegra
 
     v2.clear();
     return v[0];
+}
+
+// ****************************************************************************
+//  Method: avtStateRecorderIntegralCurve::LessThan
+//
+//  Purpose:
+//      Performs a LessThan operation, used when doing parallel communication
+//      and needing to sort curves.
+//
+//  Programmer: Hank Childs
+//  Creation:   December 6, 2011
+//
+// ****************************************************************************
+
+bool
+avtStateRecorderIntegralCurve::LessThan(const avtIntegralCurve *ic) const
+{
+    return IdSeqCompare(this, ic);
 }
 
 // ****************************************************************************

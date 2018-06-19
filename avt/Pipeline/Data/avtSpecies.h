@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,7 +112,7 @@ class PIPELINE_API avtSpecies
                                                       { return mix_speclist; };
     int                              GetNSpecMF(void)  { return nspecies_mf; };
     const float                     *GetSpecMF(void)   { return species_mf; };
-    int                              GetNMat(void) { return nSpecies.size(); };
+    int                              GetNMat(void) { return static_cast<int>(nSpecies.size()); };
     
     std::vector<CellSpecInfo>        ExtractCellSpecInfo(int c, int m,
                                                          avtMaterial *);

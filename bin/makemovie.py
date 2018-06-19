@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2000 - 2012, The Regents of the University of California
+# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # All rights reserved.
 #
@@ -2267,6 +2267,9 @@ class MakeMovie:
     #   Brad Whitlock, Fri Feb 10 14:25:56 PST 2012
     #   I added support for restoring sessions using different sources.
     #
+    #   Brad Whitlock, Tue May  1 10:57:40 PDT 2012
+    #   Move the movietemplates directory into resources.
+    #
     ###########################################################################
 
     def GenerateFrames(self):
@@ -2362,12 +2365,12 @@ class MakeMovie:
                     # Development version
                     prefix = sys.argv[0][:pos+4]
                     exe_dir = self.slash + "exe" + self.slash
-                    bin_dir = self.slash + "bin" + self.slash
-                    prefix = string.replace(prefix, exe_dir, bin_dir)
+                    resources_dir = self.slash + "resources" + self.slash
+                    prefix = string.replace(prefix, exe_dir, resources_dir)
                 else:
                     # Installed version
                     pos = string.find(sys.exec_prefix, "lib" + self.slash + "python")
-                    prefix = sys.exec_prefix[:pos] + "bin" + self.slash
+                    prefix = sys.exec_prefix[:pos] + "resources" + self.slash
             templateBaseFile = prefix + "movietemplates" + self.slash + "visitmovietemplate.py"
             self.Debug(1, "GenerateFrames: sourcing template base class file %s" % templateBaseFile)
             Source(templateBaseFile)
@@ -2501,13 +2504,14 @@ class MakeMovie:
             # Make sure that plots are all drawn.
             DrawPlots()
 
-            # Reset the view but preserve the viewpoint.
+            # Reset the view but preserve the viewpoint and image zoom.
             if self.adjustview:
                 v0 = GetView3D()
                 ResetView()
                 v1 = GetView3D()
                 v1.viewNormal = v0.viewNormal
                 v1.viewUp = v0.viewUp
+                v1.imageZoom = v0.imageZoom
                 SetView3D(v1)
 
             # Iterate over all of the frames and save them out.
