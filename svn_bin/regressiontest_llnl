@@ -60,11 +60,6 @@
 #    Jeremy Meredith, Fri Aug 22 14:10:45 EDT 2008
 #    Removed chgcar_11 from skipList.
 #
-#    Mark C. Miller, Thu Oct 23 09:50:31 PDT 2008
-#    Found and fixed another issue handling output from wc correctly.
-#
-#    Mark C. Miller, Fri Oct 31 17:00:45 PDT 2008
-#    Added some itaps tests to the skip list
 # ----------------------------------------------------------------------------
 dateTag=`date +%y%b%d`
 svnHost=svn.nersc.gov
@@ -152,7 +147,7 @@ checkAndHandleError() {
     # at the end of a run
     emailSubject=$shortSubject
     if test -n "`echo $handlerBehavior | grep flush`"; then
-        if test `wc -l $errorLogFile | tr -s ' ' | sed -e 's/^ //' | cut -d' ' -f1` -eq 0; then
+        if test `wc -l $errorLogFile | tr -s ' ' | cut -d' ' -f2` -eq 0; then
             return
 	else
 	    emailSubject="Message(s) from VisIt's Automatic Test Run"
@@ -325,9 +320,9 @@ cd ../src
 gmake clean 1>> ./make_clean.out 2>&1
 rm -f uncleaned_files_log.txt
 find . -name .svn -prune -false -o -name '*.so' -o -name '*.o' -o -name '*_moc.[Ch]' -o -name 'moc_*.[Ch]' 1> uncleaned_files_log.txt
-uncleanedFilesCount=`wc -l uncleaned_files_log.txt | tr -s ' ' | sed -e 's/^ //' | cut -d' ' -f1`
+uncleanedFilesCount=`wc -l uncleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2`
 checkAndHandleError $uncleanedFilesCount warning "make clean left files; removing manually" uncleaned_files_log.txt
-if test -n "$uncleanedFilesCount" -a $uncleanedFilesCount -ne 0; then
+if test $uncleanedFilesCount -ne 0; then
     cat uncleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2 | xargs -n 1 rm -f
 fi
 
@@ -344,9 +339,9 @@ find . -name .svn -prune -false -o -name '*.d' -o -name '.depend' -o -name '.par
 # It also includes some special grep filtering for special cases of some
 # Makefiles that aren't easy for distclean to clean
 find . -name .svn -prune -false -o \( -name 'Makefile' -exec test -e \{\}.in \; \) -print | grep -v ./avt/Preprocessor/Makefile\\\|./tools/windowmaker/Makefile\\\|./tools/prep/Makefile\\\|./sim/examples/Makefile\\\|./common/siloobj/Makefile\\\|./common/siloobj_vtk_db/Makefile\\\|./cqscore/Makefile 1>> undistcleaned_files_log.txt
-undistcleanedFilesCount=`wc -l undistcleaned_files_log.txt | tr -s ' ' | sed -e 's/^ //' | cut -d' ' -f1`
+undistcleanedFilesCount=`wc -l undistcleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2`
 checkAndHandleError $undistcleanedFilesCount warning "make distclean left files; removing manually" undistcleaned_files_log.txt
-if test -n "$undistcleanedFilesCount" -a $undistcleanedFilesCount -ne 0; then
+if test $undistcleanedFilesCount -ne 0; then
     cat undistcleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2 | xargs -n 1 rm -f
 fi
 
@@ -388,10 +383,7 @@ skipList_dueTo_temporaryBugs="\
 	  nersc,scalable,parallel:tests/operators/transform.py:ops_transform05 \
 	  nersc,serial:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
 	  nersc,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
-	  nersc,scalable,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
-          nersc,serial:tests/databases/itaps.py:itaps_02,itaps_03,itaps_04,itaps_05 \
-          nersc,parallel:tests/databases/itaps.py:itaps_02,itaps_03,itaps_04,itaps_05 \
-          nersc,scalable,parallel:tests/databases/itaps.py:itaps_02,itaps_03,itaps_04,itaps_05"
+	  nersc,scalable,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05"
 
 skipList="$skipList_dueTo_clientServer $skipList_dueTo_parallelRendering $skipList_dueTo_temporaryBugs"
 

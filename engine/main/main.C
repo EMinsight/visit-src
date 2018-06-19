@@ -43,8 +43,8 @@
 #include <DebugStream.h>
 #include <TimingsManager.h>
 
-#include <avtParallel.h>
 #ifdef PARALLEL
+#include <avtParallel.h>
 #include <parallel.h>
 #endif
 
@@ -281,11 +281,6 @@ void fooz(void)
 //    Added code to initialize timings manager asap
 //    Removed delete of visitTimer since that is handled in
 //    TimingsManager::Finalize
-//
-//    Hank Childs, Sun Nov 16 21:49:29 CST 2008
-//    Add a print statement when the engine couldn't connect to the viewer, so
-//    we have a better idea when the engine is giving up.
-//
 // ****************************************************************************
 
 int
@@ -320,13 +315,7 @@ main(int argc, char *argv[])
     else
     {
         // Connect failed
-        if (PAR_Rank() == 0)
-        {
-             debug1 << "The engine could not connect to the viewer due to a"
-                  << "networking problem.  The engine is exiting" << endl;
-             cerr << "The engine could not connect to the viewer due to a"
-                  << "networking problem.  The engine is exiting" << endl;
-        }
+        debug1 << "The engine could not connect to the viewer." << endl;
     }
 
     debug1 << "ENGINE exited." << endl;

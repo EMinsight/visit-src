@@ -165,24 +165,6 @@ PDBReader::Identify()
     return IdentifyFormat();
 }
 
-// ****************************************************************************
-// Method: PDBReader::PDB
-//
-// Purpose: 
-//   Return the object's PDB file.
-//
-// Programmer: Brad Whitlock
-// Creation:   Thu Nov  6 14:43:02 PST 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-PDBFileObject *
-PDBReader::PDB()
-{
-    return pdb;
-}
 
 // ****************************************************************************
 // Method: PDBReader::VariableData::VariableData

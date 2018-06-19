@@ -48,14 +48,16 @@
 #include <string>
 #include <vector>
 
+#include <vtkCellType.h>
 #include <vtkFloatArray.h>
 #include <vtkRectilinearGrid.h>
-#include <vtkStructuredGrid.h>
 #include <vtkUnstructuredGrid.h>
 
 #include <avtDatabase.h>
 #include <avtDatabaseMetaData.h>
 #include <avtIOInformation.h>
+#include <avtStructuredDomainBoundaries.h>
+#include <avtVariableCache.h>
 
 #include <Expression.h>
 
@@ -71,10 +73,210 @@
 #include <avtParallel.h>
 #endif
 
+#if defined(_MSC_VER) || !defined(HAVE_STRTOF) || !defined(HAVE_STRTOF_PROTOTYPE)
+#ifndef strtof
+#define strtof(f1,f2) ((float)strtod(f1,f2))
+#endif
+#endif
+
 using     std::string;
 using     std::vector;
 using     std::min;
 using     std::max;
+
+// ****************************************************************************
+//  Method: DDCMDHeader constructor
+//
+//  Purpose:
+//      Read the header from the specified file.
+//
+//  Arguments:
+//      fname      The name of the root file.
+//      subname    The name of the sub file.
+//
+//  Programmer: brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+//  Modifications:
+//    Eric Brugger, Fri Dec  5 16:39:53 PST 2008
+//    I enhanced the reader to read ascii atom files.
+//
+// ****************************************************************************
+
+DDCMDHeader::DDCMDHeader(const char *fname, const char *subname)
+{
+    int           i, headerlength;
+    char          string[4096], *header, *h;
+
+    //
+    // Open the file and read the header. It is a bunch of lines terminated
+    // with a null character.
+    //
+    int           maxlen;
+    FILE         *file;
+
+    sprintf(string, "%s/%s#000000", fname, subname);
+
+    file = fopen(string, "r");
+    maxlen = 4096;
+    header = string;
+    headerlength = 0;
+    fgets(header, maxlen - headerlength, file);
+    headerlength = strlen(header);
+    fgets(h = header + headerlength, maxlen - headerlength, file);
+    while(*h != '\n')
+    {
+        headerlength = strlen(header);
+        fgets(h = header + headerlength, maxlen-headerlength, file);
+    }
+    headerlength = strlen(header);
+    fclose(file);
+
+    //
+    // Convert any newline characters to null characters.
+    //
+    for (i = 0; i < headerlength; i++)
+        if (header[i] == '\n' ) header[i] = ' ';
+    header[i] = '\0';
+
+    headerLength = headerlength;
+
+    //
+    // Parse the header.
+    //
+    OBJECT       *obj;
+    unsigned int  endianKey, keyLocal;
+
+    obj = (OBJECT*) malloc(sizeof(OBJECT));
+    object_lineparse(header, obj);
+
+    object_get(obj, (char*)"datatype", &dataType, STRING, 1, (char*)"NONE");
+    object_get(obj, (char*)"lrec", &lRec, INT, 1, (char*)"16");
+    object_get(obj, (char*)"endian_key", &endianKey, INT, 1, (char*)"4");
+    object_get(obj, (char*)"nrecord", &nRecord, INT, 1, (char*)"1");
+    object_get(obj, (char*)"nfiles", &nFiles, INT, 1, (char*)"1");
+    object_get(obj, (char*)"nfields", &nFields, INT, 1, (char*)"1");
+    object_getv(obj, (char*)"field_names", (void **)&fieldNames, STRING);
+    object_getv(obj, (char*)"field_types", (void **)&fieldTypes, STRING);
+    fieldSizes = (unsigned*) malloc(nFields*sizeof(int));
+    if (strcmp(dataType, "FIXRECORDBINARY") == 0)
+    {
+        for (i = 0; i < nFields; i++)
+        {
+            fieldSizes[i] = atoi(fieldTypes[i] + 1);
+        }
+    }
+    else
+    {
+        for (i = 0; i < nFields; i++)
+        {
+            fieldSizes[i] = 1;
+        }
+    }
+
+    object_get(obj, (char*)"h", &hMatrix, DOUBLE, 9, (char*)"1000.0");
+    object_get(obj, (char*)"time", &time, DOUBLE, 1, (char*)"0.0");
+    object_get(obj, (char*)"loop", &loop, INT, 1, (char*)"0");
+
+    memcpy(&keyLocal, "1234", 4);
+    swap = (keyLocal != endianKey);
+
+    nSpecies = object_getv1(obj, (char*)"species", (void**)&speciesNames,
+                            STRING);
+
+    //
+    // Cgrid specific information.
+    //
+    object_get(obj, (char*)"nx", &nXFile, INT, 1, (char*)"0");
+    object_get(obj, (char*)"ny", &nYFile, INT, 1, (char*)"0");
+    object_get(obj, (char*)"nz", &nZFile, INT, 1, (char*)"0");
+
+    //
+    // Atom specific information.
+    //
+    nGroups = object_getv1(obj, (char*)"groups", (void**)&groupNames, STRING);
+    nTypes = object_getv1(obj, (char*)"types", (void**)&typeNames, STRING);
+
+    free(obj);
+
+    //
+    // Determine whether we have a cgrid or an atom file.
+    //
+    cgridFile = !(nXFile == 0 && nYFile == 0 && nZFile == 0) ? true : false;
+
+    //
+    // Print out the contents of the header to the debug logs.
+    //
+    debug1 << "dataType=" << dataType << ",nRecord=" << nRecord
+           << ",nFields=" << nFields << ",lRec=" << lRec << endl;
+    debug1 << "swap=" << swap << ",loop=" << loop << ",time=" << time << endl;
+    debug1 << "fieldSizes=";
+    for (int i = 0; i < nFields; i++)
+    {
+        debug1 << fieldSizes[i];
+        if (i < nFields - 1) debug1 << ",";
+    }
+    debug1 << endl;
+    debug1 << "fieldNames=";
+    for (int i = 0; i < nFields; i++)
+    {
+        debug1 << fieldNames[i];
+        if (i < nFields - 1) debug1 << ",";
+    }
+    debug1 << endl;
+    debug1 << "fieldTypes=";
+    for (int i = 0; i < nFields; i++)
+    {
+        debug1 << fieldTypes[i];
+        if (i < nFields - 1) debug1 << ",";
+    }
+    debug1 << endl;
+    debug1 << "nXFile=" << nXFile << ",nYFile=" << nYFile
+           << ",nZFile=" << nZFile << endl;
+    debug1 << "nSpecies=" << nSpecies << endl;
+    for (int i = 0; i < nSpecies; i++)
+    {
+        debug1 << speciesNames[i];
+        if (i < nSpecies - 1) debug1 << ",";
+    }
+    debug1 << endl;
+}
+
+// ****************************************************************************
+//  Method: DDCMDHeader destructor
+//
+//  Purpose:
+//      Free up the memory associated with the header.
+//
+//  Programmer: brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+// ****************************************************************************
+
+DDCMDHeader::~DDCMDHeader()
+{
+    //
+    // We are using free, since all the memory was allocated with malloc.
+    //
+    for (int i = 0; i < nFields; i++)
+    {
+        free(fieldNames[i]);
+        free(fieldTypes[i]);
+    }
+    free(fieldNames);
+    free(fieldTypes);
+    free(fieldSizes);
+    for (int i = 0; i < nSpecies; i++)
+        free(speciesNames[i]);
+    free(speciesNames);
+    for (int i = 0; i < nGroups; i++)
+        free(groupNames[i]);
+    free(groupNames);
+    for (int i = 0; i < nTypes; i++)
+        free(typeNames[i]);
+    free(typeNames);
+};
+
 
 // ****************************************************************************
 //  Method: avtDDCMDFileFormat::Convert
@@ -194,6 +396,9 @@ avtDDCMDFileFormat::DetermineBlockDecomposition()
 //      Exchange the data between the processors into spacially contiguous
 //      blocks.
 //
+//  Arguments:
+//      header      The header data for the current file.
+//
 //  Programmer: Eric Brugger
 //  Creation:   Fri Aug 31 15:27:59 PST 2007
 //
@@ -201,11 +406,18 @@ avtDDCMDFileFormat::DetermineBlockDecomposition()
 //    Eric Brugger, Tue Jul 15 15:21:50 PDT 2008
 //    I added support for the 'b' field type.
 //
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::ExchangeProcessorData()
+avtDDCMDFileFormat::ExchangeProcessorData(const DDCMDHeader *header)
 {
+    unsigned int lRec = header->GetLRec();
+    unsigned int swap = header->GetSwap();
+
 #ifdef PARALLEL
     int rank = PAR_Rank();
     int nProcs = PAR_Size();
@@ -445,6 +657,9 @@ avtDDCMDFileFormat::ExchangeProcessorData()
 //      Copy the data exchanged with the other processors into spacially
 //      contiguous blocks.
 //
+//  Arguments:
+//      header      The header data for the current file.
+//
 //  Programmer: Eric Brugger
 //  Creation:   Fri Aug 31 15:27:59 PST 2007
 //
@@ -452,16 +667,30 @@ avtDDCMDFileFormat::ExchangeProcessorData()
 //    Eric Brugger, Tue Jul 15 15:21:50 PDT 2008
 //    I added support for the 'b' field type.
 //
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::CopyExchangeDataToBlocks()
+avtDDCMDFileFormat::CopyExchangeDataToBlocks(const DDCMDHeader *header)
 {
 #ifdef PARALLEL
     int rank = PAR_Rank();
 #else
     int rank = 0;
 #endif
+
+    unsigned int lRec     = header->GetLRec();
+    unsigned int nXFile   = header->GetNXFile();
+    unsigned int nYFile   = header->GetNYFile();
+    unsigned int nZFile   = header->GetNZFile();
+    unsigned int nSpecies = header->GetNSpecies();
+    unsigned int nFields  = header->GetNFields();
+    int          swap     = header->GetSwap();
+    char         **fieldTypes = header->GetFieldTypes();
+    unsigned int  *fieldSizes = header->GetFieldSizes();
 
     int deltaX = (nXFile + nXFileBlocks - 1) / nXFileBlocks;
     int deltaY = (nYFile + nYFileBlocks - 1) / nYFileBlocks;
@@ -497,11 +726,11 @@ avtDDCMDFileFormat::CopyExchangeDataToBlocks()
        
     int nZones = nZonesBlock;
 
-    varsBlock = new float*[nVars];
+    varValues = new float*[nVars];
     for (int i = 0; i < nVars; i++)
     {
-        varsBlock[i] = new float[nZones*nSpecies];
-        memset(varsBlock[i], 0, nZones*nSpecies*sizeof(float));
+        varValues[i] = new float[nZones*nSpecies];
+        memset(varValues[i], 0, nZones*nSpecies*sizeof(float));
     }
 
     //
@@ -559,19 +788,25 @@ avtDDCMDFileFormat::CopyExchangeDataToBlocks()
 
         int nZones = nZonesBlock;
 
-        float **vars = varsBlock;
+        float **vars = varValues;
         for (int j = 0; j < nVars; j++)
         {
             float *fvar = vars[j];
-            if (varFloat[j])
+            switch (varTypes[j])
             {
+              case 'f':
                 fvar[iSpecies*nZones+iZone] +=
                     *((float *) (data+varOffsets[j]));
-            }
-            else
-            {
+                break;
+              case 'u':
                 fvar[iSpecies*nZones+iZone] +=
                     float(*((unsigned *) (data+varOffsets[j])));
+                break;
+              case 'b':
+                fvar[iSpecies*nZones+iZone] +=
+                    float(bFieldConvert((unsigned char *)data+varOffsets[j],
+                                        varSizes[j]));
+                break;
             }
         }
         data += lRec;
@@ -581,10 +816,301 @@ avtDDCMDFileFormat::CopyExchangeDataToBlocks()
     varOffsets = 0;
     delete [] varSizes;
     varSizes = 0;
-    delete [] varFloat;
-    varFloat = 0;
+    delete [] varTypes;
+    varTypes = 0;
     delete [] inProcessorData;
     inProcessorData = 0;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::CopyAsciiDataToBlocks
+//
+//  Purpose:
+//      Copy the ascii data read from the files into contiguous blocks.
+//
+//  Arguments:
+//      header      The header data for the current file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Fri Dec  5 16:39:53 PST 2008
+//
+//  Modifications:
+//    Cyrus Harrison, Thu Apr 30 14:13:42 PDT 2009
+//    Added a fix for atoms files without species data.
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::CopyAsciiDataToBlocks(const DDCMDHeader *header)
+{
+#ifdef PARALLEL
+    int rank = PAR_Rank();
+#else
+    int rank = 0;
+#endif
+
+    unsigned int   lRec       = header->GetLRec();
+    unsigned int   nFields    = header->GetNFields();
+    int            swap       = header->GetSwap();
+    char         **fieldTypes = header->GetFieldTypes();
+    unsigned int  *fieldSizes = header->GetFieldSizes();
+
+    nPoints = nRecordsList[rank];
+
+    char *data = readProcessorData;
+
+    int nSpecies = header->GetNSpecies();
+    int nGroups  = header->GetNGroups();
+    int nTypes   = header->GetNTypes();
+    char **speciesNames = header->GetSpeciesNames();
+    char **groupNames   = header->GetGroupNames();
+    char **typeNames    = header->GetTypeNames();
+
+    char **recOffsets = new char*[nFields];
+    for (int i = 0; i < nPoints; i++)
+    {
+        //
+        // Determine the start of each field.
+        //
+        char *rec = data;
+        for (int j = 0; j < nFields; j++)
+        {
+             while (isspace(*rec))
+                 rec++;
+             recOffsets[j] = rec;
+             while (!isspace(*rec))
+                 rec++;
+             rec[0] = '\0';
+             rec++;
+        }
+
+        //
+        // Copy the pinfo and coordinate data.
+        //
+
+        // Make sure we actually have species & type offsets 
+        if (groupOffset != -1 && speciesOffset != -1 && typeOffset!=-1 )
+        {
+            int iGroup = 0;
+            while (iGroup < nGroups &&
+                   strcmp(recOffsets[groupOffset], groupNames[iGroup]))
+                iGroup++;
+            int iSpecies = 0;
+            while (iSpecies < nSpecies &&
+                   strcmp(recOffsets[speciesOffset], speciesNames[iSpecies]))
+                iSpecies++;
+            int iType = 0;
+            while (iType < nTypes &&
+                   strcmp(recOffsets[typeOffset], typeNames[iType]))
+                iType++;
+            pinfoBlock[i] = iGroup * nSpecies * nTypes +
+                            iSpecies * nTypes + iType;
+        }
+        // moved coords setup out of above conditional
+        coordsBlock[i*3]   = strtof(recOffsets[xOffset], NULL) / coordsScale;
+        coordsBlock[i*3+1] = strtof(recOffsets[yOffset], NULL) / coordsScale;
+        coordsBlock[i*3+2] = strtof(recOffsets[zOffset], NULL) / coordsScale;
+
+        //
+        // Copy the variable information.
+        //
+        float **vars = varValues;
+        for (int j = 0; j < nVars; j++)
+        {
+            float *fvar = vars[j];
+            switch (varTypes[j])
+            {
+              case 'f':
+                fvar[i] = strtof(recOffsets[varOffsets[j]], NULL);
+                break;
+              case 'u':
+                fvar[i] = float(strtol(recOffsets[varOffsets[j]], NULL, 10));
+                break;
+            }
+        }
+
+        data += lRec;
+    }
+
+    delete [] recOffsets;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::CopyBinaryDataToBlocks
+//
+//  Purpose:
+//      Copy the binary data read from the files into contiguous blocks.
+//
+//  Arguments:
+//      header      The header data for the current file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Fri Dec  5 16:39:53 PST 2008
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::CopyBinaryDataToBlocks(const DDCMDHeader *header)
+{
+#ifdef PARALLEL
+    int rank = PAR_Rank();
+#else
+    int rank = 0;
+#endif
+
+    unsigned int   lRec       = header->GetLRec();
+    unsigned int   nFields    = header->GetNFields();
+    int            swap       = header->GetSwap();
+    char         **fieldTypes = header->GetFieldTypes();
+    unsigned int  *fieldSizes = header->GetFieldSizes();
+
+    nPoints = nRecordsList[rank];
+
+    char *data = readProcessorData;
+
+    for (int i = 0; i < nPoints; i++)
+    {
+        //
+        // Byte swap the data if necessary.
+        //
+        char *field = data;
+        for (int j = 0; j < nFields; j++)
+        {
+            if (swap && fieldTypes[j][0] != (char)'b') Convert(field, fieldSizes[j]);
+            field += fieldSizes[j];
+        }
+
+        //
+        // Copy the pinfo and coordinate information.
+        //
+        if (pinfoOffset != -1)
+        {
+            switch (pinfoType)
+            {
+              case 'f':
+                pinfoBlock[i] = unsigned(*((float *) (data+pinfoOffset)));
+                break;
+              case 'u':
+                pinfoBlock[i] = *((unsigned *) (data+pinfoOffset));
+                break;
+              case 'b':
+                pinfoBlock[i] =
+                    unsigned(bFieldConvert((unsigned char *)data+pinfoOffset,
+                                            pinfoSize));
+                break;
+            }
+
+            coordsBlock[i*3]   = *((float *) (data + xOffset)) / coordsScale;
+            coordsBlock[i*3+1] = *((float *) (data + yOffset)) / coordsScale;
+            coordsBlock[i*3+2] = *((float *) (data + zOffset)) / coordsScale;
+        }
+
+        //
+        // Copy the variable information.
+        //
+        float **vars = varValues;
+        for (int j = 0; j < nVars; j++)
+        {
+            float *fvar = vars[j];
+            switch (varTypes[j])
+            {
+              case 'f':
+                fvar[i] = *((float *) (data+varOffsets[j]));
+                break;
+              case 'u':
+                fvar[i] = float(*((unsigned *) (data+varOffsets[j])));
+                break;
+              case 'b':
+                fvar[i] =
+                    float(bFieldConvert((unsigned char *)data+varOffsets[j],
+                                        varSizes[j]));
+                break;
+            }
+        }
+
+        data += lRec;
+    }
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::CopyDataToBlocks
+//
+//  Purpose:
+//      Copy the data read from the files into contiguous blocks.
+//
+//  Arguments:
+//      header      The header data for the current file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+//  Modifications:
+//    Eric Brugger, Fri Dec  5 16:39:53 PST 2008
+//    I enhanced the reader to read ascii atom files.
+//
+//    Cyrus Harrison, Thu Apr 30 14:13:42 PDT 2009
+//    Added a fix for atoms files without species data.
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::CopyDataToBlocks(const DDCMDHeader *header)
+{
+#ifdef PARALLEL
+    int rank = PAR_Rank();
+#else
+    int rank = 0;
+#endif
+
+    char          *dataType   = header->GetDataType();
+
+    nPoints = nRecordsList[rank];
+
+    //
+    // Check that the data type is valid.
+    //
+    if (strcmp(dataType, "FIXRECORDBINARY") != 0 &&
+        strcmp(dataType, "FIXRECORDASCII") != 0)
+    {
+        debug1 << "Invalid data type: dataType=" << dataType << endl;
+    }
+
+    //
+    // Initialize the storage for the block data.
+    //
+    if (pinfoOffset != -1 || groupOffset != -1)
+    {
+        pinfoBlock = new unsigned[nPoints];
+    }
+
+    // moved coordsBlock allocate outside of above conditional
+    coordsBlock = new float[nPoints*3];
+
+    varValues = new float*[nVars];
+    for (int i = 0; i < nVars; i++)
+    {
+        varValues[i] = new float[nPoints];
+    }
+
+    if (strcmp(dataType, "FIXRECORDASCII") == 0)
+        CopyAsciiDataToBlocks(header);
+    else if (strcmp(dataType, "FIXRECORDBINARY") == 0)
+        CopyBinaryDataToBlocks(header);
+        
+    //
+    // Free memory.
+    //
+    delete [] varOffsets;
+    varOffsets = 0;
+    delete [] varSizes;
+    varSizes = 0;
+    delete [] varTypes;
+    varTypes = 0;
+    delete [] readProcessorData;
+    readProcessorData = 0;
 }
 
 
@@ -594,6 +1120,10 @@ avtDDCMDFileFormat::CopyExchangeDataToBlocks()
 //  Purpose:
 //      Read this processors chunk of the data.  This is everything but
 //      the header.
+//
+//  Arguments:
+//      header      The header data for the current file.
+//      subname     The name of the sub file.
 //
 //  Programmer: Eric Brugger
 //  Creation:   Fri Aug 31 15:27:59 PST 2007
@@ -605,16 +1135,30 @@ avtDDCMDFileFormat::CopyExchangeDataToBlocks()
 //    Hank Childs, Fri Feb 15 15:58:07 PST 2008
 //    Add a check for a valid file name.
 //
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
+//    Eric Brugger, Fri Jan 23 13:24:17 PST 2009
+//    I corrected a bug where the reader only read the first file of a
+//    multi-file file.  The problem was that it was picking up the value
+//    of nFiles from the base class, which was 1, instead of from the
+//    header. I changed the code to set nFiles from the header.
+//
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::ReadProcessorChunk()
+avtDDCMDFileFormat::ReadProcessorChunk(const DDCMDHeader *header,
+    const char *subname)
 {
 #ifdef PARALLEL
     int rank = PAR_Rank();
 #else
     int rank = 0;
 #endif
+
+    unsigned int lRec   = header->GetLRec();
+    unsigned int nFiles = header->GetNFiles();
 
     char          string[1024];
     char         *buffer;
@@ -630,7 +1174,7 @@ avtDDCMDFileFormat::ReadProcessorChunk()
     // Open the first file to read and position the file pointer at the
     // correct spot.
     //
-    sprintf(string, "%s/cgrid#%6.6d", fname.c_str(), fileNumber);
+    sprintf(string, "%s/%s#%6.6d", fname.c_str(), subname, fileNumber);
     debug1 << "Opening " << string << endl;
     file = fopen(string, "rb");
     if (file == NULL)
@@ -652,7 +1196,8 @@ avtDDCMDFileFormat::ReadProcessorChunk()
             fileNumber++;
             if (fileNumber < nFiles)
             {
-                sprintf(string, "%s/cgrid#%6.6d", fname.c_str(), fileNumber);
+                sprintf(string, "%s/%s#%6.6d", fname.c_str(), subname,
+                        fileNumber);
                 debug1 << "Opening " << string << endl;
                 file = fopen(string, "rb");
                 if (file == NULL)
@@ -679,19 +1224,40 @@ avtDDCMDFileFormat::ReadProcessorChunk()
 //      includes determining the file, the offset into the file and the
 //      number of bytes to read.
 //
+//  Arguments:
+//      header      The header data for the current file.
+//      subname     The name of the sub file.
+//
 //  Programmer: Eric Brugger
 //  Creation:   Fri Aug 31 15:27:59 PST 2007
+//
+//  Modifications:
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
+//    Eric Brugger, Fri Jan 23 13:24:17 PST 2009
+//    I corrected a bug where the reader only read the first file of a
+//    multi-file file.  The problem was that it was picking up the value
+//    of nFiles from the base class, which was 1, instead of from the
+//    header. I changed the code to set nFiles from the header.
 //
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::DetermineProcessorReadOffset()
+avtDDCMDFileFormat::DetermineProcessorReadOffset(const DDCMDHeader *header,
+    const char *subname)
 {
 #ifdef PARALLEL
     int nProcs = PAR_Size();
 #else
     int nProcs = 1;
 #endif
+
+    unsigned int headerLength = header->GetHeaderLength();
+    unsigned int lRec         = header->GetLRec();
+    bool         cgridFile    = header->GetCGridFile();
+    unsigned int nFiles       = header->GetNFiles();
 
     //
     // Determine the size of each file.
@@ -703,7 +1269,7 @@ avtDDCMDFileFormat::DetermineProcessorReadOffset()
         char          string[1024];
         VisItStat_t   statbuf;
 
-        sprintf(string, "%s/cgrid#%6.6d", fname.c_str(), i);
+        sprintf(string, "%s/%s#%6.6d", fname.c_str(), subname, i);
 
         int rc = VisItStat(string, &statbuf);
         fileSizeList[i] = statbuf.st_size; 
@@ -758,44 +1324,11 @@ avtDDCMDFileFormat::DetermineProcessorReadOffset()
 
 
 // ****************************************************************************
-//  Method: avtDDCMDFileFormat::ReadData
-//
-//  Purpose:
-//      Read in the data portion of the cgrid file.  This is everything but
-//      the header.  Each processor reads in a portion of the data and then
-//      the data is exchanged among the processors into spacially contiguous
-//      blocks.
-//
-//  Programmer: Eric Brugger
-//  Creation:   Fri Aug 31 15:27:59 PST 2007
-//
-// ****************************************************************************
-
-void
-avtDDCMDFileFormat::ReadData()
-{
-#ifdef MDSERVER
-    return;
-#endif 
-
-    DetermineProcessorReadOffset();
-
-    DetermineBlockDecomposition();
-
-    ReadProcessorChunk();
-
-    ExchangeProcessorData();
-
-    CopyExchangeDataToBlocks();
-}
-
-
-// ****************************************************************************
 //  Method: avtDDCMDFileFormat::ReadHeader
 //
 //  Purpose:
-//      Read the header of the cgrid file.  The file is opened, the header
-//      read, and the file is closed again.
+//      Return a list of headers associated with the list of files.  The
+//      headers are checked for consistency.
 //
 //  Programmer: Eric Brugger
 //  Creation:   Fri Aug 31 15:27:59 PST 2007
@@ -811,124 +1344,192 @@ avtDDCMDFileFormat::ReadData()
 //    Assume that object_get won't modify its input char* argument, and
 //    cast our string literals appropriately.
 //
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
+// ****************************************************************************
+
+vector<DDCMDHeader*>
+avtDDCMDFileFormat::ReadHeader()
+{
+    //
+    // Read the headers.
+    //
+    vector<DDCMDHeader*> headers;
+    for (int i = 0; i < subnames.size(); i++)
+        headers.push_back(new DDCMDHeader(fname.c_str(), subnames[i].c_str()));
+
+    //
+    // Determine if it is a cgrid file.
+    //
+    cgridFile = false;
+    for (int i = 0; i < subnames.size(); i++)
+        cgridFile = cgridFile || headers[i]->GetCGridFile();
+
+    //
+    // Check that the files are cnonsistent.
+    //
+    bool error = false;
+
+    if (cgridFile && subnames.size() > 1)
+        error = true;
+
+    for (int i = 1; i < subnames.size(); i++)
+    {
+        error = (headers[0]->GetNRecord() != headers[i]->GetNRecord()) ?
+            true : error;
+        error = (headers[0]->GetSwap() != headers[i]->GetSwap()) ?
+            true : error;
+        error = (headers[0]->GetHMatrix()[0] != headers[i]->GetHMatrix()[0]) ?
+            true : error;
+        error = (headers[0]->GetHMatrix()[4] != headers[i]->GetHMatrix()[4]) ?
+            true : error;
+        error = (headers[0]->GetHMatrix()[8] != headers[i]->GetHMatrix()[8]) ?
+            true : error;
+        error = (headers[0]->GetLoop() != headers[i]->GetLoop()) ?
+            true : error;
+        error = (headers[0]->GetTime() != headers[i]->GetTime()) ?
+            true : error;
+    }
+
+    //
+    // If we had an error, return no headers.
+    //
+    if (error)
+    {
+        for (int i = 0; i < headers.size(); i++)
+            delete headers[i];
+        headers.clear();
+        return headers;
+    }
+
+    //
+    // Store some global information from the headers.
+    //
+    loop = headers[0]->GetLoop();
+    time = headers[0]->GetTime();
+    nXFile = headers[0]->GetNXFile();
+    nYFile = headers[0]->GetNYFile();
+    nZFile = headers[0]->GetNZFile();
+
+    //
+    // Determine the species, group, type information. Only one file
+    // should have it, so I take it from the first file that has it.
+    // Assume that if other files have it, it will be consistent.
+    //
+    nSpecies = 0;
+    for (int i = 0; i < headers.size(); i++)
+    {
+        if (headers[i]->GetNSpecies() > 0 && nSpecies == 0)
+        {
+            nSpecies = headers[i]->GetNSpecies();
+            speciesNames = new char*[nSpecies];
+            for (int j = 0; j < nSpecies; j++)
+            {
+                speciesNames[j] =
+                    new char[strlen(headers[i]->GetSpeciesNames()[j])+1];
+                strcpy(speciesNames[j], headers[i]->GetSpeciesNames()[j]);
+            }
+        }
+    }
+    nGroups = 0;
+    for (int i = 0; i < headers.size(); i++)
+    {
+        if (headers[i]->GetNGroups() > 0 && nGroups == 0)
+        {
+            nGroups = headers[i]->GetNGroups();
+            groupNames = new char*[nGroups];
+            for (int j = 0; j < nGroups; j++)
+            {
+                groupNames[j] =
+                    new char[strlen(headers[i]->GetGroupNames()[j])+1];
+                strcpy(groupNames[j], headers[i]->GetGroupNames()[j]);
+            }
+        }
+    }
+    nTypes = 0;
+    for (int i = 0; i < headers.size(); i++)
+    {
+        if (headers[i]->GetNTypes() > 0 && nTypes == 0)
+        {
+            nTypes = headers[i]->GetNTypes();
+            typeNames = new char*[nTypes];
+            for (int j = 0; j < nTypes; j++)
+            {
+                typeNames[j] =
+                    new char[strlen(headers[i]->GetTypeNames()[j])+1];
+                strcpy(typeNames[j], headers[i]->GetTypeNames()[j]);
+            }
+        }
+    }
+
+    return headers;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::ParseCGridHeader
+//
+//  Purpose:
+//      Parse the header for a cgrid file.
+//
+//  Arguments:
+//      header      The header data for the current file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::ReadHeader(const char *filename)
+avtDDCMDFileFormat::ParseCGridHeader(const DDCMDHeader *header)
 {
-    int           i, headerlength;
-    char          string[4096], *header, *h;
-
-    //
-    // Open the file and read the header. It is a bunch of lines terminated
-    // with a null character.
-    //
-    int           maxlen;
-    FILE         *file;
-
-    sprintf(string, "%s/cgrid#000000", filename);
-
-    file = fopen(string, "r");
-    maxlen = 4096;
-    header = string;
-    headerlength = 0;
-    fgets(header, maxlen - headerlength, file);
-    headerlength = strlen(header);
-    fgets(h = header + headerlength, maxlen - headerlength, file);
-    while(*h != '\n')
-    {
-        headerlength = strlen(header);
-        fgets(h = header + headerlength, maxlen-headerlength, file);
-    }
-    headerlength = strlen(header);
-    fclose(file);
-
-    //
-    // Convert any newline characters to null characters.
-    //
-    for (i = 0; i < headerlength; i++)
-        if (header[i] == '\n' ) header[i] = ' ';
-    header[i] = '\0';
-
-    headerLength = headerlength;
-
-    //
-    // Parse the header.
-    //
-    OBJECT       *obj;
-    unsigned int  endianKey, keyLocal;
-
-    obj = (OBJECT*) malloc(sizeof(OBJECT));
-    object_lineparse(header, obj);
-
-    object_get(obj, (char*)"lrec", &lRec, INT, 1, (char*)"16");
-    object_get(obj, (char*)"endian_key", &endianKey, INT, 1, (char*)"4");
-    object_get(obj, (char*)"nrecord", &nRecord, INT, 1, (char*)"1");
-    object_get(obj, (char*)"nfiles", &nFiles, INT, 1, (char*)"1");
-    object_get(obj, (char*)"nfields", &nFields, INT, 1, (char*)"1");
-    object_getv(obj, (char*)"field_names", (void **)&fieldNames, STRING);
-    object_getv(obj, (char*)"field_types", (void **)&fieldTypes, STRING);
-    fieldSizes = (unsigned*) malloc(nFields*sizeof(int));
-    for (i = 0; i < nFields; i++)
-    {
-        fieldSizes[i] = atoi(fieldTypes[i] + 1);
-    }
-
-    object_get(obj, (char*)"h", &hMatrix, DOUBLE, 9, (char*)"1000.0");
-    object_get(obj, (char*)"time", &time, DOUBLE, 1, (char*)"0.0");
-    object_get(obj, (char*)"loop", &loop, INT, 1, (char*)"0");
-
-    memcpy(&keyLocal, "1234", 4);
-    swap = (keyLocal != endianKey);
-
-    object_get(obj, (char*)"nx", &nXFile, INT, 1, (char*)"0");
-    object_get(obj, (char*)"ny", &nYFile, INT, 1, (char*)"0");
-    object_get(obj, (char*)"nz", &nZFile, INT, 1, (char*)"0");
-
-    nSpecies = object_getv(obj, (char*)"species",(void**)&speciesNames,STRING);
+    unsigned int  nXFile  = header->GetNXFile();
+    unsigned int  nYFile  = header->GetNYFile();
+    unsigned int  nZFile  = header->GetNZFile();
+    unsigned int  nFields = header->GetNFields();
+    const double *hMatrix = header->GetHMatrix();
+    char         **fieldNames = header->GetFieldNames();
+    char         **fieldTypes = header->GetFieldTypes();
+    unsigned int  *fieldSizes = header->GetFieldSizes();
 
     //
     // Determine the variables to plot.
     //
-    nVars = 0;
+    int           i;
     int           offset = 0;
     
     labelOffset = -1;
     iSpeciesOffset = -1;
+    varNames   = new string[nFields];
     varOffsets = new int[nFields];
     varSizes   = new int[nFields];
-    varFloat   = new bool[nFields];
+    varTypes   = new char[nFields];
+    nVars = 0;
     for (i = 0; i < nFields; i++)
     {
         if (strcmp(fieldNames[i], "checksum") != 0)
         {
             if (strcmp(fieldNames[i], "label") == 0)
             {
-                 labelOffset   = offset;
-                 labelSize     = fieldSizes[i];
-                 labelUnsigned = fieldTypes[i][0] == 'u' ? true : false;
+                labelOffset   = offset;
+                labelSize     = fieldSizes[i];
+                labelUnsigned = fieldTypes[i][0] == 'u' ? true : false;
             }
             else if (strcmp(fieldNames[i], "species_index") == 0)
             {
-                 iSpeciesOffset   = offset;
-                 iSpeciesSize     = fieldSizes[i];
-                 iSpeciesUnsigned = fieldTypes[i][0] == 'u' ? true : false;
-            }
-            else if (strcmp(fieldNames[i], "number_particles") == 0)
-            {
-                 varNames.push_back("nParticles");
-                 varOffsets[nVars] = offset;
-                 varSizes[nVars]   = fieldSizes[i];
-                 varFloat[nVars]   = fieldTypes[i][0] == 'f' ? true : false;
-                 nVars++;
+                iSpeciesOffset   = offset;
+                iSpeciesSize     = fieldSizes[i];
+                iSpeciesUnsigned = fieldTypes[i][0] == 'u' ? true : false;
             }
             else
             {
-                 varNames.push_back(fieldNames[i]);
-                 varOffsets[nVars] = offset;
-                 varSizes[nVars]   = fieldSizes[i];
-                 varFloat[nVars]   = fieldTypes[i][0] == 'f' ? true : false;
-                 nVars++;
+                varNames[nVars]   = fieldNames[i];
+                varOffsets[nVars] = offset;
+                varSizes[nVars]   = fieldSizes[i];
+                varTypes[nVars]   = fieldTypes[i][0];
+                nVars++;
             }
         }
         offset += fieldSizes[i];
@@ -940,21 +1541,21 @@ avtDDCMDFileFormat::ReadHeader(const char *filename)
     for (i = 0 ; i < nVars; i++)
     {
         debug1 << "varName=" << varNames[i] << ",offset=" << varOffsets[i]
-               << ",size=" << varSizes[i] << ",float=" << varFloat[i] << endl;
+               << ",size=" << varSizes[i] << ",type=" << varTypes[i] << endl;
     }
 
     //
     // Determine the mesh information.
     //
     coordsUnit = "nm";
-    float xSize = hMatrix[0] / 10.0; // now in nm
-    float ySize = hMatrix[4] / 10.0; // now in nm
-    float zSize = hMatrix[8] / 10.0; // now in nm
-    if (max(xSize, max(ySize, zSize)) > 1e3)
+    float xExtent = hMatrix[0] / 10.0; // now in nm
+    float yExtent = hMatrix[4] / 10.0; // now in nm
+    float zExtent = hMatrix[8] / 10.0; // now in nm
+    if (max(xExtent, max(yExtent, zExtent)) > 1e3)
     {
-        xSize /= 1e3;
-        ySize /= 1e3;
-        zSize /= 1e3;
+        xExtent /= 1e3;
+        yExtent /= 1e3;
+        zExtent /= 1e3;
         coordsUnit = "um";
     }
 
@@ -964,12 +1565,12 @@ avtDDCMDFileFormat::ReadHeader(const char *filename)
     if (nXFile == 1)
     {
         nDims = 2;
-        xMin = -(ySize / 2.0);
-        dX   =   ySize / (1.0 * nYFile);
-        yMin = -(zSize / 2.0);
-        dY   =   zSize / (1.0 * nZFile);
-        zMin = -(xSize / 2.0);
-        dZ   =   xSize / (1.0 * nXFile);
+        xMin = -(yExtent / 2.0);
+        dX   =   yExtent / (1.0 * nYFile);
+        yMin = -(zExtent / 2.0);
+        dY   =   zExtent / (1.0 * nZFile);
+        zMin = -(xExtent / 2.0);
+        dZ   =   xExtent / (1.0 * nXFile);
         nXMesh = nYFile;
         nYMesh = nZFile;
         nZMesh = 1;
@@ -977,400 +1578,348 @@ avtDDCMDFileFormat::ReadHeader(const char *filename)
     else
     {
         nDims = 3;
-        xMin = -(xSize / 2.0);
-        dX   =   xSize / (1.0 * nXFile);
-        yMin = -(ySize / 2.0);
-        dY   =   ySize / (1.0 * nYFile);
-        zMin = -(zSize / 2.0);
-        dZ   =   zSize / (1.0 * nZFile);
+        xMin = -(xExtent / 2.0);
+        dX   =   xExtent / (1.0 * nXFile);
+        yMin = -(yExtent / 2.0);
+        dY   =   yExtent / (1.0 * nYFile);
+        zMin = -(zExtent / 2.0);
+        dZ   =   zExtent / (1.0 * nZFile);
         nXMesh = nXFile;
         nYMesh = nYFile;
         nZMesh = nZFile;
     }
-
-    //
-    // Print out the contents of the header to the debug logs.
-    //
-    debug1 << "nRecord=" << nRecord << ",nFields=" << nFields << ",lRec=" << lRec << endl;
-    debug1 << "swap=" << swap << ",loop=" << loop << ",time=" << time << endl;
-    debug1 << "fieldSizes=";
-    for (int i = 0; i < nFields; i++)
-    {
-        debug1 << fieldSizes[i];
-        if (i < nFields - 1) debug1 << ",";
-    }
-    debug1 << endl;
-    debug1 << "fieldNames=";
-    for (int i = 0; i < nFields; i++)
-    {
-        debug1 << fieldNames[i];
-        if (i < nFields - 1) debug1 << ",";
-    }
-    debug1 << endl;
-    debug1 << "fieldTypes=";
-    for (int i = 0; i < nFields; i++)
-    {
-        debug1 << fieldTypes[i];
-        if (i < nFields - 1) debug1 << ",";
-    }
-    debug1 << endl;
-    debug1 << "nXFile=" << nXFile << ",nYFile=" << nYFile << ",nZFile=" << nZFile << endl;
-    debug1 << "nSpecies=" << nSpecies << endl;
-    for (int i = 0; i < nSpecies; i++)
-    {
-        debug1 << speciesNames[i];
-        if (i < nSpecies - 1) debug1 << ",";
-    }
-    debug1 << endl;
-    debug1 << "coordsUnit=" << coordsUnit << endl;
-    debug1 << "xMin=" << xMin << ",yMin=" << yMin << ",zMin=" << zMin << endl;
-    debug1 << "dX=" << dX << ",dY=" << dY << ",dZ=" << dZ << endl;
-
-    free(obj);
 }
 
 
 // ****************************************************************************
-//  Method: avtDDCMDFileFormat constructor
-//
-//  Programmer: brugger -- generated by xml2avt
-//  Creation:   Fri Aug 31 15:27:59 PST 2007
-//
-// ****************************************************************************
-
-avtDDCMDFileFormat::avtDDCMDFileFormat(const char *filename)
-    : avtSTMDFileFormat(&filename, 1)
-{
-    string name(filename);
-    fname = name.substr(0,name.length()-6);
-
-    dataRead = false;
-    varsBlock =  0;
-}
-
-
-// ****************************************************************************
-//  Method: avtDDCMDFileFormat destructor
-//
-//  Programmer: brugger
-//  Creation:   Thu Jan  3 11:11:39 PST 2008
-//
-// ****************************************************************************
-
-avtDDCMDFileFormat::~avtDDCMDFileFormat()
-{
-    FreeUpResources();
-}
-
-
-// ****************************************************************************
-//  Method: avtDDCMDFileFormat::FreeUpResources
+//  Method: avtDDCMDFileFormat::ParseAtomHeader
 //
 //  Purpose:
-//      When VisIt is done focusing on a particular timestep, it asks that
-//      timestep to free up any resources (memory, file descriptors) that
-//      it has associated with it.  This method is the mechanism for doing
-//      that.
+//      Parse the header for an atom file.
 //
-//  Programmer: brugger -- generated by xml2avt
-//  Creation:   Fri Aug 31 15:27:59 PST 2007
+//  Arguments:
+//      header      The header data for the current file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
 //
 //  Modifications:
-//    Eric Brugger, Thu Jan  3 11:11:39 PST 2008
-//    I modified the routine to set readData to false so that the data
-//    would be recreated if necessary by ActivateTimestep.
+//    Eric Brugger, Fri Dec  5 16:39:53 PST 2008
+//    I enhanced the reader to read ascii atom files.
 //
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::FreeUpResources(void)
+avtDDCMDFileFormat::ParseAtomHeader(const DDCMDHeader *header)
 {
+    unsigned int   nFields    = header->GetNFields();
+    char         **fieldNames = header->GetFieldNames();
+    char         **fieldTypes = header->GetFieldTypes();
+    unsigned int  *fieldSizes = header->GetFieldSizes();
+
     //
-    // Only free the block variables in the engine. The pointer will
-    // be 0 on the mdserver.
+    // Determine the variables to plot.
     //
-    if (varsBlock != 0)
+    groupOffset   = -1;
+    speciesOffset = -1;
+    typeOffset    = -1;
+    pinfoOffset   = -1;
+    xOffset       = -1;
+    yOffset       = -1;
+    zOffset       = -1;
+    varNames   = new string[nFields];
+    varOffsets = new int[nFields];
+    varSizes   = new int[nFields];
+    varTypes   = new char[nFields];
+    nVars = 0;
+
+    int offset = 0;
+
+    for (int i = 0; i < header->GetNFields(); i++)
     {
-        for (int i = 0; i < nVars; i++)
+        if (strcmp(fieldNames[i], "checksum") != 0)
         {
-            delete [] varsBlock[i];
+            if (strcmp(fieldNames[i], "class") == 0)
+            {
+                // Class maps to type.
+                typeOffset = offset;
+            }
+            else if (strcmp(fieldNames[i], "type") == 0)
+            {
+                // Type maps to species.
+                speciesOffset = offset;
+            }
+            else if (strcmp(fieldNames[i], "group") == 0)
+            {
+                // Group maps to group.
+                groupOffset = offset;
+            }
+            else if (strcmp(fieldNames[i], "pinfo") == 0)
+            {
+                pinfoOffset = offset;
+                pinfoSize   = fieldSizes[i];
+                pinfoType   = fieldTypes[i][0];
+            }
+            else if (strcmp(fieldNames[i], "rx") == 0)
+            {
+                xOffset = offset;
+                xSize   = fieldSizes[i];
+                xType   = fieldTypes[i][0];
+            }
+            else if (strcmp(fieldNames[i], "ry") == 0)
+            {
+                yOffset = offset;
+                ySize   = fieldSizes[i];
+                yType   = fieldTypes[i][0];
+            }
+            else if (strcmp(fieldNames[i], "rz") == 0)
+            {
+                zOffset = offset;
+                zSize   = fieldSizes[i];
+                zType   = fieldTypes[i][0];
+            }
+            else
+            {
+                varNames[nVars]   = fieldNames[i];
+                varOffsets[nVars] = offset;
+                varSizes[nVars]   = fieldSizes[i];
+                varTypes[nVars]   = fieldTypes[i][0];
+                nVars++;
+            }
         }
-        delete [] varsBlock;
-        varsBlock = 0;
+        offset += fieldSizes[i];
+    }
+
+    for (int i = 0 ; i < nVars; i++)
+    {
+        debug1 << "varName=" << varNames[i] << ",offset=" << varOffsets[i]
+               << ",size=" << varSizes[i] << ",type=" << varTypes[i] << endl;
     }
 
     //
-    // Indicate that the data needs to read again.
+    // Determine the mesh information.
     //
-    dataRead = false;
+    const double *hMatrix = header->GetHMatrix();
+
+    coordsUnit = "nm";
+    coordsScale = 10.0;
+    float xExtent = hMatrix[0] / 10.0; // now in nm
+    float yExtent = hMatrix[4] / 10.0; // now in nm
+    float zExtent = hMatrix[8] / 10.0; // now in nm
+    if (max(xExtent, max(yExtent, zExtent)) > 1e3)
+    {
+        xExtent /= 1e3;
+        yExtent /= 1e3;
+        zExtent /= 1e3;
+        coordsUnit = "um";
+        coordsScale *= 1e3;
+    }
+
+    nDims = 3;
+    xMin = -(xExtent / 2.0);
+    dX   =   xExtent;
+    yMin = -(yExtent / 2.0);
+    dY   =   yExtent;
+    zMin = -(zExtent / 2.0);
+    dZ   =   zExtent;
 }
 
 
 // ****************************************************************************
-//  Method: avtDDCMDFileFormat::GetCycle
+//  Method: avtDDCMDFileFormat::ReadCGridData
 //
 //  Purpose:
-//      Return the current cycle.
+//      Read the data from a cgrid file.  Each processor reads in a portion
+//      of the data and then the data is exchanged among the processors
+//      into spacially contiguous blocks.
 //
-//  Programmer: brugger
-//  Creation:   Wed Sep  5 11:40:55 PDT 2007
+//  Arguments:
+//      header      The header data for the current file.
+//      subname     The name of the sub file.
 //
-// ****************************************************************************
-
-int
-avtDDCMDFileFormat::GetCycle(void)
-{
-    return loop;
-}
-
-
-// ****************************************************************************
-//  Method: avtDDCMDFileFormat::GetTime
-//
-//  Purpose:
-//      Return the current time.
-//
-//  Programmer: brugger
-//  Creation:   Wed Sep  5 11:40:55 PDT 2007
-//
-// ****************************************************************************
-
-double
-avtDDCMDFileFormat::GetTime(void)
-{
-    return time;
-}
-
-
-// ****************************************************************************
-//  Method: avtDDCMDFileFormat::ActivateTimestep
-//
-//  Purpose: Provides a guarenteed collective entry point for operations
-//    that may involve collective parallel communication.
-//
-//  Programmer: brugger
-//  Creation:   Wed Sep  5 11:40:55 PDT 2007
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
 //
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::ActivateTimestep(void)
+avtDDCMDFileFormat::ReadCGridData(const DDCMDHeader *header,
+    const string &subname)
 {
-    //
-    // Return if the data has been read.
-    //
-    if (dataRead)
-        return;
+#ifdef MDSERVER
+    return;
+#endif
+    DetermineProcessorReadOffset(header, subname.c_str());
 
-    //
-    // Read the header.
-    //
-    ReadHeader(fname.c_str());
+    DetermineBlockDecomposition();
 
-    //
-    // Read the data.
-    //
-    ReadData();
+    ReadProcessorChunk(header, subname.c_str());
 
-    dataRead = true;
+    ExchangeProcessorData(header);
+
+    CopyExchangeDataToBlocks(header);
+
+    varsBlock = varValues;
 }
 
+
 // ****************************************************************************
-//  Method: avtDDCMDFileFormat::PopulateDatabaseMetaData
+//  Method: avtDDCMDFileFormat::ReadAtomData
 //
 //  Purpose:
-//      This database meta-data object is like a table of contents for the
-//      file.  By populating it, you are telling the rest of VisIt what
-//      information it can request from you.
+//      Read the data from an atom file.
 //
-//  Programmer: brugger -- generated by xml2avt
+//  Arguments:
+//      header      The header data for the current file.
+//      subname     The name of the sub file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::ReadAtomData(const DDCMDHeader *header,
+    const string &subname)
+{
+#ifdef MDSERVER
+    return;
+#endif
+    DetermineProcessorReadOffset(header, subname.c_str());
+
+    ReadProcessorChunk(header, subname.c_str());
+
+    CopyDataToBlocks(header);
+
+    for (int i = 0; i < nVars; i++)
+    {
+        varsBlock[nVarsBlock+i] = varValues[i];
+    }
+
+    delete [] varValues;
+    varValues = 0;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::ReadData
+//
+//  Purpose:
+//      Read in the data portion of the file.  This is everything but
+//      the header.
+//
+//  Programmer: Eric Brugger
 //  Creation:   Fri Aug 31 15:27:59 PST 2007
 //
-//  Modifications:
-//    Eric Brugger, Tue Jul 15 15:21:50 PDT 2008
-//    I added the stress tensor to the list of variables in the file.
-//
 // ****************************************************************************
 
 void
-avtDDCMDFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
+avtDDCMDFileFormat::ReadData(vector<DDCMDHeader*> &headers)
 {
-    //
-    // Set the mesh information.
-    //
-    string meshname = "quadmesh";
-
-    avtMeshType mt = AVT_RECTILINEAR_MESH;
-
-    int nblocks = 1;
-    int block_origin = 0;
-    int spatial_dimension = nDims;
-    int topological_dimension = nDims;
-    double *extents = NULL;
-
-    AddMeshToMetaData(md, meshname, mt, extents, nblocks, block_origin,
-                      spatial_dimension, topological_dimension);
-    md->SetFormatCanDoDomainDecomposition(true);
-
-    //
-    // Set the particle variable information (One variable per species
-    // and one expression).
-    //
-    avtCentering cent = AVT_ZONECENT;
-
-    for (int j = 0; j < nSpecies; j++)
+    if (cgridFile)
     {
-        string name = "nParticles_" + string(speciesNames[j]);
-        AddScalarVarToMetaData(md, name, meshname, cent);
-    }
+        ParseCGridHeader(headers[0]);
 
-    Expression expr;
-    expr.SetName("nParticles");
-    string name = "nParticles_" + string(speciesNames[0]);
-    for (int j = 1; j < nSpecies; j++)
-    {
-        name += " + nParticles_" + string(speciesNames[j]);
-    }
-    expr.SetDefinition(name);
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
+        ReadCGridData(headers[0], subnames[0]);
 
-    for (int j = 0; j < nSpecies; j++)
-    {
-        string name = "frac_" + string(speciesNames[j]);
-        expr.SetName(name);
-        name = "nParticles_" + string(speciesNames[j]) + "/nParticles";
-        expr.SetDefinition(name);
-        expr.SetType(Expression::ScalarMeshVar);
-        md->AddExpression(&expr);
-
-        name = "mix_" + string(speciesNames[j]);
-        expr.SetName(name);
-        string frac_name = "frac_" + string(speciesNames[j]);
-        name = frac_name + "-" + frac_name + "*" + frac_name;
-        expr.SetDefinition(name);
-        expr.SetType(Expression::ScalarMeshVar);
-        md->AddExpression(&expr);
-    }
-
-    //
-    // Set the normal variable information (One variable per species
-    // per variable and one expression per variable).
-    //
-    vector<string> vars;
-    vars.push_back("px");
-    vars.push_back("py");
-    vars.push_back("pz");
-    vars.push_back("mass");
-    vars.push_back("virial");
-    vars.push_back("Kx");
-    vars.push_back("Ky");
-    vars.push_back("Kz");
-    vars.push_back("U");
-    vars.push_back("vir_xx");
-    vars.push_back("vir_yy");
-    vars.push_back("vir_zz");
-    vars.push_back("vir_xy");
-    vars.push_back("vir_xz");
-    vars.push_back("vir_yz");
-    for (int i = 0; i < vars.size(); i++)
-    {
-        for (int j = 0; j < nSpecies; j++)
-        {
-            string name = vars[i] + "_" + string(speciesNames[j]);
-            AddScalarVarToMetaData(md, name, meshname, cent);
-        }
-
-        expr.SetName(vars[i]);
-        string name = vars[i] + "_" + string(speciesNames[0]);
-        for (int j = 1; j < nSpecies; j++)
-        {
-            name += " + " + vars[i] + "_" + string(speciesNames[j]);
-        }
-        expr.SetDefinition(name);
-        expr.SetType(Expression::ScalarMeshVar);
-        md->AddExpression(&expr);
-    }
-
-    //
-    // Set the miscellaneous expressions.
-    //
-    if (nDims == 2)
-    {
-        expr.SetName("p");
-        expr.SetDefinition("{py, pz}");
-        expr.SetType(Expression::VectorMeshVar);
-        md->AddExpression(&expr);
-        expr.SetName("v");
-        expr.SetDefinition("{vy,vz}");
-        expr.SetType(Expression::VectorMeshVar);
-        md->AddExpression(&expr);
+        nVarsBlock = nVars;
+        varNamesBlock = varNames;
     }
     else
     {
-        expr.SetName("p");
-        expr.SetDefinition("{px, py, pz}");
-        expr.SetType(Expression::VectorMeshVar);
-        md->AddExpression(&expr);
-        expr.SetName("v");
-        expr.SetDefinition("{vx, vy,vz}");
-        expr.SetType(Expression::VectorMeshVar);
-        md->AddExpression(&expr);
-        expr.SetName("vx");
-        expr.SetDefinition("px/max(mass,1.0)");
-        expr.SetType(Expression::ScalarMeshVar);
-        md->AddExpression(&expr);
+        int nFields = 0;
+        for (int i = 0; i < headers.size(); i++)
+            nFields += headers[i]->GetNFields();
+
+        nVarsBlock = 0;
+        varNamesBlock = new string[nFields];
+#ifndef MDSERVER
+        varsBlock = new float*[nFields];
+#endif
+        for (int i = 0; i < subnames.size(); i++)
+        {
+            ParseAtomHeader(headers[i]);
+
+            ReadAtomData(headers[i], subnames[i]);
+
+            for (int i = 0; i < nVars; i++)
+            {
+                varNamesBlock[nVarsBlock] = varNames[i];
+                nVarsBlock++;
+            }
+
+            delete [] varNames;
+            varNames = 0;
+        }
     }
-    expr.SetName("vy");
-    expr.SetDefinition("py/max(mass,1.0)");
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
-    expr.SetName("vz");
-    expr.SetDefinition("pz/max(mass,1.0)");
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
-    expr.SetName("K");
-    expr.SetDefinition("Kx+Ky+Kz");
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
-    expr.SetName("Etotal");
-    expr.SetDefinition("K+U");
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
-    expr.SetName("density");
-    expr.SetDefinition("mass/area(quadmesh)");
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
-    expr.SetName("Temperature");
-    expr.SetDefinition("(2.0/3.0)*(11605/(nParticles-1)) * "
-        "(K - ( (103.645*magnitude(p)*magnitude(p)) / (2*mass) ) )");
-    expr.SetType(Expression::ScalarMeshVar);
-    md->AddExpression(&expr);
+
+    //
+    // Print out the mesh extents to the debug logs.
+    //
+    debug1 << "coordsUnit=" << coordsUnit << endl;
+    debug1 << "xMin=" << xMin << ",yMin=" << yMin << ",zMin=" << zMin << endl;
 }
 
 
 // ****************************************************************************
-//  Method: avtDDCMDFileFormat::GetMesh
+//  Method: avtDDCMDFileFormat::GetPointMesh
 //
 //  Purpose:
-//      Gets the mesh associated with this file.  The mesh is returned as a
-//      derived type of vtkDataSet (ie vtkRectilinearGrid, vtkStructuredGrid,
-//      vtkUnstructuredGrid, etc).
+//      Get the point mesh for the file.
 //
-//  Arguments:
-//      domain      The index of the domain.  If there are NDomains, this
-//                  value is guaranteed to be between 0 and NDomains-1,
-//                  regardless of block origin.
-//      meshname    The name of the mesh of interest.  This can be ignored if
-//                  there is only one mesh.
-//
-//  Programmer: brugger -- generated by xml2avt
-//  Creation:   Fri Aug 31 15:27:59 PST 2007
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
 //
 // ****************************************************************************
 
 vtkDataSet *
-avtDDCMDFileFormat::GetMesh(int domain, const char *meshname)
+avtDDCMDFileFormat::GetPointMesh()
+{
+    vtkPoints *points  = vtkPoints::New();
+    points->SetNumberOfPoints(nPoints);
+    float *pts = vtkFloatArray::SafeDownCast(points->GetData())->GetPointer(0);
+
+    for (int i = 0; i < nPoints*3; i++)
+        pts[i] = coordsBlock[i];
+
+    //
+    // Create the VTK objects and connect them up.
+    //
+    vtkUnstructuredGrid *ugrid = vtkUnstructuredGrid::New();
+    ugrid->SetPoints(points);
+    ugrid->Allocate(nPoints);
+    vtkIdType onevertex[1];
+    for (int i = 0 ; i < nPoints; i++)
+    {
+        onevertex[0] = i;
+        ugrid->InsertNextCell(VTK_VERTEX, 1, onevertex);
+    }
+
+    points->Delete();
+
+    return ugrid;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::GetRectilinearMesh
+//
+//  Purpose:
+//      Get the rectilinear mesh for the file.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+//  Modifications:
+//    Eric Brugger, Thu Mar 12 14:25:26 PDT 2009
+//    I modified the routine so that in the case of a 2d mesh it would
+//    return 1 for the z dimension instead of 2, which it was erroneously
+//    doing before.
+//
+// ****************************************************************************
+
+vtkDataSet *
+avtDDCMDFileFormat::GetRectilinearMesh()
 {
     int dims[3] = {1, 1, 1};
     vtkFloatArray *coords[3] = {0, 0, 0};
@@ -1401,8 +1950,8 @@ avtDDCMDFileFormat::GetMesh(int domain, const char *meshname)
         iYMin = iZBlock * deltaZ;
         iYMax = iYMin + deltaZ < nZFile ? iYMin + deltaZ : nZFile;
 
-        iZMin = iXBlock * deltaX;
-        iZMax = iZMin + deltaX < nXFile ? iZMin + deltaX : nXFile;
+        iZMin = 0;
+        iZMax = 0;
     }
     else
     {
@@ -1481,6 +2030,588 @@ avtDDCMDFileFormat::GetMesh(int domain, const char *meshname)
 
 
 // ****************************************************************************
+//  Method: avtDDCMDFileFormat::GetPointVar
+//
+//  Purpose:
+//      Get the specified point variable for the file.
+//
+//  Arguments:
+//      varname     The name of the variable to get.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+// ****************************************************************************
+
+vtkDataArray *
+avtDDCMDFileFormat::GetPointVar(const char *varname)
+{
+    string var = varname;
+
+    float *tmpData = 0;
+    float *data = 0;
+    if (var == "species" || var == "group" || var == "type")
+    {
+        tmpData = new float[nPoints];
+        data = tmpData;
+        for (int i = 0; i < nPoints; i++)
+        {
+            unsigned pinfo = pinfoBlock[i];
+            int ig = pinfo % nGroups;
+            pinfo /= nGroups;
+            int is = pinfo % nSpecies;
+            pinfo /= nSpecies;
+            int it = pinfo;
+            if (var == "species")
+                data[i] = float(is);
+            else if (var == "group")
+                data[i] = float(ig);
+            else
+                data[i] = float(it);
+        }
+    }
+    else
+    {
+        //
+        // Get the index of the variable name.
+        //
+        int i;
+
+        for (i= 0; i < nVarsBlock && varNamesBlock[i] != varname; i++)
+            /* Do nothing. */;
+        if (i== nVarsBlock)
+            EXCEPTION1(InvalidVariableException, varname);
+        data = varsBlock[i];
+    }
+
+    //
+    // Copy the data array.
+    //
+    vtkFloatArray *rv = vtkFloatArray::New();
+
+    rv->SetNumberOfTuples(nPoints);
+
+    for (int i = 0; i < nPoints; i++)
+    {
+        rv->SetTuple1(i, *(data++));
+    }
+
+    //
+    // Free temporary storage.
+    //
+    if (tmpData != 0)  delete [] tmpData;
+
+    return rv;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::GetRectilinearVar
+//
+//  Purpose:
+//      Get the specified rectlinear variable for the file.
+//
+//  Arguments:
+//      varname     The name of the variable to get.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Nov 20 10:44:45 PST 2008
+//
+// ****************************************************************************
+
+vtkDataArray *
+avtDDCMDFileFormat::GetRectilinearVar(const char *varname)
+{
+    string var = varname;
+
+    //
+    // Determine the variable name and the species name.
+    //
+    int i;
+    for (i = var.length() - 1; i > 0 && var[i] != '_'; i--)
+        /* do nothing */;
+    string varBase = var.substr(0, i);
+    string varSpec = var.substr(i+1, var.length() - i - 1);
+    
+    //
+    // Get the index of the variable name and the index of the species name.
+    //
+    int iVar;
+
+    for (iVar = 0; iVar < nVarsBlock && varNamesBlock[iVar] != varBase; iVar++)
+        /* Do nothing. */;
+    if (iVar == nVarsBlock)
+        EXCEPTION1(InvalidVariableException, varname);
+
+    int iSpec;
+
+    for (iSpec = 0; iSpec < nSpecies && strcmp(speciesNames[iSpec], varSpec.c_str()); iSpec++)
+        /* Do nothing. */;
+    if (iSpec == nSpecies)
+        EXCEPTION1(InvalidVariableException, varname);
+
+    //
+    // Copy the data array.
+    //
+    vtkFloatArray *rv = vtkFloatArray::New();
+
+    int ntuples = nZonesBlock;
+    rv->SetNumberOfTuples(ntuples);
+
+    float *data = varsBlock[iVar] + iSpec * ntuples;
+    i = 0;
+    for (int iZ = 0; iZ < nZBlock; iZ++)
+    {
+        for (int iY = 0; iY < nYBlock; iY++)
+        {
+            for (int iX = 0; iX < nXBlock; iX++)
+            {
+                rv->SetTuple1(i, *(data++));
+                i++;
+            }
+        }
+    }
+
+    return rv;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat constructor
+//
+//  Programmer: brugger -- generated by xml2avt
+//  Creation:   Fri Aug 31 15:27:59 PST 2007
+//
+//  Modifications:
+//    Eric Brugger, Fri Nov 21 12:39:10 PST 2008
+//    I modified the routine to get the sub file names from the file
+//    instead of assuming it was cgrid.  If there are no sub file names
+//    in the file, then it assumes that it is cgrid to maintain backward
+//    compatability.
+//
+// ****************************************************************************
+
+avtDDCMDFileFormat::avtDDCMDFileFormat(const char *filename)
+    : avtSTMDFileFormat(&filename, 1)
+{
+    //
+    // Store the directory name with the data files.
+    //
+    string name(filename);
+    fname = name.substr(0,name.length()-6);
+
+    //
+    // Read the file to determine the sub file names to read in the
+    // directory.  If the file doesn't contain any names assume it is
+    // a cgrid file.  This is to maintain backward compatability, where
+    // only cgrid files were supported and the file was a zero length
+    // file.
+    //
+    int       maxlen, lbuf;
+    char      str[1024], *buf, *b;
+    FILE     *file;
+
+    file = fopen(filename, "r");
+    str[0] = '\0';
+    maxlen = 1024;
+    buf = str;
+    b = str;
+    while (b != NULL)
+    {
+        lbuf = strlen(buf);
+        b = fgets(buf + lbuf, maxlen - lbuf, file);
+    }
+    fclose(file);
+
+    if (lbuf == 0)
+    {
+        subnames.push_back("cgrid");
+    }
+    else
+    {
+        int       nFiles;
+        char    **fileNames;
+        OBJECT   *obj;
+
+        obj = (OBJECT*) malloc(sizeof(OBJECT));
+        object_lineparse(buf, obj);
+
+        nFiles = object_getv1(obj, (char*)"files", (void**)&fileNames, STRING);
+        if (nFiles == 0)
+        {
+            subnames.push_back("cgrid");
+        }
+        else
+        {
+            for (int i = 0; i < nFiles; i++)
+            {
+                subnames.push_back(fileNames[i]);
+                free(fileNames[i]);
+            }
+            free(fileNames);
+        }
+
+        free(obj);
+    }
+
+    dataRead = false;
+    varsBlock =  0;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat destructor
+//
+//  Programmer: brugger
+//  Creation:   Thu Jan  3 11:11:39 PST 2008
+//
+// ****************************************************************************
+
+avtDDCMDFileFormat::~avtDDCMDFileFormat()
+{
+    FreeUpResources();
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::FreeUpResources
+//
+//  Purpose:
+//      When VisIt is done focusing on a particular timestep, it asks that
+//      timestep to free up any resources (memory, file descriptors) that
+//      it has associated with it.  This method is the mechanism for doing
+//      that.
+//
+//  Programmer: brugger -- generated by xml2avt
+//  Creation:   Fri Aug 31 15:27:59 PST 2007
+//
+//  Modifications:
+//    Eric Brugger, Thu Jan  3 11:11:39 PST 2008
+//    I modified the routine to set readData to false so that the data
+//    would be recreated if necessary by ActivateTimestep.
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::FreeUpResources(void)
+{
+    //
+    // Only free the block variables in the engine. The pointer will
+    // be 0 on the mdserver.
+    //
+    if (varsBlock != 0)
+    {
+        for (int i = 0; i < nVarsBlock; i++)
+        {
+            delete [] varsBlock[i];
+        }
+        delete [] varsBlock;
+        varsBlock = 0;
+    }
+
+    //
+    // Indicate that the data needs to be read again.
+    //
+    dataRead = false;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::GetCycle
+//
+//  Purpose:
+//      Return the current cycle.
+//
+//  Programmer: brugger
+//  Creation:   Wed Sep  5 11:40:55 PDT 2007
+//
+// ****************************************************************************
+
+int
+avtDDCMDFileFormat::GetCycle(void)
+{
+    return loop;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::GetTime
+//
+//  Purpose:
+//      Return the current time.
+//
+//  Programmer: brugger
+//  Creation:   Wed Sep  5 11:40:55 PDT 2007
+//
+// ****************************************************************************
+
+double
+avtDDCMDFileFormat::GetTime(void)
+{
+    return time;
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::ActivateTimestep
+//
+//  Purpose: Provides a guarenteed collective entry point for operations
+//    that may involve collective parallel communication.
+//
+//  Programmer: brugger
+//  Creation:   Wed Sep  5 11:40:55 PDT 2007
+//
+//  Modifications:
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::ActivateTimestep(void)
+{
+    //
+    // Return if the data has been read.
+    //
+    if (dataRead)
+        return;
+
+    //
+    // Read the header.
+    //
+    vector<DDCMDHeader*> headers = ReadHeader();
+
+    //
+    // Read the data.
+    //
+    ReadData(headers);
+
+    //
+    // Free the data.
+    //
+    for (int i = 0; i < headers.size(); i++)
+        delete headers[i];
+
+    dataRead = true;
+}
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::PopulateDatabaseMetaData
+//
+//  Purpose:
+//      This database meta-data object is like a table of contents for the
+//      file.  By populating it, you are telling the rest of VisIt what
+//      information it can request from you.
+//
+//  Programmer: brugger -- generated by xml2avt
+//  Creation:   Fri Aug 31 15:27:59 PST 2007
+//
+//  Modifications:
+//    Eric Brugger, Tue Jul 15 15:21:50 PDT 2008
+//    I added the stress tensor to the list of variables in the file.
+//
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
+//    Eric Brugger, Fri Mar 13 17:07:47 PDT 2009
+//    I added rectilinear domain boundaries so that ghost zones would be
+//    automatically added when necessary.
+//
+// ****************************************************************************
+
+void
+avtDDCMDFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
+{
+    if (cgridFile)
+    {
+        //
+        // Set the mesh information.
+        //
+        string meshname = "quadmesh";
+
+        avtMeshType mt = AVT_RECTILINEAR_MESH;
+
+        int nblocks = 1;
+        int block_origin = 0;
+        int spatial_dimension = nDims;
+        int topological_dimension = nDims;
+        double *extents = 0;
+
+        AddMeshToMetaData(md, meshname, mt, extents, nblocks, block_origin,
+                          spatial_dimension, topological_dimension);
+        md->SetFormatCanDoDomainDecomposition(true);
+
+        //
+        // Create the appropriate domain boundary information.
+        //
+        if (!avtDatabase::OnlyServeUpMetaData())
+        {
+            avtRectilinearDomainBoundaries *rdb =
+                new avtRectilinearDomainBoundaries(true);
+
+            rdb->SetNumDomains(nBlocks);
+            for (int j = 0; j < nBlocks; j++)
+            {
+                int extents[6];
+
+                int deltaX = (nXFile + nXFileBlocks - 1) / nXFileBlocks;
+                int deltaY = (nYFile + nYFileBlocks - 1) / nYFileBlocks;
+                int deltaZ = (nZFile + nZFileBlocks - 1) / nZFileBlocks;
+
+                int iBlock = j;
+                int iXBlock = iBlock / (nYFileBlocks * nZFileBlocks);
+                iBlock %= (nYFileBlocks * nZFileBlocks);
+                int iYBlock = iBlock / nZFileBlocks;
+                int iZBlock = iBlock % nZFileBlocks;
+
+                int iXMin, iXMax, iYMin, iYMax, iZMin, iZMax;
+                if (nDims == 2)
+                {
+                    iXMin = iYBlock * deltaY;
+                    iXMax = iXMin + deltaY < nYFile ? iXMin + deltaY : nYFile;
+
+                    iYMin = iZBlock * deltaZ;
+                    iYMax = iYMin + deltaZ < nZFile ? iYMin + deltaZ : nZFile;
+
+                    iZMin = 0;
+                    iZMax = 0;
+                }
+                else
+                {
+                    iXMin = iXBlock * deltaX;
+                    iXMax = iXMin + deltaX < nXFile ? iXMin + deltaX : nXFile;
+
+                    iYMin = iYBlock * deltaY;
+                    iYMax = iYMin + deltaY < nYFile ? iYMin + deltaY : nYFile;
+
+                    iZMin = iZBlock * deltaZ;
+                    iZMax = iZMin + deltaZ < nZFile ? iZMin + deltaZ : nZFile;
+                }
+
+                extents[0] = iXMin;
+                extents[1] = iXMax;
+                extents[2] = iYMin;
+                extents[3] = iYMax;
+                extents[4] = iZMin;
+                extents[5] = iZMax;
+
+                rdb->SetIndicesForRectGrid(j, extents);
+            }
+            rdb->CalculateBoundaries();
+
+            void_ref_ptr vr = void_ref_ptr(rdb,
+                avtStructuredDomainBoundaries::Destruct);
+            cache->CacheVoidRef("any_mesh",
+                AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
+        }
+
+        //
+        // Set the variable information.
+        //
+        Expression expr;
+        for (int i = 0; i < nVarsBlock; i++)
+        {
+            for (int j = 0; j < nSpecies; j++)
+            {
+                string name = varNamesBlock[i] + "_" + string(speciesNames[j]);
+                AddScalarVarToMetaData(md, name, meshname, AVT_ZONECENT);
+            }
+
+            expr.SetName(varNamesBlock[i]);
+            string name = varNamesBlock[i] + "_" + string(speciesNames[0]);
+            for (int j = 1; j < nSpecies; j++)
+            {
+                name += " + " + varNamesBlock[i] + "_" + string(speciesNames[j]);
+            }
+            expr.SetDefinition(name);
+            expr.SetType(Expression::ScalarMeshVar);
+            md->AddExpression(&expr);
+        }
+    }
+    else
+    {
+        //
+        // Set the mesh information.
+        //
+        string meshname = "atoms";
+
+        avtMeshType mt = AVT_POINT_MESH;
+
+        int nblocks = 1;
+        int block_origin = 0;
+        int spatial_dimension = nDims;
+        int topological_dimension = nDims;
+        double extents[6];
+        extents[0] = xMin;
+        extents[1] = xMin + dX;
+        extents[2] = yMin;
+        extents[3] = yMin + dY;
+        extents[4] = zMin;
+        extents[5] = zMin + dZ;
+
+        AddMeshToMetaData(md, meshname, mt, extents, nblocks, block_origin,
+                          spatial_dimension, topological_dimension);
+        md->SetFormatCanDoDomainDecomposition(true);
+
+        //
+        // Set the variable information.
+        //
+        for (int i = 0; i < nVarsBlock; i++)
+        {
+            AddScalarVarToMetaData(md, varNamesBlock[i], meshname, AVT_ZONECENT);
+        }
+
+        //
+        // Set the variables incoded in pinfo.
+        //
+        if (nSpecies > 1)
+            AddScalarVarToMetaData(md, "species", meshname, AVT_ZONECENT);
+        if (nGroups > 1)
+            AddScalarVarToMetaData(md, "group", meshname, AVT_ZONECENT);
+        if (nTypes > 1)
+            AddScalarVarToMetaData(md, "type", meshname, AVT_ZONECENT);
+    }
+}
+
+
+// ****************************************************************************
+//  Method: avtDDCMDFileFormat::GetMesh
+//
+//  Purpose:
+//      Gets the mesh associated with this file.  The mesh is returned as a
+//      derived type of vtkDataSet (ie vtkRectilinearGrid, vtkStructuredGrid,
+//      vtkUnstructuredGrid, etc).
+//
+//  Arguments:
+//      domain      The index of the domain.  If there are NDomains, this
+//                  value is guaranteed to be between 0 and NDomains-1,
+//                  regardless of block origin.
+//      meshname    The name of the mesh of interest.  This can be ignored if
+//                  there is only one mesh.
+//
+//  Programmer: brugger -- generated by xml2avt
+//  Creation:   Fri Aug 31 15:27:59 PST 2007
+//
+//  Modifications:
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
+// ****************************************************************************
+
+vtkDataSet *
+avtDDCMDFileFormat::GetMesh(int domain, const char *meshname)
+{
+    if (cgridFile)
+        return GetRectilinearMesh();
+    else
+        return GetPointMesh();
+}
+
+
+// ****************************************************************************
 //  Method: avtDDCMDFileFormat::GetVar
 //
 //  Purpose:
@@ -1502,6 +2633,10 @@ avtDDCMDFileFormat::GetMesh(int domain, const char *meshname)
 //    from the end of the name backwards so that it can handle variable
 //    names with underscores.
 //
+//    Eric Brugger, Thu Nov 20 10:44:45 PST 2008
+//    I added the ability to read atom files, which required being able to
+//    read multiple files to get all the data.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -1510,59 +2645,10 @@ avtDDCMDFileFormat::GetVar(int domain, const char *varname)
     if (domain != 0)
         EXCEPTION1(InvalidVariableException, varname);
 
-    vtkFloatArray *rv = 0;
-
-    string var = varname;
-
-    //
-    // Determine the variable name and the species name.
-    //
-    int i;
-    for (i = var.length() - 1; i > 0 && var[i] != '_'; i--)
-        /* do nothing */;
-    string varBase = var.substr(0, i);
-    string varSpec = var.substr(i+1, var.length() - i - 1);
-    
-    //
-    // Get the index of the variable name and the index of the species name.
-    //
-    int iVar;
-
-    for (iVar = 0; iVar < varNames.size() && varNames[iVar] != varBase; iVar++)
-        /* Do nothing. */;
-    if (iVar == varNames.size())
-        EXCEPTION1(InvalidVariableException, varname);
-
-    int iSpec;
-
-    for (iSpec = 0; iSpec < nSpecies && strcmp(speciesNames[iSpec], varSpec.c_str()); iSpec++)
-        /* Do nothing. */;
-    if (iSpec == nSpecies)
-        EXCEPTION1(InvalidVariableException, varname);
-
-    //
-    // Copy the data array.
-    //
-    rv = vtkFloatArray::New();
-
-    int ntuples = nZonesBlock;
-    rv->SetNumberOfTuples(ntuples);
-
-    float *data = varsBlock[iVar] + iSpec * ntuples;
-    i = 0;
-    for (int iZ = 0; iZ < nZBlock; iZ++)
-    {
-        for (int iY = 0; iY < nYBlock; iY++)
-        {
-            for (int iX = 0; iX < nXBlock; iX++)
-            {
-                rv->SetTuple1(i, *(data++));
-                i++;
-            }
-        }
-    }
-
-    return rv;
+    if (cgridFile)
+        return GetRectilinearVar(varname);
+    else
+        return GetPointVar(varname);
 }
 
 

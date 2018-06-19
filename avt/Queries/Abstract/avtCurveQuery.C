@@ -61,6 +61,13 @@
 //  Programmer:   Hank Childs
 //  Creation:     October 4, 2003
 //
+//  Modifications:
+//    Kathleen Bonnell, Thu Mar 19 17:45:21 PDT 2009
+//    Set flag to force curve construction.
+//
+//    Kathleen Bonnell, Mon Mar 23 09:55:10 PDT 2009
+//    Removed flag to force curve construction, no longer necessary.
+//
 // ****************************************************************************
 
 avtCurveQuery::avtCurveQuery()

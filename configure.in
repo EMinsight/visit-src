@@ -873,6 +873,17 @@ dnl    Eric Brugger, Wed Oct 22 16:10:34 PDT 2008
 dnl    Added DATA_EXE_LDFLAGS, which is used in the data directory to set
 dnl    the rpath to $ORIGIN/../src/lib on linux systems.
 dnl 
+dnl    Brad Whitlock, Tue Dec  2 11:32:06 PST 2008
+dnl    I set VISITWRAPPER_RPATH if --prefix is specified and we're on Linux
+dnl    so we can set -rpath LDFLAGS that let the visit engine wrapper libraries
+dnl    know where they will be installed. This is key to getting them to work
+dnl    without requiring LD_LIBRARY_PATH to be specified before running the
+dnl    client simulation. It also prevents the sim writers from having to do
+dnl    very bad things such as using a specific VisIt rpath when linking
+dnl    their codes.
+dnl
+dnl    Mark C. Miller, Mon Mar  2 17:25:10 PST 2009
+dnl    Added logic to itaps-impl option to add -D${impl_name} to CXXFLAGS
 dnl --------------------------------------------------------------------------
 
 dnl
@@ -1765,6 +1776,65 @@ fi
 AC_SUBST(BUILD_BILIB)
 
 dnl
+dnl Determine the installation path to VisIt's lib directory. We take --prefix 
+dnl into account if it has been specified.
+dnl
+VISITWRAPPER_RPATH=
+if test "x$prefix" != xNONE; then
+    PLATFORM=
+    case "$UNAME" in
+    Linux)
+        # Adapted from visit-bin-dist
+        INSTALL_ARCH=`/bin/uname -m`
+        case $INSTALL_ARCH in
+           ia64)
+              PLATFORM="linux-ia64"
+              ;;
+           x86_64)
+              PLATFORM="linux-x86_64"
+              ;;
+           *)
+              if test "$CC" == "icc" ; then
+                  PLATFORM="linux-intel-icc"
+              else
+                  PLATFORM="linux-intel"
+              fi
+              ;;
+        esac
+        ;;
+    Darwin)
+        # Adapted from visit-bin-dist
+        INSTALL_ARCH=`/bin/uname -p`
+        case $INSTALL_ARCH in
+           powerpc)
+              PLATFORM="darwin-ppc"
+              ;;
+           *)
+              PLATFORM="darwin-i386"
+              ;;
+        esac
+        ;;
+    esac
+    COMPATIBILITY_VERSION=`sed -e "s/b//" VERSION`
+    VISIT_LIB_DIR="$prefix/$COMPATIBILITY_VERSION/$PLATFORM/lib"
+
+    dnl
+    dnl Set up "rpath" flags that let the visit wrapper library know where it will be 
+    dnl installed so we don't have to specify a LD_LIBRARY_PATH or rpath to the 
+    dnl client simulation.
+    dnl
+    case $UNAME in
+    Linux)
+        VISITWRAPPER_RPATH="-Wl,-rpath,$VISIT_LIB_DIR"
+        ;;
+    Darwin)
+        VISITWRAPPER_RPATH="-Wl,-install_name,$VISIT_LIB_DIR/\$@,-compatibility_version,$COMPATIBILITY_VERSION,-current_version,$COMPATIBILITY_VERSION"
+        ;;
+    esac
+fi
+AC_SUBST(VISITWRAPPER_RPATH)
+
+dnl
 dnl Make note if no CXXFLAGS have STILL yet been specified; this is the
 dnl same check as for emptycxxflags above, except it is possible that a
 dnl config-site file added some, in which case we need to append, not
@@ -2058,64 +2128,17 @@ if test -n "$HDF5_LIB"; then
 fi
 
 #
-# Check for the public SILO includes since that's what we'll use.
+# Handle the Silo library
 #
-AC_ARG_WITH(silo_include,
-	[  --with-silo_include=<INC-DIR>     User-specified SILO include directory],
-	silo_include=$withval,
-	silo_include=$DEFAULT_SILO_INCLUDES)
-if test -n "$silo_include"; then
-    AC_MSG_CHECKING(for SILO include files)
-    SILO_INCLUDE="-I`echo $silo_include|sed 's/ 	*/ -I/g'`"
-    AC_MSG_RESULT(user specified ("$SILO_INCLUDE"))
-fi
-AC_SUBST(SILO_INCLUDE)
-
-#
-# Check for the public SILO library since that's what we'll use.
-#
-LIBSILO=
-SILO_LIBDIR=
-SILO_LIB=
-SILO_TARGET=
-AC_ARG_WITH(silo_library,
-	[  --with-silo_library=<LIB-DIR>     User-specified SILO library directory],
-	silo_library=$withval,
-	silo_library=$DEFAULT_SILO_LIBRARY)
-if test -n "$silo_library"; then
-    AC_MSG_CHECKING(for SILO library)
-    silo_names="siloxx siloh5 silo"
-    silo_extns="dylib so a"
-    for n in $silo_names; do
-        for e in $silo_extns; do
-            if test -r $silo_library/lib$n.$e; then
-                LIBSILO="lib$n.$e"
-                SILO_LIBDIR="$silo_library"
-                SILO_LIB="-L`echo $silo_library|sed 's/  */ -L/g'` -l$n"
-                SILO_TARGET="$""(SILO_TARGET)"
-                break 2
-            fi
-        done
-    done
-    if test -n "$SILO_LIB"; then
-        # check for possible dependence on hdf5
-        if test -n "`strings $silo_library/lib$n.$e | grep -i 'SILO built with HDF5 library version'`"; then
-            if test -z "$HDF5_LIB"; then
-                AC_MSG_ERROR(Silo appears to have a dependence on HDF5. Please use --with-hdf5 option to configure.)
-            fi
-            SILO_LIB="$SILO_LIB $HDF5_LIB"
+VAC_ARG_WITH3RD(silo,,siloxx siloh5 silo)
+# Check for possible dependence on HDF5
+if test -n "$SILO_LIB"; then
+    if test -n "`strings $SILO_LIBFILE | grep -i 'SILO built with HDF5'`"; then
+        if test -z "`echo $SILO_LIB | tr ' ' '\n' | grep -x -e '-lhdf5'`"; then
+            AC_MSG_ERROR(Silo appears to have a dependence on HDF5. Add dependent libs after ':' in --with-silo arg.)
         fi
-        AC_MSG_RESULT(user specified ("$SILO_LIB"))
-    else
-        AC_MSG_RESULT(not found)
-        AC_MSG_ERROR(could not find a suitable silo library at $silo_library.)
     fi
 fi
-# The name of the actual Silo library for use in lib/Makefile.in
-AC_SUBST(LIBSILO)
-AC_SUBST(SILO_LIBDIR)
-AC_SUBST(SILO_LIB)
-AC_SUBST(SILO_TARGET)
 
 dnl
 dnl Check for exodus libraries
@@ -2823,7 +2846,7 @@ if test -n "$with_itaps_impls" && test with_itaps_impls != "no"; then
         # Fix contents of the .xml file 
         #
         sed -i -e "s%<Extensions>\(.*\)</Extensions>%<Extensions>${impl_exts}</Extensions>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>$\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
         sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB)</LIBS>%" databases/$impl_name/$impl_name.xml
 
         #
@@ -3543,9 +3566,9 @@ AC_DEFINE_UNQUOTED(PLUGIN_EXTENSION, ".${SHLIB_SOEXT}", [Shared library extensio
 # This is versioned to ensure compatibility with future changes.
 #
 if test -d engine; then
-    ENGINEWRAPSER="$""(libdir)/libvisitenginev1_ser.${SHLIB_SOEXT}"
+    ENGINEWRAPSER="libvisitenginev1_ser.${SHLIB_SOEXT}"
     if test -n "$PARALLEL"; then
-        ENGINEWRAPPAR="$""(libdir)/libvisitenginev1_par.${SHLIB_SOEXT}"
+        ENGINEWRAPPAR="libvisitenginev1_par.${SHLIB_SOEXT}"
     fi
 fi
 AC_SUBST(ENGINEWRAPSER)
@@ -3622,6 +3645,8 @@ AC_SUBST(CREATE_BOXLIB3D_LINK)
 AC_SUBST(CREATE_CFITSIO_LINK)
 AC_SUBST(CREATE_H5PART_LINK)
 AC_SUBST(CREATE_CCMIO_LINK)
+AC_SUBST(VAC_CV_LIBDIR_CREATE_LINKS)
+AC_SUBST(VAC_CV_LIBDIR_DESTROY_LINKS)
 
 #
 # Check for library functions that can work around, or that we have

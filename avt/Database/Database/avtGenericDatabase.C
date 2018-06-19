@@ -1866,6 +1866,7 @@ avtGenericDatabase::GetArrayVarDataset(const char *varname, int ts,
 //
 //    Mark C. Miller, Wed Nov 16 10:46:36 PST 2005
 //    Replaced data type args with data specification 
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -5340,6 +5341,13 @@ avtGenericDatabase::CommunicateGhosts(avtGhostDataType ghostType,
 //    expects.  If we already have ghost zones, we might want the domain
 //    boundary information just to understand how the domains abut.
 //
+//    Cyrus Harrison, Mon Apr 20 14:47:50 PDT 2009
+//    I used Eric's workaround from CommunicateGhostZonesFromDomainBoundaries
+//    to make sure we check the confirmity of the proper domain. When a file
+//    reader does its own on the fly decomposition, the domain get labeled
+//    0 on every processor - the appropriate domain id is this processor's
+//    MPI rank.
+//
 // ****************************************************************************
 
 avtDomainBoundaries *
@@ -5367,6 +5375,21 @@ avtGenericDatabase::GetDomainBoundaryInformation(avtDatasetCollection &ds,
     if (dbi == NULL)
         return NULL;
 
+    int ts = spec->GetTimestep();
+    avtDatabaseMetaData *md = GetMetaData(ts);
+
+    //
+    // If the file format reader can do its own domain decomposition
+    // and there is one domain then change it to the rank so that
+    // things work properly.  The convention is that when the reader
+    // is doing its own decomposition, all the processors have domain
+    // zero.  The value gets reset at the end of this method.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = PAR_Rank();
+    }
+
     //
     // Make sure that this mesh is the mesh we have boundary information
     // for.
@@ -5390,6 +5413,15 @@ avtGenericDatabase::GetDomainBoundaryInformation(avtDatasetCollection &ds,
             dbi = NULL;
         }
     }
+
+    //
+    // Restore the doms array.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = 0;
+    }
+
 
     return dbi;
 }
@@ -5527,6 +5559,12 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundariesFromFile(
 //    Fixed a problem where a material name could be requested on mesh 
 //    with no materials - resulting in an error.
 //
+//    Eric Brugger, Fri Mar 13 16:57:08 PDT 2009
+//    I corrected a problem where this routine didn't handle the case
+//    where the file reader did its own on the fly decomposition.  In this
+//    case all the processors would have domain 0, which caused problems.
+//    Now it temporarily sets the domain number to the processor rank.
+//
 // ****************************************************************************
 
 bool
@@ -5554,6 +5592,18 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
     
     bool post_ghost = spec->NeedPostGhostMaterialInfo();
     
+    //
+    // If the file format reader can do its own domain decomposition
+    // and there is one domain then change it to the rank so that
+    // things work properly.  The convention is that when the reader
+    // is doing its own decomposition, all the processors have domain
+    // zero.  The value gets reset at the end of this method.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = PAR_Rank();
+    }
+
     // Setup materials
     int anymats    = false;
     int allmats    = true; 
@@ -6053,6 +6103,14 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
     }
 
     src->DatabaseProgress(1, 0, progressString);
+
+    //
+    // Restore the doms array.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = 0;
+    }
 
     visitTimer->StopTimer(t1, "Actual communication of ghost zones");
     return true;

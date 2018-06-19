@@ -2122,9 +2122,6 @@ NetworkManager::NeedZBufferToCompositeEvenIn2D(const intVector plotIds)
 //    compositing step if they do.  This prevents the volume plot from
 //    having swathes of faded image data.
 //
-//    Hank Childs, Fri Nov 14 09:32:03 PST 2008
-//    Add a bunch of timings statements.
-//
 // ****************************************************************************
 
 avtDataObjectWriter_p
@@ -2145,9 +2142,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         avtDataObjectWriter_p writer;
         this->StartTimer(); /* stopped in RenderCleanup */
 
-        int t1 = visitTimer->StartTimer();
         this->RenderSetup(plotIds, getZBuffer, annotMode, windowID, leftEye);
-        visitTimer->StopTimer(t1, "Render setup");
 
         // scalable threshold test (the 0.5 is to add some hysteresus to avoid 
         // the misfortune of oscillating switching of modes around the
@@ -2181,7 +2176,6 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         if (dump_renders)
             DumpImage(theImage, "before_OpaqueComposite");
 
-        int t1A = visitTimer->StartTimer();
         avtWholeImageCompositer *imageCompositer;
         imageCompositer = MakeCompositer(
                  viswin->GetWindowMode() == WINMODE_3D,
@@ -2203,7 +2197,6 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         theImage->GetSize(&imageCols, &imageRows);
         imageCompositer->SetOutputImageSize(imageRows, imageCols);
         imageCompositer->AddImageInput(theImage, 0, 0);
-        visitTimer->StopTimer(t1A, "Setting up background image");
 
         //
         // Parallel composite (via 1 stage `pipeline')
@@ -2217,7 +2210,6 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         // have the right image and everybody else will have a plain white BG.
         if(OnlyRootNodeHasData(theImage))
         {
-            int t1B = visitTimer->StartTimer();
             debug3 << "Data are not decomposed.  Skipping opaque composite."
                    << std::endl;
             // Sometimes the other processors need the image too, e.g. in
@@ -2232,13 +2224,10 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
                                src_node);
             }
             CopyTo(compositedImageAsDataObject, theImage);
-            visitTimer->StopTimer(t1B, "Broadcasting image");
         }
         else
         {
-            int t1B = visitTimer->StartTimer();
             imageCompositer->Execute();
-            visitTimer->StopTimer(t1B, "Image compositer execute");
             compositedImageAsDataObject = imageCompositer->GetOutput();
         }
 
@@ -2257,13 +2246,11 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
 
         if (this->MemoMultipass(viswin))
         {
-            int t1C = visitTimer->StartTimer();
             avtImage_p tmp_img;
             CopyTo(tmp_img, compositedImageAsDataObject);
 
             compositedImageAsDataObject =
                 this->RenderTranslucent(windowID, tmp_img);
-            visitTimer->StopTimer(t1C, "Translucent rendering");
         }
 
         //
@@ -2271,9 +2258,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         //
         if (this->Shadowing(windowID))
         {
-            int t1D = visitTimer->StartTimer();
             this->RenderShadows(windowID, compositedImageAsDataObject);
-            visitTimer->StopTimer(t1D, "Adding shadows");
         }
 
         //
@@ -2281,19 +2266,15 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         //
         if (this->DepthCueing(windowID))
         {
-            int t1E = visitTimer->StartTimer();
             this->RenderDepthCues(windowID, compositedImageAsDataObject);
-            visitTimer->StopTimer(t1E, "Adding depth cues");
         }
 
         //
         // If the engine is doing more than just 3D annotations,
         // post-process the composited image.
         //
-        int t1F = visitTimer->StartTimer();
         this->RenderPostProcess(imageBasedPlots, compositedImageAsDataObject,
                                 windowID);
-        visitTimer->StopTimer(t1F, "Render postprocessing step (often volume rendering)");
 
         writer = compositedImageAsDataObject->InstantiateWriter();
         writer->SetInput(compositedImageAsDataObject);
@@ -4273,6 +4254,12 @@ BuildBlankImageVector(avtImage_p img)
 //  Programmer: Tom Fogal
 //  Creation:   October 17, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Wed Nov 19 15:53:15 PST 2008
+//    Test was implemented to return true if *any* data had no data, which is 
+//    not what we wanted.
+//
 // ****************************************************************************
 
 static bool
@@ -4287,16 +4274,12 @@ OnlyRootNodeHasData(avtImage_p &img)
     // Starting from the 2nd element in the list, search for an element which
     // is greater than 0.  If we find one, than somebody else has data; we
     // don't really care who it is.
-    std::vector<int>::const_iterator it;
-    it = std::find_if(data.begin()+1, data.end(),
-                      std::bind2nd(std::greater<int>(), 0));
-    const bool others_are_blank = (it != data.end());
+    bool onlyRootNodeHasData = true;
+    for (unsigned int i = 1 ; i < data.size() ; i++)
+         if (data[i] == 0)
+            onlyRootNodeHasData = false;
 
-    if(!root_is_blank && others_are_blank)
-    {
-        return true;
-    }
-    return false;
+    return onlyRootNodeHasData;
 #endif
 }
 
@@ -4314,6 +4297,11 @@ OnlyRootNodeHasData(avtImage_p &img)
 //
 //  Programmer: Tom Fogal
 //  Creation:   October 24, 2008
+//
+//  Modifications:
+//
+//    Hank Childs, Thu Jan  8 15:23:44 CST 2009
+//    Fix memory leak.
 //
 // ****************************************************************************
 static void
@@ -4366,6 +4354,8 @@ BroadcastImage(avtImage_p &img, bool send_zbuf, int root)
         img->Update(conv.GetGeneralContract());
         img->SetSource(NULL);
         image->Delete();
+        delete [] zb;
+        delete [] data;
     }
 #endif
 }
@@ -5073,9 +5063,7 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
 
     if(this->r_mgmt.needToSetUpWindowContents)
     {
-        int t1 = visitTimer->StartTimer();
         this->SetUpWindowContents(windowID, plotIds, forceViewerExecute);
-        visitTimer->StopTimer(t1, "Setting up window contents");
         plotsCurrentlyInWindow = plotIds;
     }
 
@@ -5874,9 +5862,6 @@ NetworkManager::RenderDepthCues(int windowID,
 //    Tom Fogal, Wed Jul  2 15:09:47 EDT 2008
 //    Avoid VisWindow lookup if not in `2'nd annotation mode.
 //
-//    Hank Childs, Fri Nov 14 09:32:54 PST 2008
-//    Add a bunch of timings statements.
-//
 // ****************************************************************************
 
 void
@@ -5896,11 +5881,8 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
             plot != image_plots.end();
             ++plot)
         {
-            int t1 = visitTimer->StartTimer();
             avtImage_p newImage = (*plot)->ImageExecute(compositedImage,
                                                         windowAttributes);
-            visitTimer->StopTimer(t1, 
-                         "Image Execute method (often volume rendering)");
             compositedImage = newImage;
         }
         CopyTo(input_as_dob, compositedImage);
@@ -5913,7 +5895,6 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
     if (this->r_mgmt.annotMode==2)
 #endif
     {
-        int t2 = visitTimer->StartTimer();
         VisWindow *viswin = viswinMap.find(windowID)->second.viswin;
         avtImage_p compositedImage;
         CopyTo(compositedImage, input_as_dob);
@@ -5922,6 +5903,5 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
                                              this->r_mgmt.viewportedMode,
                                              this->r_mgmt.getZBuffer);
         CopyTo(input_as_dob, postProcessedImage);
-        visitTimer->StopTimer(t2, "VisWindow::PostProcessScreenCapture");
     }
 }

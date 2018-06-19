@@ -41,13 +41,6 @@
 #include <VisItException.h>
 #include <DebugStream.h>
 
-// Turn on streak plot support
-#define PDB_STREAK_PLOTS
-
-#ifdef PDB_STREAK_PLOTS
-#include <Streaker.h>
-#endif
-
 // ****************************************************************************
 // Class: AlwaysReadCyclesAndTimes_STSD_FFI
 //
@@ -61,9 +54,7 @@
 // Creation:   Fri Aug  1 10:47:47 PDT 2008
 //
 // Modifications:
-//   Brad Whitlock, Fri Nov  7 10:22:16 PST 2008
-//   Added support for streak plots.
-//
+//   
 // ****************************************************************************
 
 class AlwaysReadCyclesAndTimes_STSD_FFI : public avtSTSDFileFormatInterface
@@ -81,58 +72,7 @@ public:
     {
         // Always read cycles and times
         avtSTSDFileFormatInterface::SetDatabaseMetaData(md, timeState, true);
-#ifndef PDB_STREAK_PLOTS
     }
-#else
-        // Optionally tack on streak plot data.
-        Streaker::PDBFileObjectVector pdbs;
-        for(int b = 0; b < nBlocks; ++b)
-            for(int t = 0; t < nTimesteps; ++t)
-            {
-                PP_Z_STSD_FileFormat *ff = (PP_Z_STSD_FileFormat *)timesteps[t][b];
-                pdbs.push_back(ff->PDB());
-            }
-        streaker.ReadStreakFile(std::string(timesteps[0][0]->GetFilename()) + ".streak", pdbs[0]);
-        streaker.PopulateDatabaseMetaData(md);
-    }
-
-    // Override to provide streak plot support.
-    virtual vtkDataSet *
-    GetMesh(int ts, int dom, const char *mesh)
-    {
-        Streaker::PDBFileObjectVector pdbs;
-        for(int b = 0; b < nBlocks; ++b)
-            for(int t = 0; t < nTimesteps; ++t)
-            {
-                PP_Z_STSD_FileFormat *ff = (PP_Z_STSD_FileFormat *)timesteps[t][b];
-                pdbs.push_back(ff->PDB());
-            }
-        vtkDataSet *retval = streaker.GetMesh(mesh, pdbs);
-
-        if(retval == 0)
-            retval = avtSTSDFileFormatInterface::GetMesh(ts, dom, mesh);
-        return retval;
-    }
-
-    virtual vtkDataArray *
-    GetVar(int ts, int dom, const char *var)
-    {
-        Streaker::PDBFileObjectVector pdbs;
-        for(int b = 0; b < nBlocks; ++b)
-            for(int t = 0; t < nTimesteps; ++t)
-            {
-                PP_Z_STSD_FileFormat *ff = (PP_Z_STSD_FileFormat *)timesteps[t][b];
-                pdbs.push_back(ff->PDB());
-            }
-        vtkDataArray *retval = streaker.GetVar(var, pdbs);
-
-        if(retval == 0)
-            retval = avtSTSDFileFormatInterface::GetVar(ts, dom, var);
-        return retval;
-    }
-
-    Streaker streaker;
-#endif
 };
 
 // ****************************************************************************
@@ -305,12 +245,6 @@ void
 PP_Z_STSD_FileFormat::SetOwnsPDBFile(bool val)
 {
     reader.SetOwnsPDBFile(val);
-}
-
-PDBFileObject *
-PP_Z_STSD_FileFormat::PDB()
-{
-    return reader.PDB();
 }
 
 //

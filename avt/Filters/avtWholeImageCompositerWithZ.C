@@ -47,9 +47,7 @@
 #include <avtParallel.h>
 #include <avtWholeImageCompositerWithZ.h>
 #include <vtkImageData.h>
-
 #include <ImproperUseException.h>
-#include <TimingsManager.h>
 
 typedef struct zfpixel {
     float         z;
@@ -69,15 +67,12 @@ int avtWholeImageCompositerWithZ::objectCount = 0;
 //               frame and z-buffers.
 //
 // Programmer:   Mark C. Miller (plagiarized from Katherine Price)
-// Date:         February 26, 2003
+// Date:         26Feb03 
 //
 // Modifications:
 //
 //   Hank Childs, Tue Nov 29 16:13:06 PST 2005
 //   Add some hand optimizations.
-//
-//   Hank Childs, Fri Nov 14 09:36:11 PST 2008
-//   Add timings statements.
 //
 // ****************************************************************************
 
@@ -88,7 +83,6 @@ MergeZFPixelBuffers(void *ibuf, void *iobuf, int *count, MPI_Datatype *datatype)
 MergeZFPixelBuffers(void *ibuf, void *iobuf, int *count, void *datatype)
 #endif
 {
-    int t1 = visitTimer->StartTimer();
     ZFPixel_t *in_zfpixels    = (ZFPixel_t *) ibuf;
     ZFPixel_t *inout_zfpixels = (ZFPixel_t *) iobuf;
     int i;
@@ -138,7 +132,6 @@ MergeZFPixelBuffers(void *ibuf, void *iobuf, int *count, void *datatype)
             }
         }
     }
-    visitTimer->StopTimer(t1, "Time to run compare function");
 }
 
 #ifdef PARALLEL
@@ -262,9 +255,6 @@ avtWholeImageCompositerWithZ::~avtWholeImageCompositerWithZ()
 //    Hank Childs, Wed Jan  3 14:18:42 PST 2007
 //    Initialize memory.  This prevents purify warning.
 //
-//    Hank Childs, Fri Nov 14 09:36:28 PST 2008
-//    Add some timings statements.
-//
 // ****************************************************************************
 
 void
@@ -293,22 +283,17 @@ avtWholeImageCompositerWithZ::Execute(void)
        //
        // Merge within a processor
        //
-       int t1 = visitTimer->StartTimer();
        mergedLocalImage = avtImageRepresentation::NewImage(outCols, outRows);
-       visitTimer->StopTimer(t1, "Allocating image");
        iorgb            = (unsigned char *) mergedLocalImage->GetScalarPointer(0, 0, 0);
        ioz              = new float [nPixels];
        float        *z0 = zeroImageRep.GetZBuffer();
        const unsigned char *rgb0 = zeroImageRep.GetRGBBuffer();
 
        // we memcpy because we can't alter any of the input images
-       int t2 = visitTimer->StartTimer();
        memcpy(ioz, z0, nPixels * sizeof(float));
        memcpy(iorgb, rgb0, nPixels * 3 * sizeof(unsigned char));
-       visitTimer->StopTimer(t2, "Mem copies");
 
        // do the merges, accumulating results in ioz and iorgb
-       int t3 = visitTimer->StartTimer();
        for (i = 1; i < inputImages.size(); i++)
        {
            float *z = NULL;
@@ -316,7 +301,6 @@ avtWholeImageCompositerWithZ::Execute(void)
            const unsigned char *rgb = inputImages[i]->GetImage().GetRGBBuffer();
            MergeBuffers(nPixels, false, z, rgb, ioz, iorgb);
        }
-       visitTimer->StopTimer(t3, "merging multiple images");
     }
     else
     {
@@ -338,9 +322,7 @@ avtWholeImageCompositerWithZ::Execute(void)
        //
        // Merge across processors
        //
-       int t4 = visitTimer->StartTimer();
        MergeBuffers(nPixels, true, ioz, iorgb, rioz, riorgb);
-       visitTimer->StopTimer(t4, "MergeBuffers");
 
        if (mergedLocalImage != NULL)
        {
@@ -410,18 +392,13 @@ avtWholeImageCompositerWithZ::Execute(void)
 //   
 //
 // Programmer:   Mark C. Miller (plagiarized from Kat Price's MeshTV version)
-// Date:         March 3, 2004
+// Date:         04Mar03
 //
 // Modifications:
-//
 //   Jeremy Meredith, October 20, 2004
 //   Allowed for the use of an allreduce instead of a simple reduce.
 //
-//   Hank Childs, Fri Nov 14 09:36:50 PST 2008
-//   Add some timings statements.
-//
 // ****************************************************************************
-
 void
 avtWholeImageCompositerWithZ::MergeBuffers(int npixels, bool doParallel,
                                            const float *inz,
@@ -472,7 +449,6 @@ avtWholeImageCompositerWithZ::MergeBuffers(int npixels, bool doParallel,
 #ifdef PARALLEL
       if (doParallel)
       {
-          int t1 = visitTimer->StartTimer();
           if (allReduce)
           {
               MPI_Allreduce(inzf, iozf, len+1,
@@ -487,14 +463,11 @@ avtWholeImageCompositerWithZ::MergeBuffers(int npixels, bool doParallel,
                         avtWholeImageCompositerWithZ::mpiOpMergeZFPixelBuffers,
                         mpiRoot, mpiComm);
           }
-          visitTimer->StopTimer(t1, "MPI reduces");
       }
       else
       {
-          int t1 = visitTimer->StartTimer();
           int adjustedLen = len+1;
           MergeZFPixelBuffers(inzf, iozf, &adjustedLen, NULL);
-          visitTimer->StopTimer(t1, "MergeZFPixelBuffers");
       }
 #else
       if (doParallel)
@@ -503,12 +476,9 @@ avtWholeImageCompositerWithZ::MergeBuffers(int npixels, bool doParallel,
       }
 
       int adjustedLen = len+1;
-      int t2 = visitTimer->StartTimer();
       MergeZFPixelBuffers(inzf, iozf, &adjustedLen, NULL);
-      visitTimer->StopTimer(t2, "MergeZFPixelBuffers");
 #endif
 
-      int t3 = visitTimer->StartTimer();
       if (!doParallel || allReduce || mpiRank == mpiRoot)
       {
          for (int i = 0; i < len; i++, io++)
@@ -526,11 +496,9 @@ avtWholeImageCompositerWithZ::MergeBuffers(int npixels, bool doParallel,
       }
 
       npixels -= len;
-      visitTimer->StopTimer(t3, "Array copies");
    }
 
    delete [] inzf;
    delete [] iozf;
+
 }
-
-

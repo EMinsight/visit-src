@@ -57,6 +57,7 @@
     void WriteProject_TOP_LEVEL_Version8(ostream &out)
     {
         QString configs[] = {"Release", "Debug", "Purify"};
+        int nconfigs = 2; // not supporting Purify just yet
 
         out << "<?xml version=\"1.0\" encoding=\"Windows-1252\"?>" << endl;
         out << "<VisualStudioProject" << endl;
@@ -73,7 +74,7 @@
         out << "\t<ToolFiles>" << endl;
         out << "\t</ToolFiles>" << endl;
         out << "\t<Configurations>" << endl;
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < nconfigs; i++)
         {
             out << "\t\t<Configuration" << endl;
             out << "\t\t\tName=\"" << configs[i] << "|Win32\"" << endl;
@@ -122,6 +123,7 @@
         QString solutionKey(CreateKey());
         vector<QString> keys;
         QString configs[] = {"Release", "Debug" , "Purify"};
+        int nconfigs = 2; // not supporting Purify just yet 
 
         size_t i;
         for(i = 0; i < projects.size(); ++i)
@@ -163,7 +165,7 @@
     
         for(i = 0; i < keys.size(); ++i)
         {
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < nconfigs; j++)
             {
                 out << "\t\t" << keys[i] << "." << configs[j] << "|Win32"
                     << ".ActiveCfg = " << configs[j] << "|Win32" << endl;
@@ -186,6 +188,7 @@
         const char *suffix = (pluginComponent == 'E') ? "_ser" : "";
 
         QString configs[] = {"Release", "Debug", "Purify"};
+        int nconfigs = 2; // not supporting Purify just yet
         QString debug[] = {"NDEBUG", "_DEBUG", "_DEBUG"};
         int optims[] = {2, 0, 0};
         int rtl[] = {2, 3, 3};
@@ -211,7 +214,7 @@
         out << "\t<ToolFiles>" << endl;
         out << "\t</ToolFiles>" << endl;
         out << "\t<Configurations>" << endl;
-        for (int j = 0; j < 3; ++j)
+        for (int j = 0; j < nconfigs; ++j)
         {
             out << "\t\t<Configuration" << endl;
             out << "\t\t\tName=\"" << configs[j] << "|Win32\"" << endl;
@@ -269,7 +272,7 @@
                 << ";GENERAL_PLUGIN_EXPORTS";
             if (exports != "")
                 out << ";" << exports;
-            if (pluginComponent = 'E'  && hasEngineSpecificCode)
+            if (pluginComponent == 'E'  && hasEngineSpecificCode)
                 out << ";ENGINE";
             out << "\"" << endl;
             if (configs[j] == "Release")
@@ -392,7 +395,7 @@
                 << "\\" << name << "\\" << srcFiles[i] << "\"" << endl;
 #endif
             out << "\t\t\t\t>" << endl;
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < nconfigs; j++)
             {
                 out << "\t\t\t\t<FileConfiguration" << endl;
                 out << "\t\t\t\t\tName=\"" << configs[j] << "|Win32\"" << endl;
@@ -441,7 +444,7 @@
                     << "\\" << name << "\\" << hdrFiles[i] << "\"" << endl;
 #endif
                 out << "\t\t\t\t>" << endl;
-                for (int j = 0; j < 3; j++)
+                for (int j = 0; j < nconfigs; j++)
                 {
                     out << "\t\t\t\t<FileConfiguration" << endl;
                     out << "\t\t\t\t\tName=\"" << configs[j] << "|Win32\"" 
@@ -495,7 +498,7 @@
                     << "\\" << name << "\\" << mocFiles[i] << "\"" << endl;
 #endif
                 out << "\t\t\t\t>" << endl;
-                for (int j = 0; j < 3; j++)
+                for (int j = 0; j < nconfigs; j++)
                 {
                     out << "\t\t\t\t<FileConfiguration" << endl;
                     out << "\t\t\t\t\tName=\"" << configs[j] << "|Win32\""
@@ -530,6 +533,7 @@
         QString pluginDefs = "";
         char *pluginSuffix = "Database";
         QString configs[] = {"Release", "Debug", "Purify"};
+        int nconfigs = 2; // not supporting Purify just yet
         int optims[] = {2, 0, 0};
         int brc[] = {0, 3, 0};
 
@@ -568,7 +572,7 @@
         int rtl[] = {2, 3, 3};
         int li[] = {1, 2, 1};
         int dif[] = {0, 4, 3};
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < nconfigs; ++i)
         {
             out << "\t\t<Configuration" << endl;
             out << "\t\t\tName=\""<< configs[i]<< "|Win32\"" << endl;
@@ -751,7 +755,7 @@
 #endif
             out << "\t\t\t\t>" << endl;
 
-            for (int j = 0; j < 3; ++j)
+            for (int j = 0; j < nconfigs; ++j)
             {
                 out << "\t\t\t\t<FileConfiguration" << endl;
                 out << "\t\t\t\t\tName=\"" << configs[j] << "|Win32\"" << endl;

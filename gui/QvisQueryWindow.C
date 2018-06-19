@@ -199,6 +199,10 @@ QvisQueryWindow::~QvisQueryWindow()
 //   Kathleen Bonnell, Tue Jun 24 11:18:13 PDT 2008
 //   Added varsButton, varsLineEdit.
 //
+//   Eric Brugger, Mon May 11 13:48:58 PDT 2009
+//   Corrected the layout of some of the widgets in the arguments panel so
+//   that the fourth text line isn't clobbered by the variable controls.
+//
 // ****************************************************************************
 
 void
@@ -259,7 +263,7 @@ QvisQueryWindow::CreateWindowContents()
     hLayout->addWidget(argPanel);
     QVBoxLayout *gLayout = new QVBoxLayout(argPanel);
     gLayout->addSpacing(15);
-    QGridLayout *sLayout = new QGridLayout(gLayout, 7, 2);
+    QGridLayout *sLayout = new QGridLayout(gLayout, 8, 2);
     sLayout->setMargin(10);
     sLayout->setSpacing(5);
 //    sLayout->addRowSpacing(0, 15);
@@ -284,32 +288,32 @@ QvisQueryWindow::CreateWindowContents()
     varsButton->hide();
     connect(varsButton, SIGNAL(activated(const QString &)),
             this, SLOT(addVariable(const QString &)));
-    sLayout->addWidget(varsButton, 4, 0);
+    sLayout->addWidget(varsButton, 5, 0);
 
     varsLineEdit = new QLineEdit(argPanel, "varsLineEdit");
     varsLineEdit->setText("default"); 
     varsLineEdit->hide();
     connect(varsLineEdit, SIGNAL(returnPressed()),
             this, SLOT(handleText()));
-    sLayout->addMultiCellWidget(varsLineEdit, 4, 4, 1, 3);
+    sLayout->addMultiCellWidget(varsLineEdit, 5, 5, 1, 3);
   
     useGlobal = new QCheckBox(tr("Use Global Id"), argPanel, "useGlobal");
     connect(useGlobal, SIGNAL(toggled(bool)), this, 
             SLOT(useGlobalToggled(bool)));
     useGlobal->hide();
-    sLayout->addMultiCellWidget(useGlobal, 5, 5, 0, 1);
+    sLayout->addMultiCellWidget(useGlobal, 6, 6, 0, 1);
   
     // Add the data options radio button group to the argument panel.
     dataOpts = new QButtonGroup(0, "dataOpts");
     QRadioButton *origData = new QRadioButton(tr("Original Data"), 
                                               argPanel, "origData");
     dataOpts->insert(origData);
-    sLayout->addWidget(origData, 6, 0);
+    sLayout->addWidget(origData, 7, 0);
     QRadioButton *actualData = new QRadioButton(tr("Actual Data"), 
                                                 argPanel, "actualData");
     dataOpts->insert(actualData);
     dataOpts->setButton(0);
-    sLayout->addWidget(actualData, 7, 0);
+    sLayout->addWidget(actualData, 8, 0);
 
     // Add the time button to the argument panel.
     gLayout->addStretch(10);
@@ -730,6 +734,11 @@ QvisQueryWindow::UpdateResults(bool)
 //   Kathleen Bonnell, Tue Jun 24 13:38:45 PDT 2008 
 //   Limit the variables for Hohlraum Flux to Scalars and Arrays.
 //
+//   Eric Brugger, Mon May 11 13:48:58 PDT 2009
+//   I added an argument to the hohlraum flux query that indicates if the
+//   emissivity divided by the absorbtivity should be used in place of the
+//   emissivity.
+//
 // ****************************************************************************
 
 void
@@ -865,13 +874,17 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
             textFields[0]->setText("100");
             showWidgets[0] = true;
 
-            labels[1]->setText(tr("Ray Center"));
-            textFields[1]->setText("0 0 0");
+            labels[1]->setText(tr("Divide Emis by Absorb"));
+            textFields[1]->setText("0");
             showWidgets[1] = true;
 
-            labels[2]->setText(tr("Radius, Theta, Phi"));
-            textFields[2]->setText("1 0 0");
+            labels[2]->setText(tr("Ray Center"));
+            textFields[2]->setText("0 0 0");
             showWidgets[2] = true;
+
+            labels[3]->setText(tr("Radius, Theta, Phi"));
+            textFields[3]->setText("1 0 0");
+            showWidgets[3] = true;
         }
         else if (winT == QueryList::ConnCompSummary)
         {
@@ -1084,6 +1097,12 @@ QvisQueryWindow::ConnectPlotList(PlotList *pl)
 //   Cyrus Harrison, Sat Oct 18 21:33:18 PDT 2008
 //   Fixed parsing error for Connected Components Summary Query, caused by 
 //   migration of GetVars to a new text field widget. 
+//
+//   Eric Brugger, Mon May 11 13:48:58 PDT 2009
+//   I added an argument to the hohlraum flux query that indicates if the
+//   emissivity divided by the absorbtivity should be used in place of the
+//   emissivity.  I also corrected the parsing of the hohlraum flux query
+//   since it was broken.
 //
 // ****************************************************************************
 
@@ -1299,37 +1318,36 @@ QvisQueryWindow::Apply(bool ignore, bool doTime)
                     noErrors = false;
 
                 int nLines=0;
-                if(!GetNumber(1, &nLines))
+                if(!GetNumber(0, &nLines))
+                    noErrors = false;
+
+                int divideEmisByAbsorb=0;
+                if(!GetNumber(1, &divideEmisByAbsorb))
                     noErrors = false;
 
                 doubleVector pos(3);
-                if (!GetVars(v))
-                    noErrors = false;
-                if (v.size() != 3)
+                if(!GetPoint(2, tr("Ray Center"), p0))
                     noErrors = false;
                 if (noErrors)
                 {
-                    pos[0] = atof(v[0].c_str());
-                    pos[1] = atof(v[1].c_str());
-                    pos[2] = atof(v[2].c_str());
+                    pos[0] = p0[0];
+                    pos[1] = p0[1];
+                    pos[2] = p0[2];
                 }
 
                 doubleVector radiusThetaPhi(3);
-                v.resize(0);
-                if (!GetVars(v))
-                    noErrors = false;
-
-                if (v.size() != 3)
+                if(!GetPoint(3, tr("Radius, Theta, Phi"), p0))
                     noErrors = false;
                 if (noErrors)
                 {
-                    radiusThetaPhi[0] = atof(v[0].c_str());
-                    radiusThetaPhi[1] = atof(v[1].c_str());
-                    radiusThetaPhi[2] = atof(v[2].c_str());
+                    radiusThetaPhi[0] = p0[0];
+                    radiusThetaPhi[1] = p0[1];
+                    radiusThetaPhi[2] = p0[2];
                 }
                 if (noErrors)
                     GetViewerMethods()->DatabaseQuery(names[index], vars, 
-                        doTime, nLines, 0, true, pos, radiusThetaPhi);
+                        doTime, nLines, divideEmisByAbsorb, true, pos,
+                        radiusThetaPhi);
             }
             else if (winT == QueryList::ConnCompSummary)
             {

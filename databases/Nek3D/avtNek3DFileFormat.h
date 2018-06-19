@@ -45,7 +45,6 @@
 
 #include <avtMTMDFileFormat.h>
 
-#include <map>
 #include <vector>
 
 
@@ -90,10 +89,6 @@
 //
 //    Dave Bremer, Mon Aug 11 13:53:18 PDT 2008
 //    Added a method to parse field tags in nek binary header files.
-//
-//    Hank Childs, Sat Nov  8 14:33:30 PST 2008
-//    Cache the mesh from time slice to time slice.
-//
 // ****************************************************************************
 
 class avtNek3DFileFormat : public avtMTMDFileFormat
@@ -125,14 +120,12 @@ class avtNek3DFileFormat : public avtMTMDFileFormat
     virtual void           FreeUpResources(void); 
 
     virtual vtkDataSet    *GetMesh(int, int, const char *);
-    virtual vtkDataSet    *ReadMesh(int);
     virtual vtkDataArray  *GetVar(int, int, const char *);
     virtual vtkDataArray  *GetVectorVar(int, int, const char *);
 
   protected:
     // This info is embedded in the .nek3d text file 
     // originally specified by Dave Bremer
-    std::map<int,vtkDataSet *> meshCache;
     std::string          version;
     std::string          fileTemplate;
     int                  iFirstTimestep;
