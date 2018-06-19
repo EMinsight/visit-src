@@ -504,6 +504,9 @@ class SharedDaemon;
 //    Kathleen Biagas, Wed Aug  7 12:59:21 PDT 2013
 //    Add SetPrecisionType.
 //
+//    Cameron Christensen, Tuesday, June 10, 2014
+//    Added SetBackendTypeRPC.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerSubject : public ViewerBase
@@ -550,6 +553,7 @@ public:
                                const stringVector &args, void *data);
 
     void AddNewViewerClientConnection(ViewerClientConnection* newClient);
+    void BroadcastAdvanced(int windowId, bool inMotion);
 
 public slots:
     void ProcessFromParent();
@@ -710,6 +714,7 @@ private:
     void SetCreateTimeDerivativeExpressions();
     void SetCreateVectorMagnitudeExpressions();
     void SetPrecisionType();
+    void SetBackendType();
 
     void MoveWindow();
     void MoveAndResizeWindow();
@@ -719,7 +724,7 @@ private:
 
     void SetDefaultFileOpenOptions();
     void SetSuppressMessages();
-    void BroadcastAdvanced(AttributeSubject *subj);
+    //void BroadcastAdvanced(AttributeSubject *subj);
 
     void DDTFocus();
     void DDTConnect();
@@ -826,7 +831,7 @@ private:
     std::vector<std::string> unknownArguments;
     std::vector<std::string> clientArguments;
     SharedDaemon             *shared_viewer_daemon;
-    size_t                   clientIds;
+    //size_t                   clientIds;
 };
 
 #endif

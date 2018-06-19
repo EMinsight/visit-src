@@ -64,6 +64,9 @@
 #   Move avtTimeLoopFilter and avtTimeLoopCollectorFilter from 
 #   Pipeline/AbstractFilters directory.
 #
+#   Kevin Griffin, Mon Nov 3 12:41:11 PDT 2014
+#   Add avtSubsetBlockMergeFilter.
+#
 #****************************************************************************/
 
 SET(AVTFILTERS_SOURCES
@@ -102,6 +105,7 @@ avtShiftCenteringFilter.C
 avtSimilarityTransformFilter.C
 avtSmoothPolyDataFilter.C
 avtStaggeringFilter.C
+avtSubsetBlockMergeFilter.C
 avtSummationFilter.C
 avtSurfaceFilter.C
 avtThresholdFilter.C
@@ -139,6 +143,7 @@ ${VISIT_SOURCE_DIR}/avt/VisWindow/Proxies
 ${VISIT_SOURCE_DIR}/avt/VisWindow/Tools
 ${VISIT_SOURCE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_SOURCE_DIR}/engine/main
+${EAVL_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS}
 )
 
@@ -147,12 +152,12 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_D
 
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtfilters_ser ${AVTFILTERS_SOURCES})
-TARGET_LINK_LIBRARIES(avtfilters_ser visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts)
+TARGET_LINK_LIBRARIES(avtfilters_ser visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts ${EAVL_LIB})
 VISIT_INSTALL_TARGETS(avtfilters_ser)
 
 #********************************* PARALLEL **********************************
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(avtfilters_par ${AVTFILTERS_SOURCES})
-    TARGET_LINK_LIBRARIES(avtfilters_par visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts)
+    TARGET_LINK_LIBRARIES(avtfilters_par visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts ${EAVL_LIB})
     VISIT_INSTALL_TARGETS(avtfilters_par)
 ENDIF(VISIT_PARALLEL)

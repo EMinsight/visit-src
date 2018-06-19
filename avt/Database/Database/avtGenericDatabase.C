@@ -1060,6 +1060,14 @@ avtGenericDatabase::ManageMemoryForNonCachableMesh(vtkDataSet *v)
 //
 //    Mark C. Miller, Wed Nov 16 10:46:36 PST 2005
 //    Passed data spec down Get function call tree 
+//
+//    Eric Brugger, Wed Nov 19 08:49:48 PST 2014
+//    I reduced the number of reads of CSG meshes to only once per CSG mesh
+//    instead of once per region in order to reduce the number of times the
+//    same CSG mesh was cached. Typically there is one CSG mesh with many
+//    regions, so this is a significant saving. CSG meshes with thousands
+//    of regions were exhausting memory in the previous scheme.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -1067,6 +1075,9 @@ avtGenericDatabase::GetDataset(const char *varname, int ts, int domain,
                         const char *matname, const vector<CharStrRef> &vars2nd, 
                         avtDataRequest_p spec,avtSourceFromDatabase *src)
 {
+    avtDatabaseMetaData *md = GetMetaData(ts);
+    md->ConvertCSGDomainToBlockAndRegion(varname, &domain, 0);
+
     vtkDataSet *rv = NULL;
     avtVarType type = GetMetaData(ts)->DetermineVarType(varname);
 
@@ -2938,6 +2949,9 @@ avtGenericDatabase::GetLabelVariable(const char *varname, int ts, int domain,
 //    Hank Childs, Tue Dec 20 11:51:30 PST 2011
 //    Add support for caching with selections.
 //
+//    Kathleen Biagas, Thu Sep 11 09:10:42 PDT 2014
+//    Keep avtOriginalNodeNumbers if present.
+// 
 // ****************************************************************************
 
 vtkDataSet *
@@ -3003,15 +3017,6 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
                    << domain << ", material = " << material << endl;
             return NULL;
         }
-
-        //
-        // Force an Update.  This needs to be done and if we do it when we
-        // read it in, then it guarantees it only happens once.
-        //
-        // FIX_ME_VTK6.0, ESB, I assume this needs to be done for VTK based
-        // readers. Can we eliminate this or do we need to move it somewhere
-        // else. All the tests pass with this commented out.
-        // mesh->Update();
 
         //
         // VTK creates a trivial producer for each data set.  It later does
@@ -3086,6 +3091,12 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
             mesh->GetCellData()->GetArray("avtOriginalCellNumbers"));
         GetMetaData(ts)->SetContainsOriginalCells(meshname, true);
     }
+    if (mesh->GetPointData()->GetArray("avtOriginalNodeNumbers"))
+    {
+        rv->GetPointData()->AddArray(
+            mesh->GetPointData()->GetArray("avtOriginalNodeNumbers"));
+        GetMetaData(ts)->SetContainsOriginalNodes(meshname, true);
+    }
     rv->GetFieldData()->ShallowCopy(mesh->GetFieldData());
 
     if (GetMetaData(ts)->DetermineVarType(meshname) == AVT_CURVE)
@@ -3148,6 +3159,13 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
 //    Eduard Deines, Wed Apr 21 2010
 //    Add support for "any_mesh" (Hank Childs).
 //
+//    Eric Brugger, Wed Nov 19 08:49:48 PST 2014
+//    I reduced the number of reads of CSG meshes to only once per CSG mesh
+//    instead of once per region in order to reduce the number of times the
+//    same CSG mesh was cached. Typically there is one CSG mesh with many
+//    regions, so this is a significant saving. CSG meshes with thousands
+//    of regions were exhausting memory in the previous scheme.
+//
 // ****************************************************************************
 
 void
@@ -3204,6 +3222,10 @@ avtGenericDatabase::GetAuxiliaryData(avtDataRequest_p spec,
 
     for (size_t i = 0 ; i < domains.size() ; i++)
     {
+        int domain = domains[i];
+        avtDatabaseMetaData *md = GetMetaData(ts);
+        md->ConvertCSGDomainToBlockAndRegion(var, &domain, 0);
+
         //
         // See if we already have the data lying around for this timestep or
         // for "all" (= -1) timesteps.  Examples of "all" timesteps entities
@@ -3211,23 +3233,23 @@ avtGenericDatabase::GetAuxiliaryData(avtDataRequest_p spec,
         //
         void_ref_ptr vr;
         if (strcmp(type, AUXILIARY_DATA_IDENTIFIERS) != 0)
-            vr = cache.GetVoidRef(var, type, ts, domains[i]);
+            vr = cache.GetVoidRef(var, type, ts, domain);
         if (*vr == NULL)
         {
-            vr = cache.GetVoidRef(var, type, -1, domains[i]);
+            vr = cache.GetVoidRef(var, type, -1, domain);
         }
 
         if (*vr == NULL)
         {
             if ((strcmp(type, AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION) == 0) ||
                 (strcmp(type, AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION) == 0))
-                vr = cache.GetVoidRef("any_mesh", type, ts, domains[i]);
+                vr = cache.GetVoidRef("any_mesh", type, ts, domain);
         }
         if (*vr == NULL)
         {
             if ((strcmp(type, AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION) == 0) ||
                 (strcmp(type, AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION) == 0))
-                vr = cache.GetVoidRef("any_mesh", type, -1, domains[i]);
+                vr = cache.GetVoidRef("any_mesh", type, -1, domain);
         }
 
         if (*vr != NULL)
@@ -3243,7 +3265,7 @@ avtGenericDatabase::GetAuxiliaryData(avtDataRequest_p spec,
             // We did not have it, so calculate it and then store it.
             //
             DestructorFunction df;
-            void *d = Interface->GetAuxiliaryData(real_var, ts, domains[i],
+            void *d = Interface->GetAuxiliaryData(real_var, ts, domain,
                                                   type, args, df);
             if (d != NULL)
             {
@@ -3252,7 +3274,7 @@ avtGenericDatabase::GetAuxiliaryData(avtDataRequest_p spec,
                 // headaches.
                 //
                 void_ref_ptr vr = void_ref_ptr(d, df);
-                cache.CacheVoidRef(var, type, ts, domains[i], vr);
+                cache.CacheVoidRef(var, type, ts, domain, vr);
                 rv.list[i] = vr;
             }
         }
@@ -3330,7 +3352,13 @@ bool
 avtGenericDatabase::PopulateIOInformation(int ts, const std::string &meshname,
     avtIOInformation &ioInfo)
 {
-    return Interface->PopulateIOInformation(ts, meshname, ioInfo);
+    bool retval = Interface->PopulateIOInformation(ts, meshname, ioInfo);
+    if(!retval)
+    {
+        debug5 << Interface->GetType() << ": No I/O info provided for mesh "
+               << meshname << endl;
+    }
+    return retval;
 }
 
 // ****************************************************************************
@@ -11049,6 +11077,10 @@ avtGenericDatabase::GetDomainName(const string &varName, const int ts,
 //
 //    Mark C. Miller, Wed Nov 16 10:46:36 PST 2005
 //    Changed dummy args for type conversion to dummy arg for data spec
+//
+//    Kathleen Biagas, Tue Sep  9 13:57:55 PDT 2014
+//    Don't take ghost zones into account if they came from DB.
+//
 // ****************************************************************************
 
 bool
@@ -11065,15 +11097,18 @@ avtGenericDatabase::QueryCoords(const string &varName, const int dom,
         if (currentid == -1) 
             return false;
     }
+    avtDatabaseMetaData *md = GetMetaData(ts);
     string meshName;
     if (mN == NULL || strcmp(mN, "default") == 0)
-        meshName = GetMetaData(ts)->MeshForVar(varName);
+        meshName = md->MeshForVar(varName);
     else 
         meshName = mN; 
+    int ghostType = md->GetContainsGhostZones(meshName);
     vtkDataSet *ds =  NULL;
     TRY
     {
-        // dataRequest is a placeholder for when this information will come from elsewhere 
+        // dataRequest is a placeholder for when this information will come
+        // from elsewhere
         avtDataRequest_p dataRequest;
         ds = GetMeshDataset(meshName.c_str(), ts, dom, "_all", dataRequest);
     }
@@ -11091,7 +11126,8 @@ avtGenericDatabase::QueryCoords(const string &varName, const int dom,
             if (ds->GetDataObjectType() == VTK_RECTILINEAR_GRID ||
                 ds->GetDataObjectType() == VTK_STRUCTURED_GRID) 
             {
-                if (ds->GetCellData()->GetArray("avtGhostZones") != NULL) 
+                if ((ds->GetCellData()->GetArray("avtGhostZones") != NULL) &&
+                    (ghostType != AVT_HAS_GHOSTS))
                 {
                     int dims[3], ijk[3] = {0, 0, 0};
                     vtkVisItUtility::GetDimensions(ds, dims);
@@ -11118,7 +11154,8 @@ avtGenericDatabase::QueryCoords(const string &varName, const int dom,
             if (ds->GetDataObjectType() == VTK_RECTILINEAR_GRID ||
                 ds->GetDataObjectType() == VTK_STRUCTURED_GRID) 
             {
-                if (ds->GetCellData()->GetArray("avtGhostZones") != NULL) 
+                if ((ds->GetCellData()->GetArray("avtGhostZones") != NULL) &&
+                    (ghostType != AVT_HAS_GHOSTS))
                 {
                     int dims[3], ijk[3] = {0, 0, 0};
                     vtkVisItUtility::GetDimensions(ds, dims);

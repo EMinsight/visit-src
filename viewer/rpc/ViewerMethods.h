@@ -173,6 +173,9 @@ class ViewerState;
 //   Kathleen Biagas, Wed Aug  7 13:05:32 PDT 2013
 //   Added SetPrecisionType.
 //
+//   Cameron Christensen, Tuesday, June 10, 2014
+//   Added SetBackendType.
+//
 // ****************************************************************************
 
 class VIEWER_RPC_API ViewerMethods
@@ -398,6 +401,7 @@ public:
     void SetCreateTimeDerivativeExpressions(int flag);
     void SetCreateVectorMagnitudeExpressions(int flag);
     void SetPrecisionType(int flag);
+    void SetBackendType(int flag);
     
     void SetSuppressMessages(int flag);
 
@@ -443,8 +447,13 @@ public:
     void DDTConnect(bool connect);
     void DDTFocus(int domain, const std::string &variable, int element, const std::string &value);
 
+    /// Experimental features (that are not official yet)
     void ExportWindows(const intVector &windowIds, const std::string& format);
     void ExportHostProfile(const std::string& profile, const std::string &filename, const bool& saveInUserDir = false);
+    void UpdateMouseActions(const int& windowId, const std::string& mouseButton, const double &start_dx, const double& start_dy, const double& end_dx, const double &end_dy, const bool &ctrl, const bool &shift);
+    void GetFileList(const std::string& path);
+    void ForceRedraw(int windowId);
+    void RegisterNewWindow(int windowId);
 private:
     ViewerState *state;
 };

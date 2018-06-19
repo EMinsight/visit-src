@@ -5435,6 +5435,25 @@ ViewerMethods::SetPrecisionType(int flag)
 }
 
 // ****************************************************************************
+//  Method: ViewerMethods::SetBackendType
+//
+//  Purpose: Tells viewer to set the backend type used in the pipeline.
+//
+//  Programmer: Cameron Christensen
+//  Creation:   June 10, 2014
+//
+// ****************************************************************************
+
+void
+ViewerMethods::SetBackendType(int flag)
+{
+    state->GetViewerRPC()->SetRPCType(
+        ViewerRPC::SetBackendTypeRPC);
+    state->GetViewerRPC()->SetIntArg1(flag);
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
 //  Method: ViewerMethods::SetSuppressMessages
 //
 //  Purpose: Tells viewer to turn on/off message suppression.
@@ -5527,6 +5546,58 @@ ViewerMethods::ExportHostProfile(const std::string& profile, const std::string& 
     node["fileName"] = filename;
     node["saveInUserDir"] = saveInUserDir;
 
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
+    state->GetViewerRPC()->SetStringArg1(node.ToString());
+    state->GetViewerRPC()->Notify();
+}
+
+void
+ViewerMethods::UpdateMouseActions(const int& windowId, const std::string& button,
+                                  const double& start_dx, const double& start_dy,
+                                  const double& end_dx, const double& end_dy,
+                                  const bool& ctrl, const bool& shift) {
+
+    JSONNode node;
+    node["action"] = "UpdateMouseActions";
+    node["mouseButton"] = button;
+    node["windowId"] = windowId;
+    node["start_dx"] = start_dx;
+    node["start_dy"] = start_dy;
+    node["end_dx"] = end_dx;
+    node["end_dy"] = end_dy;
+    node["ctrl"] = ctrl;
+    node["shift"] = shift;
+
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
+    state->GetViewerRPC()->SetStringArg1(node.ToString());
+    state->GetViewerRPC()->Notify();
+}
+
+void
+ViewerMethods::GetFileList(const std::string &path) {
+    JSONNode node;
+    node["action"] = "GetFileList";
+    node["path"] = path;
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
+    state->GetViewerRPC()->SetStringArg1(node.ToString());
+    state->GetViewerRPC()->Notify();
+}
+
+void
+ViewerMethods::ForceRedraw(int windowId) {
+    JSONNode node;
+    node["action"] = "ForceRedraw";
+    node["windowId"] = windowId;
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
+    state->GetViewerRPC()->SetStringArg1(node.ToString());
+    state->GetViewerRPC()->Notify();
+}
+
+void
+ViewerMethods::RegisterNewWindow(int windowId) {
+    JSONNode node;
+    node["action"] = "RegisterNewWindow";
+    node["windowId"] = windowId;
     state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
     state->GetViewerRPC()->SetStringArg1(node.ToString());
     state->GetViewerRPC()->Notify();

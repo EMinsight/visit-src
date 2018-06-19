@@ -69,6 +69,7 @@
 
 #include <vtkVisItUtility.h>
 
+#include <avtCallback.h>
 #include <avtDatabase.h>
 #include <avtDatabaseFactory.h>
 #include <avtDatabaseMetaData.h>
@@ -93,6 +94,9 @@
 using std::vector;
 using std::map;
 
+#if defined (_MSC_VER) && !defined(round)
+inline double round(double x) {return (x-floor(x)) > 0.5 ? ceil(x) : floor(x);}
+#endif
 
 // ****************************************************************************
 //  Function: GetArrayTypeName 
@@ -1461,6 +1465,15 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
 //
 //  Programmer: Mark C. Miller 
 //  Creation:   Friday, February 13, 2009 
+//
+//  Modifications:
+//    Eric Brugger, Wed Nov 19 08:46:49 PST 2014
+//    I reduced the number of reads of CSG meshes to only once per CSG mesh
+//    instead of once per region in order to reduce the number of times the
+//    same CSG mesh was cached. Typically there is one CSG mesh with many
+//    regions, so this is a significant saving. CSG meshes with thousands
+//    of regions were exhausting memory in the previous scheme.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -1468,20 +1481,20 @@ avtTransformManager::FindMatchingCSGDiscretization(
     const avtDatabaseMetaData *const md,
     const avtDataRequest_p &dataRequest,
     const char *vname, const char *type,
-    int ts, int dom, const char *mat)
+    int ts, int csgdom, int dom, const char *mat)
 {
-    vtkCSGGrid *curTsDs = (vtkCSGGrid *) gdbCache->GetVTKObject(vname, type, ts, dom, mat);
+    vtkCSGGrid *curTsDs = (vtkCSGGrid *) gdbCache->GetVTKObject(vname, type, ts, csgdom, mat);
     if (curTsDs == 0)
         return 0;
 
     // compare the CSGGrid object as read from the format to the
     // current object
-    vtkCSGGrid *oldTsDs = (vtkCSGGrid *) cache.GetVTKObject(vname, type, -1, dom, mat);
+    vtkCSGGrid *oldTsDs = (vtkCSGGrid *) cache.GetVTKObject(vname, type, -1, csgdom, mat);
     if (oldTsDs && *oldTsDs == *curTsDs)
     {
         // compare the discretization parameters
         void_ref_ptr oldVrDr = cache.GetVoidRef(vname,
-                               avtVariableCache::DATA_SPECIFICATION, -1, dom);
+                               avtVariableCache::DATA_SPECIFICATION, -1, csgdom);
         avtDataRequest *oldDr = (avtDataRequest *) *oldVrDr;
         if ((oldDr->DiscBoundaryOnly() == dataRequest->DiscBoundaryOnly()) &&
             (oldDr->DiscTol() == dataRequest->DiscTol()) &&
@@ -1589,6 +1602,29 @@ double ComputeCellSize(double tol,
 //    each domain independently if the number total number of boundary
 //    surfaces is above the internal limit.
 //
+//    Eric Brugger, Wed Aug 20 14:17:49 PDT 2014
+//    I corrected a bug in the calculation of the subregion index extents
+//    where it would calculate degenerate regions when the number of elements
+//    per block was small.
+//
+//    Eric Brugger, Wed Nov 19 08:46:49 PST 2014
+//    I reduced the number of reads of CSG meshes to only once per CSG mesh
+//    instead of once per region in order to reduce the number of times the
+//    same CSG mesh was cached. Typically there is one CSG mesh with many
+//    regions, so this is a significant saving. CSG meshes with thousands
+//    of regions were exhausting memory in the previous scheme.
+//
+//    Eric Brugger, Fri Nov 21 15:36:42 PST 2014
+//    I added code to try the uniform discretization method if the multi
+//    pass method failed. I also added code to return an empty mesh if we
+//    were unable to discretize the mesh.
+//
+//    Eric Brugger, Mon Nov 24 16:04:47 PST 2014
+//    I added an argument to vtkCSGGrid::DoDiscretizationMultiPass that
+//    specifies if all the regions should be discretized at once. I am
+//    passing a hard coded false since it gives better performance for
+//    complex CSG meshes. In the future this will be user controllable.
+//
 // ****************************************************************************
 vtkDataSet *
 avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
@@ -1610,12 +1646,15 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
     //
     const char *vname, *type, *mat;
     int ts;
-    if (!gdbCache->GetVTKObjectKey(&vname, &type, &ts, dom, &mat, ds))
+
+    vname = dataRequest->GetVariable();
+    int csgdom = dom, csgreg;
+    md->ConvertCSGDomainToBlockAndRegion(vname, &csgdom, &csgreg);
+
+    if (!gdbCache->GetVTKObjectKey(&vname, &type, &ts, csgdom, &mat, ds))
     {
         EXCEPTION1(PointerNotInCacheException, ds);
     }
-    int csgdom = dom, csgreg;
-    md->ConvertCSGDomainToBlockAndRegion(vname, &csgdom, &csgreg);
 
     debug1 << "Preparing to obtain CSG discretized grid for "
            << ", dom=" << dom
@@ -1646,7 +1685,7 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
     // be a result from another timestate we could use. We look for one now.
     //
     if (dgrid == 0)
-        dgrid = FindMatchingCSGDiscretization(md, dataRequest, vname, type, ts, dom, mat);
+        dgrid = FindMatchingCSGDiscretization(md, dataRequest, vname, type, ts, csgdom, dom, mat);
 
     //
     // Ok, we need to discretize the CSG grid.
@@ -1701,23 +1740,29 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
         nZBlocks = 1;
 #endif
 
-        int deltaX = (nX + nXBlocks - 1) / nXBlocks;
-        int deltaY = (nY + nYBlocks - 1) / nYBlocks;
-        int deltaZ = (nZ + nZBlocks - 1) / nZBlocks;
+        double deltaX = double(nX) / double(nXBlocks);
+        double deltaY = double(nY) / double(nYBlocks);
+        double deltaZ = double(nZ) / double(nZBlocks);
 
         int iBlock = rank;
         int iXBlock = iBlock / (nYBlocks * nZBlocks);
-        int iMin = iXBlock == 0 ? 0 : iXBlock * deltaX - 1;
-        int iMax = (iXBlock + 1) * deltaX + 1 < nX ? (iXBlock + 1) * deltaX + 1 : nX;
+        int iMin = int(round(deltaX * double(iXBlock))) - 1;
+        iMin = iMin >= 0 ? iMin : 0;
+        int iMax = int(round(deltaX * double(iXBlock + 1))) + 1;
+        iMax = iMax < nX ? iMax : nX;
 
         iBlock = iBlock % (nYBlocks * nZBlocks);
         int iYBlock = iBlock / nZBlocks;
-        int jMin = iYBlock == 0 ? 0 : iYBlock * deltaY - 1;
-        int jMax = (iYBlock + 1) * deltaY + 1 < nY ? (iYBlock + 1) * deltaY + 1 : nY;
+        int jMin = int(round(deltaY * double(iYBlock))) - 1;
+        jMin = jMin >= 0 ? jMin : 0;
+        int jMax = int(round(deltaY * double(iYBlock + 1))) + 1;
+        jMax = jMax < nY ? jMax : nY;
 
         int iZBlock = iBlock % nZBlocks;
-        int kMin = iZBlock == 0 ? 0 : iZBlock * deltaZ - 1;
-        int kMax = (iZBlock + 1) * deltaZ + 1 < nZ ? (iZBlock + 1) * deltaZ + 1 : nZ;
+        int kMin = int(round(deltaZ * double(iZBlock))) - 1;
+        kMin = kMin >= 0 ? kMin : 0;
+        int kMax = int(round(deltaZ * double(iZBlock + 1))) + 1;
+        kMax = kMax < nZ ? kMax : nZ;
 
         int subRegion[6];
         subRegion[0] = iMin; subRegion[1] = iMax;
@@ -1772,9 +1817,22 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
             if (processed)
                 csgmesh = vtkCSGGrid::SafeDownCast(processed);
 
-            dgrid = csgmesh->DiscretizeSpaceMultiPass(csgreg,
+            dgrid = csgmesh->DiscretizeSpaceMultiPass(csgreg, false,
                 bnds, dims, subRegion);
 
+            if (dgrid == NULL)
+            {
+                std::ostringstream oss;
+                oss << "Unable to discretize domain " << dom << " with "
+                    << "the multi pass method, trying the uniform method.";
+                std::string msg(oss.str());
+                avtCallback::IssueWarning(msg.c_str());
+
+                dgrid = csgmesh->DiscretizeSpace(csgreg,
+                                             dataRequest->DiscTol(),
+                                             bnds[0], bnds[1], bnds[2],
+                                             bnds[3], bnds[4], bnds[5]);
+            }
             cache.CacheVTKObject(vname, type, -1, -1, mat, csgmesh);
             avtDataRequest *newdataRequest = new avtDataRequest(dataRequest);
             const void_ref_ptr vr = void_ref_ptr(newdataRequest, DestructDspec);
@@ -1782,11 +1840,25 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
                                -1, -1, vr);
         }
 
+        if (dgrid == NULL)
+        {
+            std::ostringstream oss;
+            oss << "Unable to discretize domain " << dom << ". Ignoring it.";
+            std::string msg(oss.str());
+            avtCallback::IssueWarning(msg.c_str());
+            dgrid = vtkUnstructuredGrid::New();
+        }
+
         //
         // Cache the discretized mesh for this timestep
         //
         cache.CacheVTKObject(vname, type, ts, dom, mat, dgrid);
         dgrid->Delete();
+
+        avtDataRequest *newdataRequest = new avtDataRequest(dataRequest);
+        const void_ref_ptr vr = void_ref_ptr(newdataRequest, DestructDspec);
+        cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
+                           ts, dom, vr);
 
         //
         // Ok, this is a bit of a hack. We want to cache BOTH the
@@ -1798,23 +1870,21 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
         // We do this caching so that if a CSG grid does NOT change with
         // time, we can avoid re-discretizing it each timestep. 
         //
-        vtkCSGGrid *csgcopy = vtkCSGGrid::New();
-        csgcopy->ShallowCopy(csgmesh);
-        cache.CacheVTKObject(vname, type, -1, dom, mat, csgcopy);
-        csgcopy->Delete();
+        if (cache.GetVTKObject(vname, type, -1, csgdom, mat) == NULL)
+        {
+            vtkCSGGrid *csgcopy = vtkCSGGrid::New();
+            csgcopy->ShallowCopy(csgmesh);
+            cache.CacheVTKObject(vname, type, -1, csgdom, mat, csgcopy);
+            csgcopy->Delete();
+
+            cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
+                               -1, csgdom, vr);
+        }
 
         vtkDataSet *dgridcopy = dgrid->NewInstance();
         dgridcopy->ShallowCopy(dgrid);
         cache.CacheVTKObject(vname, "DISCRETIZED_CSG", -1, dom, mat, dgridcopy);
         dgridcopy->Delete();
-
-        avtDataRequest *newdataRequest = new avtDataRequest(dataRequest);
-        const void_ref_ptr vr = void_ref_ptr(newdataRequest, DestructDspec);
-        cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
-                           ts, dom, vr);
-        // Also, cache a copy of the data specification at time -1, too.
-        cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
-                           -1, dom, vr);
     }
 
     // copy same procuedure used in avtGenericDatabase to put object into
@@ -1831,7 +1901,7 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
     {
         vtkDataArray *da = cd->GetArray(i);
         // look up this vtk object's "key" in GenericDb's cache
-        if (!gdbCache->GetVTKObjectKey(&vname, &type, &ts, dom, &mat, da))
+        if (!gdbCache->GetVTKObjectKey(&vname, &type, &ts, csgdom, &mat, da))
         {
             EXCEPTION1(PointerNotInCacheException, da);
         }
@@ -1898,6 +1968,13 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
 //    Burlen Loring, Mon Jul 14 15:52:49 PDT 2014
 //    fix alloc-dealloc-mismatch (operator new [] vs free) of matnames
 //
+//    Eric Brugger, Wed Nov 19 08:46:49 PST 2014
+//    I reduced the number of reads of CSG meshes to only once per CSG mesh
+//    instead of once per region in order to reduce the number of times the
+//    same CSG mesh was cached. Typically there is one CSG mesh with many
+//    regions, so this is a significant saving. CSG meshes with thousands
+//    of regions were exhausting memory in the previous scheme.
+//
 // ****************************************************************************
 bool
 avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
@@ -1909,14 +1986,7 @@ avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
     if (mat == 0 || *mat == 0)
         return false;
 
-    // find the given material object in Generic DB's cache
-    int refCount = 1;
-    void_ref_ptr vr = void_ref_ptr(*mat, avtMaterial::Destruct, &refCount);
-    if (!gdbCache->GetVoidRefKey(&vname, &type, &ts, dom, vr))
-    {
-        EXCEPTION1(PointerNotInCacheException, *vr);
-    }
-    
+    vname = dataRequest->GetVariable();
     std::string meshname = md->MeshForVar(vname);
     const avtMeshMetaData *mmd = md->GetMesh(meshname);
     if (mmd->meshType == AVT_CSG_MESH)
@@ -1924,6 +1994,14 @@ avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
         int csgdom = dom, csgreg;
         md->ConvertCSGDomainToBlockAndRegion(vname, &csgdom, &csgreg);
 
+        // find the given material object in Generic DB's cache
+        int refCount = 1;
+        void_ref_ptr vr = void_ref_ptr(*mat, avtMaterial::Destruct, &refCount);
+        if (!gdbCache->GetVoidRefKey(&vname, &type, &ts, csgdom, vr))
+        {
+            EXCEPTION1(PointerNotInCacheException, *vr);
+        }
+    
         // Determine if the cache is valid based on whether or not the
         // discretization parameters have changed.
         bool cache_valid = true;
@@ -1951,7 +2029,7 @@ avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
             // is defined has not yet been discretized. So, do it now.
             //
             ds = (vtkDataSet *) gdbCache->GetVTKObject(meshname.c_str(),
-                     avtVariableCache::DATASET_NAME, ts, dom, "_all");
+                     avtVariableCache::DATASET_NAME, ts, csgdom, "_all");
             if (!ds)
             {
                 EXCEPTION1(PointerNotInCacheException, ds);

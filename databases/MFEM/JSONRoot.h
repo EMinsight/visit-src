@@ -65,7 +65,7 @@ class JSONRootPath
     virtual     ~JSONRootPath();
     
     std::string  Expand(int domain=0) const;
-    
+    std::string  Get() const { return path;}
     void         Set(const std::string &path);
     
     private:
@@ -120,7 +120,16 @@ class JSONRootDataSet
         virtual        ~JSONRootDataSet();
         
         int             NumberOfDomains() const;
-        void            SetNumberOfDomains(int ndomains);            
+        void            SetNumberOfDomains(int ndomains);    
+        
+        int             Cycle() const;
+        void            SetCycle(int value);
+        bool            HasCycle() const;        
+
+        double          Time() const;
+        void            SetTime(double value);
+        bool            HasTime() const;        
+        
 
         JSONRootEntry  &Mesh();          
         
@@ -131,6 +140,11 @@ class JSONRootDataSet
     private:
         // TODO: uint64 ...
         int                                 ndomains;
+        bool                                validCycle;
+        int                                 cycle;
+        bool                                validTime;
+        double                              timev;
+        
         JSONRootEntry                       mesh;
         std::map<std::string,JSONRootEntry> fields;
 };
@@ -143,6 +157,10 @@ class JSONRootDataSet
 //
 //  Programmer:  Cyrus Harrison
 //  Creation:    Thu Jun 12 16:02:35 PDT 2014
+//
+//  Modifications:
+//   Cyrus Harrison, Wed Sep 24 10:47:00 PDT 2014
+//   Added helper for abs path logic.
 //
 // ****************************************************************************
 class JSONRoot
@@ -162,7 +180,7 @@ public:
 
   private:
     void             ParseJSON(const std::string &json_root);
-    
+    std::string      ResolveAbsolutePath(const std::string &root_dir,const std::string &file_path);
     
     std::map<std::string,JSONRootDataSet> dsets;
     

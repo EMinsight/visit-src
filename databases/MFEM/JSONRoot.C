@@ -47,6 +47,8 @@
 
 #include "JSONRoot.h"
 
+#include <StringHelpers.h>
+
 #include <iostream>
 using namespace std;
 
@@ -89,15 +91,32 @@ JSONRootPath::~JSONRootPath()
 //  Programmer:  Cyrus Harrison
 //  Creation:    Thu Jun 12 16:02:35 PDT 2014
 //
+//  Modifications:
+//   Cyrus Harrison, Tue Sep 23 14:42:52 PDT 2014
+//   Added support for simple domain expansion.
+//
 // ****************************************************************************
 std::string
 JSONRootPath::Expand(int domain) const
 {
     //
-    // TODO: handle domain id mapping (likley printf style expansion)
+    // Note: This currenlty only handles "%05d" as the format string.
     //
     
-    return path;
+    std::size_t path_pattern = path.find("%05d");
+
+    if(path_pattern != std::string::npos)
+    {
+        char buff[64];
+        SNPRINTF(buff,64,"%05d",domain);    
+        return StringHelpers::Replace(path,
+                                      "%05d",
+                                      std::string(buff));
+    }
+    else
+    {
+        return path;
+    }
 }
 
 // ****************************************************************************
@@ -230,6 +249,11 @@ JSONRootEntry::Tag(const std::string &tag_name)
 //
 // ****************************************************************************
 JSONRootDataSet::JSONRootDataSet()
+: ndomains(0),
+  validCycle(false),
+  cycle(0),
+  validTime(false),
+  timev(0.0)
 {};
 
 // ****************************************************************************
@@ -277,6 +301,106 @@ JSONRootDataSet::SetNumberOfDomains(int ndomains)
 {
     this->ndomains = ndomains;
 }
+
+// ****************************************************************************
+//  Method: JSONRootDataSet::Cycle
+//
+//  Purpose: Returns cycle metadata value for this dataset.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Oct 15 11:10:05 PDT 2014
+//
+// ****************************************************************************
+int
+JSONRootDataSet::Cycle() const
+{
+    return cycle;
+}
+ 
+// ****************************************************************************
+//  Method: JSONRootDataSet::SetCycle
+//
+//  Purpose: Returns sets the cycle metadata value for this dataset.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Oct 15 11:10:05 PDT 2014
+//
+// ****************************************************************************
+void
+JSONRootDataSet::SetCycle(int value)
+{
+    cycle = value;
+    validCycle = true;
+}
+
+// ****************************************************************************
+//  Method: JSONRootDataSet::HasCycle
+//
+//  Purpose: Returns if cycle metadata has been set.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Oct 15 11:10:05 PDT 2014
+//
+// ****************************************************************************
+bool
+JSONRootDataSet::HasCycle() const
+{
+    return validCycle;
+}
+ 
+
+// ****************************************************************************
+//  Method: JSONRootDataSet::Time
+//
+//  Purpose: Returns time metadata value for this dataset.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Oct 15 11:10:05 PDT 2014
+//
+// ****************************************************************************
+double
+JSONRootDataSet::Time() const
+{
+    return timev;
+}
+ 
+// ****************************************************************************
+//  Method: JSONRootDataSet::SetTime
+//
+//  Purpose: Returns sets the time metadata value for this dataset.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Oct 15 11:10:05 PDT 2014
+//
+// ****************************************************************************
+void
+JSONRootDataSet::SetTime(double value)
+{
+    timev = value;
+    validTime = true;
+}
+
+// ****************************************************************************
+//  Method: JSONRootDataSet::HasTime
+//
+//  Purpose: Returns if time metadata has been set.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Oct 15 11:10:05 PDT 2014
+//
+// ****************************************************************************
+bool
+JSONRootDataSet::HasTime() const
+{
+    return validTime;
+}
+
 
 // ****************************************************************************
 //  Method: JSONRootDataSet::Mesh
@@ -444,6 +568,10 @@ JSONRoot::NumberOfDataSets() const
 //  Programmer:  Cyrus Harrison
 //  Creation:    Thu Jun 12 16:02:35 PDT 2014
 //
+//  Modifications:
+//   Cyrus Harrison, Wed Sep 24 10:47:00 PDT 2014
+//   Handle abs path logic.
+//
 // **************************************************************************** 
 void 
 JSONRoot::ParseJSON(const std::string &json_root)
@@ -451,9 +579,12 @@ JSONRoot::ParseJSON(const std::string &json_root)
     // clear existing structure
     dsets.clear();
 
+    std::string root_file = StringHelpers::Absname(".",json_root);
+    std::string root_dir =  StringHelpers::Dirname(root_file);
+
     // open root file and read its contents
     ifstream iroot;
-    iroot.open(json_root.c_str());
+    iroot.open(root_file.c_str());
     std::string json((std::istreambuf_iterator<char>(iroot)), 
                       std::istreambuf_iterator<char>());
 
@@ -477,9 +608,21 @@ JSONRoot::ParseJSON(const std::string &json_root)
                 string curr_dset_name = dsets_itr->name.GetString();
                 JSONRootDataSet &curr_dset = DataSet(curr_dset_name);
                 const rapidjson::Value &json_dset = dsets_itr->value;
+                
+                if(json_dset.HasMember("time"))
+                {
+                   curr_dset.SetTime(json_dset["time"].GetDouble()); 
+                }
+
+                if(json_dset.HasMember("cycle"))
+                {
+                   curr_dset.SetCycle(json_dset["cycle"].GetInt()); 
+                }
+                
                 // handle # of domains, meshes w/ tags
                 curr_dset.SetNumberOfDomains(json_dset["domains"].GetInt());
-                curr_dset.Mesh().Path().Set(json_dset["mesh"]["path"].GetString());
+                std::string mesh_file_path = json_dset["mesh"]["path"].GetString();
+                curr_dset.Mesh().Path().Set(ResolveAbsolutePath(root_dir,mesh_file_path));
                 if(json_dset["mesh"].HasMember("tags"))
                 {
                     const rapidjson::Value &mesh_tags = json_dset["mesh"]["tags"];
@@ -499,7 +642,8 @@ JSONRoot::ParseJSON(const std::string &json_root)
                         const rapidjson::Value &json_field = fields_itr->value;
                         string curr_field_name = fields_itr->name.GetString();
                         JSONRootEntry &curr_field = curr_dset.Field(curr_field_name);
-                        curr_field.Path().Set(json_field["path"].GetString());
+                        std::string field_file_path = json_field["path"].GetString();
+                        curr_field.Path().Set(ResolveAbsolutePath(root_dir,field_file_path));
                         const rapidjson::Value &json_tags = json_field["tags"];
                         for (rapidjson::Value::ConstMemberIterator tags_itr = json_tags.MemberBegin(); 
                              tags_itr != json_tags.MemberEnd(); ++tags_itr)
@@ -511,6 +655,23 @@ JSONRoot::ParseJSON(const std::string &json_root)
             }
         }
     }
+}
+
+// ****************************************************************************
+//  Method: JSONRoot::ResolveAbsolutePath
+//
+//  Purpose: Helper for abs path logicl.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Wed Sep 24 10:47:00 PDT 2014
+//
+// **************************************************************************** 
+std::string      
+JSONRoot::ResolveAbsolutePath(const std::string &root_dir,
+                              const std::string &file_path)
+{
+    return StringHelpers::Absname(root_dir,file_path);
 }
 
 // ****************************************************************************

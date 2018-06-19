@@ -90,7 +90,7 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
 
     virtual vtkDataSet    *GetMesh(int, int, const char *);
     virtual vtkDataArray  *GetVar(int, int, const char *);
-    virtual vtkDataArray  *GetVectorVar(int, int, const char *) {return NULL;}
+    virtual vtkDataArray  *GetVectorVar(int, int, const char *);
 
   protected:
     ADIOSFileObject *meshFile, *dataFile;
@@ -101,12 +101,13 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
 
     void             Initialize();
     virtual void     PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
-    vtkDataSet *     GetWholeMesh(int ts, int dom);
-    vtkDataSet *     GetRegionMesh(int ts, int dom, int region);
-    void             AddRegionMesh(int ts, int dom, int region, vtkDataSet *ds, int ptOffset=0);
+    vtkDataSet *     GetWholeMesh(int ts, int dom, bool xyzMesh);
+    vtkDataSet *     GetRegionMesh(int ts, int dom, int region, bool xyzMesh);
+    void             AddRegionMesh(int ts, int dom, int region, vtkDataSet *ds,
+                                   bool xyzMesh, int ptOffset=0);
 
     vtkDataArray *   GetVarRegion(std::string &nm, int ts, int dom);
-
+    vtkDataArray *   GetVectorVarRegion(std::string &nm, int ts, int dom);
 
     //std::map<std::string, std::string> variables;
     std::vector<std::string> variables;

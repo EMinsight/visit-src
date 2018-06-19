@@ -44,4 +44,22 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 SET_UP_THIRD_PARTY(EAVL lib include eavl)
 
+IF ("${EAVL_FOUND}")
+   # Add cuda 
+   INCLUDE(FindCUDA)
+   IF ("${CUDA_FOUND}")
+     SET(EAVL_INCLUDE_DIR "${EAVL_INCLUDE_DIR};${CUDA_INCLUDE_DIRS}"     CACHE STRING "EAVL include" FORCE)
+     SET(EAVL_LIB "${EAVL_LIB};${CUDA_CUDART_LIBRARY}"                   CACHE STRING "EAVL library" FORCE)
+   ENDIF()
+
+   # Add openmp
+   find_package(OpenMP)
+   if (OPENMP_FOUND)
+       ADD_DEFINITIONS(-DVISIT_OMP)
+       SET(VISIT_CXX_FLAGS "${VISIT_CXX_FLAGS} ${OpenMP_CXX_FLAGS}"     CACHE STRING "CXX flags" FORCE)
+       SET(VISIT_C_FLAGS "${VISIT_C_FLAGS} ${OpenMP_C_FLAGS}"           CACHE STRING "C flags" FORCE)
+   endif()
+   
+
+ENDIF()
 

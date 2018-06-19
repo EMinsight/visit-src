@@ -49,6 +49,7 @@
 
 #include <avtDataObject.h>
 #include <avtDatabase.h>
+#include <GlobalAttributes.h>
 
 class    AttributeSubject;
 
@@ -107,6 +108,9 @@ typedef   void  (*ResetTimeoutCallback)(void *, int);
 //    Hank Childs, Tue Jan 18 07:38:18 PST 2011
 //    Add auxsessionkey support for UCHC folks.
 //
+//    Cameron Christensen, Thursday, July 3, 2014
+//    Add backend type callback.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtCallback
@@ -132,9 +136,15 @@ class PIPELINE_API avtCallback
                                                       AttributeSubject *);
 
     static void                  SetNowinMode(bool b)
-                                     { nowinMode = b; };
+                                     { nowinMode = b; }
     static bool                  GetNowinMode(void)
-                                     { return nowinMode; };
+                                     { return nowinMode; }
+
+    static void                    SetNowinInteractionMode(bool b)
+                                     { nowinInteractionMode = b; }
+
+    static bool                  GetNowinInteractionMode()
+                                     { return nowinInteractionMode; }
 
     static void                  SetSoftwareRendering(bool b)
                                      { swRendering = b; };
@@ -173,6 +183,9 @@ class PIPELINE_API avtCallback
     static void                  SetAuxSessionKey(const std::string &k)
                                                   { auxSessionKey = k; };
 
+    static void                  SetBackendType(GlobalAttributes::BackendType type);
+    static GlobalAttributes::BackendType GetBackendType();
+
   protected:
     static WarningCallback       warningCallback;
     static void                 *warningCallbackArgs;
@@ -184,9 +197,12 @@ class PIPELINE_API avtCallback
     static LightList             lightList;
 
     static bool                  nowinMode;
+    static bool                  nowinInteractionMode;
     static bool                  swRendering;
     static bool                  useManta;
     static bool                  safeMode;
+
+    static GlobalAttributes::BackendType backendType;
 
     static std::string           auxSessionKey;
 

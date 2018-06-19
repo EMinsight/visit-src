@@ -8,10 +8,11 @@
       ${VISUS_LIBRARY_DIR}
     </LDFLAGS>
     <LIBS>
+      avtview
       ${VISUS_LIBRARIES}
     </LIBS>
     <FilePatterns>
-      *.idx *.url.idx
+      *.idx *.midx
     </FilePatterns>
     <Attribute name="" purpose="" persistent="true" keyframe="true" exportAPI="" exportInclude="">
     </Attribute>

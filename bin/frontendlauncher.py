@@ -37,6 +37,16 @@ import os, string, sys, subprocess
 #   Kathleen Biagas, Mon Jul 15 11:32:00 PDT 2013
 #   Added UNSETENV.
 #
+#   Eric Brugger, Fri Oct 10 10:40:52 PDT 2014
+#   I modified the script so that if the user specifies a version number
+#   with a minor version number then it uses that specific version for all
+#   the components.
+#
+#   Eric Brugger, Wed Nov 19 11:56:17 PST 2014
+#   I modified the script so that arguments that it adds to the argument
+#   list are added at the beginning of the list instead of the end of the
+#   list so that argument passing for scripts works properly.
+#
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -122,6 +132,7 @@ if visitdir[-1] != os.path.sep:
 # -----------------------------------------------------------------------------
 
 # Set some defaults.
+add_forceversion = 0
 want_version = 0
 ver          = ""
 ver_set      = 0
@@ -205,7 +216,7 @@ if forceversion_set:
     ver_set = 1
     ver = forceversion
     if progname == "visit":
-        visitargs = visitargs + ["-forceversion", forceversion]
+        visitargs = ["-forceversion", forceversion] + visitargs
 
 # -----------------------------------------------------------------------------
 #                          Find the right version
@@ -288,7 +299,10 @@ else:
     # We don't want to attempt this trick with beta versions.
     # This behavior is new for 1.7.
     version = ParseVersion(ver)
+    if ver_set:
+        add_forceversion = 1
     if (not (version[0] == 1 and version[1] < 7)) and version[2] == -1 and version[3] == -1:
+        add_forceversion = 0
         unsorted_matches = []
         for v in exeversions:
             try:
@@ -322,7 +336,7 @@ else:
         print >> sys.stderr, "WARNING: You are launching a public version of VisIt";
         print >> sys.stderr, "         from within a development version!";
         print >> sys.stderr, "";
-        visitargs.append("-dv")
+        visitargs = ["-dv"] + visitargs
 
     # The actual visit directory is now version-specific
     visitdir = visitdir + ver
@@ -354,6 +368,13 @@ SETENV("VISITDIR",           visitdir[:-1])
 # appbundle, which is confusing to users.
 if GETENV("VISIT_STARTED_FROM_APPBUNDLE") == "TRUE":
     os.chdir(GETENV("HOME"))
+
+# -----------------------------------------------------------------------------
+#     If the user specified the minor version then add a -forceversion with
+#     the minor version
+# -----------------------------------------------------------------------------
+if progname != "mpeg2encode" and forceversion_set == 0 and add_forceversion == 1:
+    visitargs = ["-forceversion", ver] + visitargs
 
 # -----------------------------------------------------------------------------
 #                       Run the internal launcher!
