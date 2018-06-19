@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -179,10 +179,9 @@ avtDatasetExaminer::GetSpatialExtents(avtDataset_p &ds, double *se)
 {
     avtDataTree_p dataTree = ds->dataTree;
 
-    int   i;
  
     bool foundExtents = false;
-    for (i = 0 ; i < 3 ; i++)
+    for (int i = 0 ; i < 3 ; i++)
     {
         se[2*i + 0] = +DBL_MAX;
         se[2*i + 1] = -DBL_MAX;
@@ -238,16 +237,15 @@ avtDatasetExaminer::GetSpatialExtents(avtDataset_p &ds, double *se)
 bool
 avtDatasetExaminer::GetSpatialExtents(std::vector<avtDataTree_p> &l,double *se)
 {
-    int   i;
  
     bool foundExtents = false;
-    for (i = 0 ; i < 3 ; i++)
+    for (size_t i = 0 ; i < 3 ; i++)
     {
         se[2*i + 0] = +DBL_MAX;
         se[2*i + 1] = -DBL_MAX;
     }
  
-    for (i = 0 ; i < l.size() ; i++)
+    for (size_t i = 0 ; i < l.size() ; i++)
     {
         // We don't have access to avtDataAttributes here, so assume
         // that there is no rectilinear transform applied

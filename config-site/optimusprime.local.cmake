@@ -1,14 +1,14 @@
-#/Users/bjw/Development/thirdparty_shared/2.7.0/cmake/2.8.10.2/i386-apple-darwin12_gcc-4.2/bin/cmake
+#/Users/bjw/Development/VTK6.0.0_2.8_Release/thirdparty_shared/cmake/2.8.12.2/i386-apple-darwin12_gcc-4.2/bin/cmake
 ##
 ## ./build_visit generated host.cmake
-## created: Mon Aug 19 15:49:35 PDT 2013
-## system: Darwin optimusprime.local 12.2.0 Darwin Kernel Version 12.2.0: Sat Aug 25 00:48:52 PDT 2012; root:xnu-2050.18.24~1/RELEASE_X86_64 x86_64
+## created: Thu Aug 28 17:35:32 PDT 2014
+## system: Darwin optimusprime.local 12.5.0 Darwin Kernel Version 12.5.0: Sun Sep 29 13:33:47 PDT 2013; root:xnu-2050.48.12~1/RELEASE_X86_64 x86_64
 ## by: bjw
 
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
-SET(VISITHOME /Users/bjw/Development/thirdparty_shared/2.7.0)
+SET(VISITHOME /Users/bjw/Development/VTK6.0.0_2.8_Release/thirdparty_shared)
 SET(VISITARCH i386-apple-darwin12_gcc-4.2)
 
 ## Compiler flags.
@@ -19,9 +19,21 @@ VISIT_OPTION_DEFAULT(VISIT_C_FLAGS "-fno-common -fexceptions -fvisibility=hidden
 VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS "-fno-common -fexceptions -fvisibility=hidden" TYPE STRING)
 
 ##
+## Parallel Build Setup.
+##
+VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)
+## (configured w/ mpi compiler wrapper)
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /Users/bjw/Development/VTK6.0.0_2.8_Release/thirdparty_shared/mpich/3.0.4/i386-apple-darwin12_gcc-4.2/bin/mpicc TYPE FILEPATH)
+
+##
 ## VisIt Thread Option
 ##
 VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
+
+##
+## VisIt Boost Option.
+##
+VISIT_OPTION_DEFAULT(VISIT_USE_BOOST ON TYPE BOOL)
 
 ##############################################################
 ##
@@ -39,7 +51,7 @@ VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
 ##
 ## Python
 ##
-VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR /Users/bjw/Development/thirdparty_shared/2.7.0/python/2.7.3/i386-apple-darwin12_gcc-4.2)
+VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.6/${VISITARCH})
 
 ##
 ## Qt
@@ -49,8 +61,21 @@ VISIT_OPTION_DEFAULT(VISIT_QT_BIN ${VISITHOME}/qt/4.8.3/${VISITARCH}/bin)
 ##
 ## VTK
 ##
-VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/6.0.0/${VISITARCH})
+SETUP_VTK_VERSION(6.0.0)
+VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH})
 ##
+
+##
+## MPICH
+##
+
+# Give VisIt information so it can install MPI into the binary distribution.
+VISIT_OPTION_DEFAULT(VISIT_MPICH_DIR ${VISITHOME}/mpich/3.0.4/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MPICH_INSTALL ON)
+
+# Tell VisIt the parallel compiler so it can deduce parallel flags
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER ${VISIT_MPICH_DIR}/bin/mpicc)
+VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
 
 ##
 ## SZIP
@@ -64,42 +89,7 @@ VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.7/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz /usr/lib z TYPE STRING)
 
 ##
-## CGNS
-##
-VISIT_OPTION_DEFAULT(VISIT_CGNS_DIR ${VISITHOME}/cgns/3.0.8/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_CGNS_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
-
-##
-## GDAL
-##
-VISIT_OPTION_DEFAULT(VISIT_GDAL_DIR ${VISITHOME}/gdal/1.10.0/${VISITARCH})
-
-##
-## NetCDF
-##
-VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR ${VISITHOME}/netcdf/4.1.1/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
-
-##
-## MPICH
-##
-
-# Give VisIt information so it can install MPI into the binary distribution.
-VISIT_OPTION_DEFAULT(VISIT_MPICH_DIR ${VISITHOME}/mpich/3.0.1/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_MPICH_INSTALL ON)
-
-# Tell VisIt the parallel compiler so it can deduce parallel flags
-VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER ${VISIT_MPICH_DIR}/bin/mpicc)
-VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
-
-##
 ## PySide
 ##
-VISIT_OPTION_DEFAULT(VISIT_PYSIDE_DIR ${VISITHOME}/pyside/1.1.1/${VISITARCH}/)
-
-##
-## Silo
-##
-VISIT_OPTION_DEFAULT(VISIT_SILO_DIR ${VISITHOME}/silo/4.9.1/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_PYSIDE_DIR ${VISITHOME}/pyside/1.2.2/${VISITARCH}/)
 

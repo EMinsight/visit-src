@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -140,6 +140,7 @@ LINK_DIRECTORIES(
 ${LIBRARY_OUTPUT_DIRECTORY}
 ${GLEW_LIBRARY_DIR}
 ${MESA_LIBRARY_DIR}
+${EAVL_LIBRARY_DIR}
 ${VTK_LIBRARY_DIRS}
 ${TCMALLOC_LIBRARY_DIR}
 ${ALL_THIRDPARTY_IO_LIBRARY_DIR}

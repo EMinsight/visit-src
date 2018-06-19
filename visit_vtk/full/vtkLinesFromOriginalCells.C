@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -140,7 +140,7 @@ int vtkLinesFromOriginalCells::RequestData(
   vtkIdList *edgeNeighbors;
   int numCells, cellNum, edgeNum, numEdgePts, numCellEdges;
   int numPts, i, k, pt2, newId;
-  vtkIdType pts[2];
+  vtkIdType pts[2] = { 0, 0 };
   int pt1 = 0, neighbor;
   vtkEdgeTable *edgeTable;
   vtkCell *cell, *edge;

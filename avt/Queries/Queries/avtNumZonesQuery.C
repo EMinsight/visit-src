@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,6 +122,9 @@ avtNumZonesQuery::GetDefaultInputParams(MapNode &params)
 //    Hank Childs, Sat Nov 21 13:10:43 PST 2009
 //    Change counter to long long.
 //
+//    Kathleen Biagas, Wed Feb 12 09:07:34 PST 2014
+//    Add xml results.
+//
 // ****************************************************************************
 
 void
@@ -158,10 +161,13 @@ avtNumZonesQuery::PerformQuery(QueryAttributes *qA)
     VISIT_LONG_LONG tz[2] = {0, 0};
     SumLongLongArrayAcrossAllProcessors(totalZones, tz, 2);
 
+    MapNode result_node;
+    result_node["num_zones"] = (int)tz[0];
+ 
     if (OriginalData())
-        SNPRINTF(msg, 200, "The original number of zones is %ld.", tz[0]);
+        SNPRINTF(msg, 200, "The original number of zones is %lld.", tz[0]);
     else 
-        SNPRINTF(msg, 200, "The actual number of zones is %ld.", tz[0]);
+        SNPRINTF(msg, 200, "The actual number of zones is %lld.", tz[0]);
     
     if (gt != AVT_HAS_GHOSTS)
     {
@@ -171,11 +177,14 @@ avtNumZonesQuery::PerformQuery(QueryAttributes *qA)
     else
     {
         char msg2[200];
-        SNPRINTF(msg2, 200, "%s\nThe number of ghost zones is %ld.", msg, tz[1]);
+        SNPRINTF(msg2, 200, "%s\nThe number of ghost zones is %lld.", msg, tz[1]);
         double results[2] = {(double) tz[0], (double) tz[1]};
         qA->SetResultsValues(results, 2);
         qA->SetResultsMessage(msg2);
+        result_node["num_ghost_zones"] = (int)tz[1];
     }
+    qA->SetXmlResult(result_node.ToXML());
+
     UpdateProgress(1, 0);
 }
 

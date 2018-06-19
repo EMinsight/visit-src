@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,7 +253,7 @@ vtkCSGGrid::Box::IsFlatEnough2(const double *const gridBoundaries,
 
     // find diagonal of grad box most orthogonal to vector vg 
     double mindotp = DBL_MAX;
-    int dmxmin, dmymin;
+    int dmxmin = 0, dmymin = 0;
     for (int d = 0; d < 4; d++)
     {
         int dmx = (d & 0x01) ? -1 : 1;
@@ -285,46 +285,10 @@ vtkCSGGrid::Box::IsFlatEnough2(const double *const gridBoundaries,
     if (cos_theta < 0.0) cos_theta = -cos_theta;
     double theta = acos(cos_theta);
 
-    // compute length of spatial box diagonal
-    double db =  sqrt((upper(X)-lower(X)) * (upper(X)-lower(X)) +
-                      (upper(Y)-lower(Y)) * (upper(Y)-lower(Y)) +
-                      (upper(Z)-lower(Z)) * (upper(Z)-lower(Z)));
-
-    //if (((1-cos(theta/2)) / (2*sin(theta/2))) < tol)
-    //    return true;
     if (2*sin(theta/2) < tol)
         return true;
+
     return false;
-
-#if 0
-    // compute estimate of radius of curvature of this surface
-    double r = (db / 2.0) / sin(theta / 2.0);
-
-    if (r > tol)
-        return true;
-    return false;
-#endif
-
-#if 0
-    // square of length of box diagonal 
-    double db =  (upper(gradX)-lower(gradX)) * (upper(gradX)-lower(gradX)) +
-                 (upper(gradY)-lower(gradY)) * (upper(gradY)-lower(gradY)) +
-                 (upper(gradZ)-lower(gradZ)) * (upper(gradZ)-lower(gradZ));
-
-    // square of distance to center of box 
-    double dc = ((upper(gradX)+lower(gradX)) * (upper(gradX)+lower(gradX)) +
-                 (upper(gradY)+lower(gradY)) * (upper(gradY)+lower(gradY)) +
-                 (upper(gradZ)+lower(gradZ)) * (upper(gradZ)+lower(gradZ))) / 4.0;
-
-    if (dc < 0.0) dc = -dc;
-    if (dc > 0.0)
-    {
-        if (db / dc < tol)
-            return true;
-    }
-    return false;
-#endif
-
 #else
     return false;
 #endif
@@ -1121,22 +1085,9 @@ static void PlanePPPToQuadric(const double *const plane, double *quadric)
     coeffs[5] = xprod[2];
     PlanePNToQuadric(coeffs, quadric);
 }
-static void BoxXYZXYZToQuadric(const double *const box, double *quadric)
-{
-    PlaneXToQuadric(&box[0], &quadric[0*NUM_QCOEFFS]);
-    PlaneYToQuadric(&box[1], &quadric[1*NUM_QCOEFFS]);
-    PlaneZToQuadric(&box[2], &quadric[2*NUM_QCOEFFS]);
-    PlaneXToQuadric(&box[3], &quadric[3*NUM_QCOEFFS]);
-    PlaneYToQuadric(&box[4], &quadric[4*NUM_QCOEFFS]);
-    PlaneZToQuadric(&box[5], &quadric[5*NUM_QCOEFFS]);
-}
+
 static void CylinderPNLRToQuadric(const double *const cyl, double *quadric)
 {
-    // point
-    double px = cyl[0];
-    double py = cyl[1];
-    double pz = cyl[2];
-
     // normal
     double nx = cyl[3];
     double ny = cyl[4];
@@ -1188,10 +1139,6 @@ static void CylinderPPRToQuadric(const double *const cyl, double *quadric)
 }
 static void ConePNLAToQuadric(const double *const cone, double *quadric)
 {
-    // point
-    double px = cone[0];
-    double py = cone[1];
-    double pz = cone[2];
 
     // normal
     double nx = cone[3];
@@ -2401,7 +2348,7 @@ vtkCSGGrid::DoMultiPassDiscretization(int specificZone,
         regionBounds = new double[10*bounds.size()];
         int lastGridBound = -1;
         int iRegionBounds = 0;
-        for (int i = 0; i < bounds.size(); i++)
+        for (size_t i = 0; i < bounds.size(); i++)
         {
             if (bounds[i] != lastGridBound)
             {
@@ -2594,12 +2541,11 @@ vtkCSGGrid::DiscretizeSpaceMultiPass(int specificZone,
         GetRegionBounds(zone, bounds);
         std::sort(bounds.begin(), bounds.end());
 
-        for (int i = 0; i < bounds.size(); i++)
-            zoneMap[bounds[i]] = i;
+        for (size_t i = 0; i < bounds.size(); i++)
+            zoneMap[bounds[i]] = (int)i;
     }
 
     // Evaluate the cell tags against this region
-    int ncells = rv->GetNumberOfCells();
     vtkIntArray *in = vtkIntArray::New();
     in->SetNumberOfComponents(1);
     in->SetNumberOfTuples(rv->GetNumberOfCells());
@@ -3133,7 +3079,9 @@ vtkCSGGrid::DiscretizeSpace3(
                          boundaryToSenseMap, gridZones[specificZone],
                          points, ugrid, nodemap);
                 if (!flatNessHandledIt)
+                {
                     debug1 << "vtkCSGGrid: Flatness passed; Cutter4 failed. Subdividing..." << endl; 
+                }
             }
 
             if (flatNessHandledIt)
